@@ -1,5 +1,8 @@
-from .models import Client, ClientInvite, User, Workspace
+from .models import (
+    Client, ClientInvite, Milestone, Project, User, Workspace,
+)
 from rest_framework import serializers
+from django.utils import timezone
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -93,3 +96,51 @@ class AcceptInviteSerializer(serializers.Serializer):
         invite.accepted = True
         invite.save(update_fields=["accepted"])
         return client
+
+
+class MilestoneSerializer(serializers.ModelSerializer):
+    """Read/write for a single milestone within a project."""
+
+    class Meta:
+        model = Milestone
+        fields = [
+            "id", "project", "title", "order",
+            "is_complete", "completed_at",
+        ]
+        read_only_fields = ["completed_at"]
+
+    def update(self, instance, validated_data):
+        turning_complete = (
+            validated_data.get("is_complete") and not instance.is_complete
+        )
+        if turning_complete:
+            validated_data["completed_at"] = timezone.now()
+        if validated_data.get("is_complete") is False:
+            validated_data["completed_at"] = None
+        return super().update(instance, validated_data)
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    """Includes nested milestones and a computed progress percent, so
+    the frontend gets everything it needs for a project card/page in
+    one request.
+    """
+
+    milestones = MilestoneSerializer(many=True, read_only=True)
+    progress_percent = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Project
+        fields = [
+            "id", "workspace", "client", "client_name", "name",
+            "budget", "start_date", "deadline", "status",
+            "created_at", "milestones", "progress_percent",
+        ]
+        read_only_fields = ["workspace"]
+
+    def get_progress_percent(self, obj):
+        return obj.progress_percent()
+
+    def get_client_name(self, obj):
+        return obj.client.company_name

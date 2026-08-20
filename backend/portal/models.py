@@ -104,3 +104,59 @@ class ClientInvite(models.Model):
 
     def __str__(self):
         return f"Invite for {self.email} ({self.workspace.name})"
+
+
+class Project(models.Model):
+    """A body of work for a client, belonging to a workspace."""
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        COMPLETED = "completed", "Completed"
+        ON_HOLD = "on_hold", "On hold"
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="projects"
+    )
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name="projects"
+    )
+    name = models.CharField(max_length=255)
+    budget = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    start_date = models.DateField(null=True, blank=True)
+    deadline = models.DateField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.ACTIVE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def progress_percent(self):
+        """Percent of milestones marked complete, 0 if there are none."""
+        total = self.milestones.count()
+        if total == 0:
+            return 0
+        done = self.milestones.filter(is_complete=True).count()
+        return round(done / total * 100)
+
+    def __str__(self):
+        return f"{self.name} ({self.client.company_name})"
+
+
+class Milestone(models.Model):
+    """A stage within a project - what the client sees checked off
+    as work progresses.
+    """
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="milestones"
+    )
+    title = models.CharField(max_length=255)
+    order = models.PositiveIntegerField(default=0)
+    is_complete = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.title
