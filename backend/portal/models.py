@@ -1,3 +1,5 @@
+import uuid
+from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.text import slugify
@@ -75,3 +77,30 @@ class Client(models.Model):
 
     def __str__(self):
         return self.company_name
+
+
+class ClientInvite(models.Model):
+    """A pending invitation for a client to join a workspace. The
+    client clicks the emailed link, sets a password, and becomes a
+    User + Client. Expires after 7 days if unused.
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="invites"
+    )
+    email = models.EmailField()
+    company_name = models.CharField(max_length=255)
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timezone.timedelta(days=7)
+        super().save(*args, **kwargs)
+
+    def is_valid(self):
+        return not self.accepted and timezone.now() < self.expires_at
+
+    def __str__(self):
+        return f"Invite for {self.email} ({self.workspace.name})"
