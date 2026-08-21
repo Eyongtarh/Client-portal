@@ -1,5 +1,6 @@
 from .models import (
-    Client, ClientInvite, Milestone, Project, User, Workspace,
+    Client, ClientInvite, Document, Milestone, Project, User,
+    Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -144,3 +145,26 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_client_name(self, obj):
         return obj.client.company_name
+
+
+class DocumentSerializer(serializers.ModelSerializer):
+    """Read/write for a project document. `uploaded_by_name` is
+    derived so the frontend doesn't need a second lookup to show
+    who uploaded a file.
+    """
+    uploaded_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Document
+        fields = [
+            "id", "project", "file", "original_name",
+            "size_bytes", "uploaded_at", "uploaded_by_name",
+        ]
+        read_only_fields = [
+            "original_name", "size_bytes", "uploaded_at",
+        ]
+
+    def get_uploaded_by_name(self, obj):
+        if obj.uploaded_by:
+            return obj.uploaded_by.first_name
+        return None

@@ -160,3 +160,32 @@ class Milestone(models.Model):
 
     def __str__(self):
         return self.title
+
+
+def document_upload_path(instance, filename):
+    """Files land under a workspace/project-scoped folder, so uploads
+    from different tenants never collide or overwrite each other.
+    """
+    return (
+        f"workspaces/{instance.project.workspace_id}/"
+        f"projects/{instance.project_id}/{filename}"
+    )
+
+
+class Document(models.Model):
+    """A file attached to a project - visible to both the owner and
+    the project's client.
+    """
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="documents"
+    )
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True
+    )
+    file = models.FileField(upload_to=document_upload_path)
+    original_name = models.CharField(max_length=255)
+    size_bytes = models.PositiveIntegerField(default=0)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.original_name

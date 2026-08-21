@@ -9,7 +9,12 @@ from . import views
 
 router = DefaultRouter()
 router.register("projects", views.ProjectViewSet, basename="project")
-router.register("milestones", views.MilestoneViewSet, basename="milestone")
+router.register(
+    "milestones", views.MilestoneViewSet, basename="milestone"
+)
+router.register(
+    "documents", views.DocumentViewSet, basename="document"
+)
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),
