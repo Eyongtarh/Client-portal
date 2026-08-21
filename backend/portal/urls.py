@@ -15,6 +15,7 @@ router.register(
 router.register(
     "documents", views.DocumentViewSet, basename="document"
 )
+router.register("messages", views.MessageViewSet, basename="message")
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),

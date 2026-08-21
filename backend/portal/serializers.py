@@ -1,6 +1,6 @@
 from .models import (
-    Client, ClientInvite, Document, Milestone, Project, User,
-    Workspace,
+    Client, ClientInvite, Document, Message, Milestone, Project,
+    User, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -167,4 +167,30 @@ class DocumentSerializer(serializers.ModelSerializer):
     def get_uploaded_by_name(self, obj):
         if obj.uploaded_by:
             return obj.uploaded_by.first_name
+        return None
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    """Includes the sender's name and role, derived so the frontend
+    can render "you" vs "them" bubbles without a second lookup.
+    """
+    sender_name = serializers.SerializerMethodField()
+    sender_role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Message
+        fields = [
+            "id", "project", "body", "created_at",
+            "sender_name", "sender_role",
+        ]
+        read_only_fields = ["created_at"]
+
+    def get_sender_name(self, obj):
+        if obj.sender:
+            return obj.sender.first_name
+        return "Deleted user"
+
+    def get_sender_role(self, obj):
+        if obj.sender:
+            return obj.sender.role
         return None

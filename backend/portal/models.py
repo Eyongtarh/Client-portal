@@ -189,3 +189,20 @@ class Document(models.Model):
 
     def __str__(self):
         return self.original_name
+
+
+class Message(models.Model):
+    """A single chat message within a project, visible to both the
+    owner and the client on that project.
+    """
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="messages"
+    )
+    sender = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True
+    )
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]

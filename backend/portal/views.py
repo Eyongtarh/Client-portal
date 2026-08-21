@@ -2,12 +2,13 @@ from rest_framework import generics, status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Document, Milestone, Project
+from .models import Document, Message, Milestone, Project
 from .serializers import (
     AcceptInviteSerializer,
     ClientInviteCreateSerializer,
     DocumentSerializer,
     MeSerializer,
+    MessageSerializer,
     MilestoneSerializer,
     ProjectSerializer,
     RegisterSerializer,
@@ -125,3 +126,25 @@ class DocumentViewSet(viewsets.ModelViewSet):
             original_name=uploaded_file.name if uploaded_file else "",
             size_bytes=uploaded_file.size if uploaded_file else 0,
         )
+
+
+class MessageViewSet(viewsets.ModelViewSet):
+    """Same tenant-scoping pattern as the other project-scoped
+    viewsets. The sender is always the logged-in user, never
+    client-supplied.
+    """
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "owner":
+            return Message.objects.filter(
+                project__workspace=user.workspace
+            )
+        return Message.objects.filter(
+            project__client=user.client_profile
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(sender=self.request.user)
