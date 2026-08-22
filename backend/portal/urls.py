@@ -16,6 +16,7 @@ router.register(
     "documents", views.DocumentViewSet, basename="document"
 )
 router.register("messages", views.MessageViewSet, basename="message")
+router.register("invoices", views.InvoiceViewSet, basename="invoice")
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),
@@ -24,5 +25,8 @@ urlpatterns = [
     path("auth/me/", views.MeView.as_view()),
     path("auth/accept-invite/", views.AcceptInviteView.as_view()),
     path("invites/", views.InviteClientView.as_view()),
+    path(
+        "invoices/<int:pk>/pdf/", views.InvoicePDFView.as_view()
+    ),
     path("", include(router.urls)),
 ]

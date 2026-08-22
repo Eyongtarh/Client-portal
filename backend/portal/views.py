@@ -2,17 +2,23 @@ from rest_framework import generics, status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Document, Message, Milestone, Project
+from .models import Document, Invoice, Message, Milestone, Project
 from .serializers import (
     AcceptInviteSerializer,
     ClientInviteCreateSerializer,
     DocumentSerializer,
+    InvoiceSerializer,
     MeSerializer,
     MessageSerializer,
     MilestoneSerializer,
     ProjectSerializer,
     RegisterSerializer,
 )
+import io
+from django.http import FileResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 
 
 class RegisterView(generics.CreateAPIView):
@@ -148,3 +154,85 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
+
+
+class InvoiceViewSet(viewsets.ModelViewSet):
+    """Same tenant-scoping pattern as the other workspace-scoped
+    viewsets.
+    """
+
+    serializer_class = InvoiceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "owner":
+            return Invoice.objects.filter(workspace=user.workspace)
+        return Invoice.objects.filter(client=user.client_profile)
+
+    def perform_create(self, serializer):
+        serializer.save(workspace=self.request.user.workspace)
+
+
+class InvoicePDFView(APIView):
+    """GET /api/invoices/<id>/pdf/ - renders the invoice as a
+    downloadable PDF using reportlab.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        user = request.user
+        if user.role == "owner":
+            qs = Invoice.objects.filter(workspace=user.workspace)
+        else:
+            qs = Invoice.objects.filter(client=user.client_profile)
+        invoice = generics.get_object_or_404(qs, pk=pk)
+
+        buf = io.BytesIO()
+        pdf = canvas.Canvas(buf, pagesize=A4)
+        width, height = A4
+        y = height - 30 * mm
+
+        pdf.setFont("Helvetica-Bold", 18)
+        pdf.drawString(20 * mm, y, f"Invoice #{invoice.number}")
+        y -= 10 * mm
+        pdf.setFont("Helvetica", 11)
+        pdf.drawString(20 * mm, y, invoice.client.company_name)
+        y -= 6 * mm
+        pdf.drawString(20 * mm, y, f"Issued: {invoice.issued_at}")
+        if invoice.due_at:
+            y -= 6 * mm
+            pdf.drawString(20 * mm, y, f"Due: {invoice.due_at}")
+        y -= 14 * mm
+
+        pdf.setFont("Helvetica-Bold", 11)
+        pdf.drawString(20 * mm, y, "Description")
+        pdf.drawString(150 * mm, y, "Amount")
+        y -= 4 * mm
+        pdf.line(20 * mm, y, 190 * mm, y)
+        y -= 8 * mm
+
+        pdf.setFont("Helvetica", 11)
+        for item in invoice.items.all():
+            pdf.drawString(20 * mm, y, item.description[:60])
+            pdf.drawRightString(
+                190 * mm, y, f"\u20ac{item.amount:,.2f}"
+            )
+            y -= 7 * mm
+
+        y -= 4 * mm
+        pdf.line(20 * mm, y, 190 * mm, y)
+        y -= 8 * mm
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawRightString(
+            190 * mm, y, f"Total: \u20ac{invoice.total:,.2f}"
+        )
+
+        pdf.showPage()
+        pdf.save()
+        buf.seek(0)
+        filename = f"invoice-{invoice.number}.pdf"
+        return FileResponse(
+            buf, as_attachment=True, filename=filename
+        )

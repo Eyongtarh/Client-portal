@@ -1,6 +1,6 @@
 from .models import (
-    Client, ClientInvite, Document, Message, Milestone, Project,
-    User, Workspace,
+    Client, ClientInvite, Document, Invoice, InvoiceItem, Message,
+    Milestone, Project, User, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -194,3 +194,54 @@ class MessageSerializer(serializers.ModelSerializer):
         if obj.sender:
             return obj.sender.role
         return None
+
+
+class InvoiceItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvoiceItem
+        fields = ["id", "description", "amount"]
+
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    """Items are nested and written together with the invoice in a
+    single request, so the frontend never has to make separate
+    calls to build up an invoice's line items.
+    """
+    items = InvoiceItemSerializer(many=True)
+    total = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Invoice
+        fields = [
+            "id", "workspace", "client", "client_name", "project",
+            "number", "status", "issued_at", "due_at", "paid_at",
+            "items", "total",
+        ]
+        read_only_fields = ["workspace"]
+
+    def get_total(self, obj):
+        return sum(
+            (item.amount for item in obj.items.all()), start=0
+        )
+
+    def get_client_name(self, obj):
+        return obj.client.company_name
+
+    def create(self, validated_data):
+        items_data = validated_data.pop("items")
+        invoice = Invoice.objects.create(**validated_data)
+        for item in items_data:
+            InvoiceItem.objects.create(invoice=invoice, **item)
+        return invoice
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop("items", None)
+        instance = super().update(instance, validated_data)
+        if items_data is not None:
+            instance.items.all().delete()
+            for item in items_data:
+                InvoiceItem.objects.create(
+                    invoice=instance, **item
+                )
+        return instance

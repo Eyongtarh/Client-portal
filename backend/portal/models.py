@@ -206,3 +206,56 @@ class Message(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+
+
+class Invoice(models.Model):
+    """A bill sent to a client. The total is computed from its
+    line items, never stored directly - so it can never drift out
+    of sync with what the items actually add up to.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SENT = "sent", "Sent"
+        PAID = "paid", "Paid"
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="invoices"
+    )
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name="invoices"
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invoices",
+    )
+    number = models.CharField(max_length=50)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.DRAFT
+    )
+    issued_at = models.DateField(default=timezone.localdate)
+    due_at = models.DateField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("workspace", "number")
+
+    @property
+    def total(self):
+        return sum(
+            (item.amount for item in self.items.all()),
+            start=0,
+        )
+
+    def __str__(self):
+        return f"Invoice #{self.number}"
+
+
+class InvoiceItem(models.Model):
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.CASCADE, related_name="items"
+    )
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
