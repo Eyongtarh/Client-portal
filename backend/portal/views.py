@@ -2,10 +2,13 @@ from rest_framework import generics, status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import Document, Invoice, Message, Milestone, Project
+from .models import (
+    Client, Document, Invoice, Message, Milestone, Project,
+)
 from .serializers import (
     AcceptInviteSerializer,
     ClientInviteCreateSerializer,
+    ClientSerializer,
     DocumentSerializer,
     InvoiceSerializer,
     MeSerializer,
@@ -236,3 +239,17 @@ class InvoicePDFView(APIView):
         return FileResponse(
             buf, as_attachment=True, filename=filename
         )
+
+
+class ClientViewSet(viewsets.ModelViewSet):
+    """Same tenant-scoping pattern as the other workspace-scoped
+    viewsets.
+    """
+    serializer_class = ClientSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "owner":
+            return Client.objects.filter(workspace=user.workspace)
+        return Client.objects.filter(id=user.client_profile.id)

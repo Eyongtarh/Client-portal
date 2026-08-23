@@ -6,6 +6,16 @@ from rest_framework import serializers
 from django.utils import timezone
 
 
+class ClientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Client
+        fields = [
+            "id", "workspace", "company_name",
+            "contact_email", "created_at",
+        ]
+        read_only_fields = ["workspace"]
+
+
 class RegisterSerializer(serializers.Serializer):
     """Owner sign-up: creates a User (role=owner) and their Workspace
     together, in one request.

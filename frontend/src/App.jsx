@@ -1,11 +1,13 @@
 // Top-level routes: public auth pages, plus a protected home
-// route that redirects to /login if nobody's signed in.
+// route. Owners see the dashboard; clients get a placeholder
+// for now until we build the client-facing portal.
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./lib/AuthContext.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import OwnerDashboard from "./pages/OwnerDashboard.jsx";
 
-function Home() {
+function ClientPlaceholder() {
   const { user, logout } = useAuth();
 
   return (
@@ -16,7 +18,7 @@ function Home() {
       <h1 className="text-2xl font-bold text-blue-700">
         Welcome, {user.first_name}
       </h1>
-      <p className="text-gray-600">Role: {user.role}</p>
+      <p className="text-gray-600">Client portal coming soon</p>
       <button onClick={logout} className="text-sm text-blue-600 underline">
         Sign out
       </button>
@@ -44,7 +46,15 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route
         path="/"
-        element={user ? <Home /> : <Navigate to="/login" replace />}
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : user.role === "owner" ? (
+            <OwnerDashboard />
+          ) : (
+            <ClientPlaceholder />
+          )
+        }
       />
     </Routes>
   );
