@@ -6,6 +6,7 @@ import { useAuth } from "./lib/AuthContext.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import OwnerDashboard from "./pages/OwnerDashboard.jsx";
+import ClientDetail from "./pages/ClientDetail.jsx";
 
 function ClientPlaceholder() {
   const { user, logout } = useAuth();
@@ -44,6 +45,10 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route
+        path="/clients/:clientId"
+        element={user ? <ClientDetail /> : <Navigate to="/login" replace />}
+      />
       <Route
         path="/"
         element={

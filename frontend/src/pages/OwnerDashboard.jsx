@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/AuthContext.jsx";
 import api from "../lib/api";
+import { Link } from "react-router-dom";
 
 export default function OwnerDashboard() {
   const { user, logout } = useAuth();
@@ -120,14 +121,15 @@ export default function OwnerDashboard() {
         )}
         <div className="space-y-3">
           {clients.map((client) => (
-            <div
+            <Link
               key={client.id}
-              className="bg-white border border-blue-100
-                rounded-xl p-4"
+              to={`/clients/${client.id}`}
+              className="block bg-white border border-blue-100
+                rounded-xl p-4 hover:shadow-md transition"
             >
               <p className="font-medium">{client.company_name}</p>
               <p className="text-sm text-gray-500">{client.contact_email}</p>
-            </div>
+            </Link>
           ))}
           {clients.length === 0 && (
             <p className="text-gray-500 text-sm">No clients yet.</p>
