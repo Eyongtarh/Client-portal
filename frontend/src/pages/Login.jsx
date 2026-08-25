@@ -30,11 +30,11 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-blue-50 gap-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-brand-50 gap-4">
       <LanguageToggle />
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm bg-white p-8 rounded-xl shadow-sm border border-blue-100"
+        className="w-full max-w-sm bg-white p-8 rounded-xl shadow-sm border border-brand-100"
       >
         <h1 className="text-xl font-semibold mb-6">{t("login.title")}</h1>
         {error && (
@@ -64,13 +64,13 @@ export default function Login() {
         />
         <button
           disabled={busy}
-          className="w-full bg-blue-600 text-white rounded-lg py-2.5 font-medium disabled:opacity-50"
+          className="w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium disabled:opacity-50"
         >
           {busy ? t("login.submitting") : t("login.submit")}
         </button>
         <p className="text-sm text-gray-500 mt-4 text-center">
           {t("login.newHere")}{" "}
-          <Link to="/register" className="text-blue-600 font-medium underline">
+          <Link to="/register" className="text-brand-600 font-medium underline">
             {t("login.createWorkspace")}
           </Link>
         </p>

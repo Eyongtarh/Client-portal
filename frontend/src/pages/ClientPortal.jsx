@@ -52,8 +52,8 @@ export default function ClientPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-blue-50">
-      <header className="bg-white border-b border-blue-100 px-8 py-4 flex justify-between items-center">
+    <div className="min-h-screen bg-brand-50">
+      <header className="bg-white border-b border-brand-100 px-8 py-4 flex justify-between items-center">
         <div>
           <h1 className="text-lg font-semibold">{user.company_name}</h1>
           <p className="text-sm text-gray-500">
@@ -62,7 +62,7 @@ export default function ClientPortal() {
         </div>
         <div className="flex items-center gap-4">
           <LanguageToggle />
-          <button onClick={logout} className="text-sm text-blue-600 underline">
+          <button onClick={logout} className="text-sm text-brand-600 underline">
             {t("dashboard.signOut")}
           </button>
         </div>
@@ -72,11 +72,11 @@ export default function ClientPortal() {
           <p className="text-gray-500">{t("clientPortal.noProjectYet")}</p>
         )}
         {project && (
-          <section className="bg-white border border-blue-100 rounded-xl p-6">
+          <section className="bg-white border border-brand-100 rounded-xl p-6">
             <h2 className="text-xl font-semibold">{project.name}</h2>
-            <div className="w-full bg-blue-100 rounded-full h-2 mt-2 mb-1">
+            <div className="w-full bg-brand-100 rounded-full h-2 mt-2 mb-1">
               <div
-                className="bg-blue-600 h-2 rounded-full"
+                className="bg-brand-600 h-2 rounded-full"
                 style={{
                   width: `${project.progress_percent}%`,
                 }}
@@ -97,7 +97,7 @@ export default function ClientPortal() {
           </section>
         )}
         {project && (
-          <section className="bg-white border border-blue-100 rounded-xl p-6">
+          <section className="bg-white border border-brand-100 rounded-xl p-6">
             <h3 className="font-medium mb-3">{t("clientPortal.documents")}</h3>
             <ul className="divide-y divide-gray-100">
               {documents.map((doc) => (
@@ -106,7 +106,7 @@ export default function ClientPortal() {
                     href={doc.file}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-blue-700 hover:underline"
+                    className="text-brand-700 hover:underline"
                   >
                     {doc.original_name}
                   </a>
@@ -121,7 +121,7 @@ export default function ClientPortal() {
           </section>
         )}
         {project && (
-          <section className="bg-white border border-blue-100 rounded-xl p-6">
+          <section className="bg-white border border-brand-100 rounded-xl p-6">
             <h3 className="font-medium mb-3">{t("clientPortal.invoices")}</h3>
             <ul className="divide-y divide-gray-100">
               {invoices.map((invoice) => (
@@ -134,7 +134,7 @@ export default function ClientPortal() {
                   </span>
                   <button
                     onClick={() => downloadPdf(invoice.id)}
-                    className="text-blue-700 underline"
+                    className="text-brand-700 underline"
                   >
                     {t("clientPortal.pdf")}
                   </button>
@@ -149,13 +149,13 @@ export default function ClientPortal() {
           </section>
         )}
         {project && (
-          <section className="bg-white border border-blue-100 rounded-xl p-6">
+          <section className="bg-white border border-brand-100 rounded-xl p-6">
             <h3 className="font-medium mb-3">{t("clientPortal.messages")}</h3>
             <div className="space-y-3 mb-4 max-h-72 overflow-y-auto">
               {messages.map((message) => (
                 <div key={message.id} className="text-sm">
                   <p className="text-xs text-gray-400">{message.sender_name}</p>
-                  <p className="inline-block px-3 py-2 rounded-lg bg-blue-50">
+                  <p className="inline-block px-3 py-2 rounded-lg bg-brand-50">
                     {message.body}
                   </p>
                 </div>
@@ -173,7 +173,7 @@ export default function ClientPortal() {
                 placeholder={t("clientPortal.writeMessage")}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
               />
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+              <button className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
                 {t("clientPortal.send")}
               </button>
             </form>

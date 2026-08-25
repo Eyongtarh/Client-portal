@@ -18,7 +18,7 @@ export default function LanguageToggle() {
         onClick={() => setLanguage("en")}
         className={
           isEnglish
-            ? "px-3 py-1 bg-blue-600 text-white"
+            ? "px-3 py-1 bg-brand-600 text-white"
             : "px-3 py-1 bg-white text-gray-600"
         }
       >
@@ -28,7 +28,7 @@ export default function LanguageToggle() {
         onClick={() => setLanguage("fr")}
         className={
           !isEnglish
-            ? "px-3 py-1 bg-blue-600 text-white"
+            ? "px-3 py-1 bg-brand-600 text-white"
             : "px-3 py-1 bg-white text-gray-600"
         }
       >

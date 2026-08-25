@@ -44,14 +44,14 @@ export default function OwnerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-blue-50">
-      <header className="bg-white border-b border-blue-100 px-8 py-4 flex justify-between items-center">
-        <h1 className="text-lg font-semibold text-blue-700">
+    <div className="min-h-screen bg-brand-50">
+      <header className="bg-white border-b border-brand-100 px-8 py-4 flex justify-between items-center">
+        <h1 className="text-lg font-semibold text-brand-700">
           {user.workspace_name}
         </h1>
         <div className="flex items-center gap-4">
           <LanguageToggle />
-          <button onClick={logout} className="text-sm text-blue-600 underline">
+          <button onClick={logout} className="text-sm text-brand-600 underline">
             {t("dashboard.signOut")}
           </button>
         </div>
@@ -61,7 +61,7 @@ export default function OwnerDashboard() {
           <h2 className="text-xl font-semibold">{t("dashboard.clients")}</h2>
           <button
             onClick={() => setShowInviteForm(!showInviteForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
           >
             {t("dashboard.inviteClient")}
           </button>
@@ -69,7 +69,7 @@ export default function OwnerDashboard() {
         {showInviteForm && (
           <form
             onSubmit={onInviteSubmit}
-            className="bg-white border border-blue-100 rounded-xl p-6 mb-6"
+            className="bg-white border border-brand-100 rounded-xl p-6 mb-6"
           >
             {inviteError && (
               <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
@@ -97,7 +97,7 @@ export default function OwnerDashboard() {
             />
             <button
               disabled={inviteBusy}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
             >
               {inviteBusy ? t("dashboard.sending") : t("dashboard.sendInvite")}
             </button>
@@ -108,7 +108,7 @@ export default function OwnerDashboard() {
             <Link
               key={client.id}
               to={`/clients/${client.id}`}
-              className="block bg-white border border-blue-100 rounded-xl p-4 hover:shadow-md transition"
+              className="block bg-white border border-brand-100 rounded-xl p-4 hover:shadow-md transition"
             >
               <p className="font-medium">{client.company_name}</p>
               <p className="text-sm text-gray-500">{client.contact_email}</p>

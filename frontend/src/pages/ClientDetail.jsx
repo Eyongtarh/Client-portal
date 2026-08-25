@@ -36,10 +36,10 @@ export default function ClientDetail() {
   const project = projects[0];
 
   return (
-    <div className="min-h-screen bg-blue-50">
-      <header className="bg-white border-b border-blue-100 px-8 py-4 flex justify-between items-start">
+    <div className="min-h-screen bg-brand-50">
+      <header className="bg-white border-b border-brand-100 px-8 py-4 flex justify-between items-start">
         <div>
-          <Link to="/" className="text-sm text-blue-600 underline">
+          <Link to="/" className="text-sm text-brand-600 underline">
             &larr; {t("clientDetail.allClients")}
           </Link>
           <h1 className="text-lg font-semibold mt-1">{client.company_name}</h1>
@@ -54,7 +54,7 @@ export default function ClientDetail() {
             onClick={() => setActiveTab(key)}
             className={
               activeTab === key
-                ? "px-4 py-2 text-sm rounded-t-lg font-medium bg-white border border-b-0 border-blue-100"
+                ? "px-4 py-2 text-sm rounded-t-lg font-medium bg-white border border-b-0 border-brand-100"
                 : "px-4 py-2 text-sm rounded-t-lg font-medium text-gray-500"
             }
           >
@@ -63,7 +63,7 @@ export default function ClientDetail() {
         ))}
       </nav>
       <main className="max-w-2xl mx-auto px-8 pb-8">
-        <div className="bg-white border border-blue-100 rounded-b-xl rounded-tr-xl p-6">
+        <div className="bg-white border border-brand-100 rounded-b-xl rounded-tr-xl p-6">
           {activeTab === "overview" &&
             (project ? (
               <ProjectOverview project={project} onChange={load} />
@@ -119,9 +119,9 @@ function ProjectOverview({ project, onChange }) {
         {project.budget && `\u20ac${project.budget} \u00b7 `}
         {project.deadline && `Due ${project.deadline}`}
       </p>
-      <div className="w-full bg-blue-100 rounded-full h-2 mb-1">
+      <div className="w-full bg-brand-100 rounded-full h-2 mb-1">
         <div
-          className="bg-blue-600 h-2 rounded-full"
+          className="bg-brand-600 h-2 rounded-full"
           style={{ width: `${project.progress_percent}%` }}
         />
       </div>
@@ -155,7 +155,7 @@ function ProjectOverview({ project, onChange }) {
           placeholder={t("clientDetail.addMilestone")}
           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
-        <button className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium">
+        <button className="bg-brand-50 text-brand-700 px-4 py-2 rounded-lg text-sm font-medium">
           {t("clientDetail.add")}
         </button>
       </form>
@@ -205,7 +205,7 @@ function NewProjectForm({ clientId, onCreated }) {
         onChange={(e) => setDeadline(e.target.value)}
         className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg text-sm"
       />
-      <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+      <button className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
         {t("clientDetail.createProject")}
       </button>
     </form>
@@ -244,7 +244,7 @@ function DocumentsTab({ project }) {
 
   return (
     <div>
-      <label className="inline-block mb-4 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer">
+      <label className="inline-block mb-4 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer">
         {uploading
           ? t("clientDetail.uploading")
           : t("clientDetail.uploadDocument")}
@@ -262,7 +262,7 @@ function DocumentsTab({ project }) {
               href={doc.file}
               target="_blank"
               rel="noreferrer"
-              className="text-blue-700 hover:underline"
+              className="text-brand-700 hover:underline"
             >
               {doc.original_name}
             </a>
@@ -311,7 +311,7 @@ function MessagesTab({ project }) {
         {messages.map((message) => (
           <div key={message.id} className="text-sm">
             <p className="text-xs text-gray-400">{message.sender_name}</p>
-            <p className="inline-block px-3 py-2 rounded-lg bg-blue-50">
+            <p className="inline-block px-3 py-2 rounded-lg bg-brand-50">
               {message.body}
             </p>
           </div>
@@ -329,7 +329,7 @@ function MessagesTab({ project }) {
           placeholder={t("clientDetail.writeMessage")}
           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        <button className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
           {t("clientDetail.send")}
         </button>
       </form>
@@ -412,12 +412,12 @@ function InvoicesTab({ client, project }) {
         <button
           type="button"
           onClick={() => setItems([...items, { description: "", amount: "" }])}
-          className="text-sm text-blue-600 mb-3"
+          className="text-sm text-brand-600 mb-3"
         >
           {t("clientDetail.addLineItem")}
         </button>
         <div>
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+          <button className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
             {t("clientDetail.createInvoice")}
           </button>
         </div>
@@ -436,7 +436,7 @@ function InvoicesTab({ client, project }) {
             </div>
             <button
               onClick={() => downloadPdf(invoice.id)}
-              className="text-blue-700 underline"
+              className="text-brand-700 underline"
             >
               {t("clientDetail.downloadPdf")}
             </button>
