@@ -1,0 +1,34 @@
+{
+  "login": {
+    "title": "Sign in",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in...",
+    "error": "Invalid email or password.",
+    "newHere": "New here?",
+    "createWorkspace": "Create a workspace"
+  },
+  "register": {
+    "title": "Create your workspace",
+    "fullName": "Your name",
+    "workspaceName": "Workspace name",
+    "email": "Email",
+    "username": "Username",
+    "password": "Password (8+ characters)",
+    "submit": "Create workspace",
+    "submitting": "Creating...",
+    "haveAccount": "Already have an account?",
+    "signIn": "Sign in"
+  },
+  "dashboard": {
+    "clients": "Clients",
+    "inviteClient": "+ Invite client",
+    "companyName": "Company name",
+    "clientEmail": "Client email",
+    "sendInvite": "Send invite",
+    "sending": "Sending...",
+    "noClients": "No clients yet.",
+    "signOut": "Sign out"
+  }
+}
