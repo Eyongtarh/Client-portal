@@ -1,11 +1,13 @@
 // What a client sees when they log in: their project's
-// progress, documents, messages, and invoices - read access
-// scoped entirely to their own data by the backend.
+// progress, documents, messages, and invoices.
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
+import LanguageToggle from "../components/LanguageToggle.jsx";
 import api from "../lib/api";
 
 export default function ClientPortal() {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [project, setProject] = useState(null);
   const [documents, setDocuments] = useState([]);
@@ -55,16 +57,19 @@ export default function ClientPortal() {
         <div>
           <h1 className="text-lg font-semibold">{user.company_name}</h1>
           <p className="text-sm text-gray-500">
-            Welcome back, {user.first_name}
+            {t("clientPortal.welcomeBack")} {user.first_name}
           </p>
         </div>
-        <button onClick={logout} className="text-sm text-blue-600 underline">
-          Sign out
-        </button>
+        <div className="flex items-center gap-4">
+          <LanguageToggle />
+          <button onClick={logout} className="text-sm text-blue-600 underline">
+            {t("dashboard.signOut")}
+          </button>
+        </div>
       </header>
       <main className="max-w-2xl mx-auto px-8 py-8 space-y-6">
         {!project && (
-          <p className="text-gray-500">No project yet - check back soon.</p>
+          <p className="text-gray-500">{t("clientPortal.noProjectYet")}</p>
         )}
         {project && (
           <section className="bg-white border border-blue-100 rounded-xl p-6">
@@ -78,7 +83,8 @@ export default function ClientPortal() {
               />
             </div>
             <p className="text-xs text-gray-400 mb-4">
-              {project.progress_percent}% complete
+              {project.progress_percent}
+              {t("clientDetail.percentComplete")}
             </p>
             <ul className="space-y-1">
               {project.milestones.map((milestone) => (
@@ -92,7 +98,7 @@ export default function ClientPortal() {
         )}
         {project && (
           <section className="bg-white border border-blue-100 rounded-xl p-6">
-            <h3 className="font-medium mb-3">Documents</h3>
+            <h3 className="font-medium mb-3">{t("clientPortal.documents")}</h3>
             <ul className="divide-y divide-gray-100">
               {documents.map((doc) => (
                 <li key={doc.id} className="py-2 text-sm">
@@ -107,14 +113,16 @@ export default function ClientPortal() {
                 </li>
               ))}
               {documents.length === 0 && (
-                <p className="text-gray-500 text-sm">No documents yet.</p>
+                <p className="text-gray-500 text-sm">
+                  {t("clientPortal.noDocuments")}
+                </p>
               )}
             </ul>
           </section>
         )}
         {project && (
           <section className="bg-white border border-blue-100 rounded-xl p-6">
-            <h3 className="font-medium mb-3">Invoices</h3>
+            <h3 className="font-medium mb-3">{t("clientPortal.invoices")}</h3>
             <ul className="divide-y divide-gray-100">
               {invoices.map((invoice) => (
                 <li
@@ -122,25 +130,27 @@ export default function ClientPortal() {
                   className="py-2 flex justify-between text-sm"
                 >
                   <span>
-                    #{invoice.number} - {invoice.total} - {invoice.status}
+                    {`#${invoice.number} - ${invoice.total} - ${invoice.status}`}
                   </span>
                   <button
                     onClick={() => downloadPdf(invoice.id)}
                     className="text-blue-700 underline"
                   >
-                    PDF
+                    {t("clientPortal.pdf")}
                   </button>
                 </li>
               ))}
               {invoices.length === 0 && (
-                <p className="text-gray-500 text-sm">No invoices yet.</p>
+                <p className="text-gray-500 text-sm">
+                  {t("clientPortal.noInvoices")}
+                </p>
               )}
             </ul>
           </section>
         )}
         {project && (
           <section className="bg-white border border-blue-100 rounded-xl p-6">
-            <h3 className="font-medium mb-3">Messages</h3>
+            <h3 className="font-medium mb-3">{t("clientPortal.messages")}</h3>
             <div className="space-y-3 mb-4 max-h-72 overflow-y-auto">
               {messages.map((message) => (
                 <div key={message.id} className="text-sm">
@@ -151,18 +161,20 @@ export default function ClientPortal() {
                 </div>
               ))}
               {messages.length === 0 && (
-                <p className="text-gray-500 text-sm">No messages yet.</p>
+                <p className="text-gray-500 text-sm">
+                  {t("clientPortal.noMessages")}
+                </p>
               )}
             </div>
             <form onSubmit={onSend} className="flex gap-2">
               <input
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="Write a message..."
+                placeholder={t("clientPortal.writeMessage")}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
               />
               <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                Send
+                {t("clientPortal.send")}
               </button>
             </form>
           </section>

@@ -7,18 +7,18 @@
     "submitting": "Connexion...",
     "error": "E-mail ou mot de passe invalide.",
     "newHere": "Nouveau ici ?",
-    "createWorkspace": "Créer un espace de travail"
+    "createWorkspace": "Cr\u00e9er un espace de travail"
   },
   "register": {
-    "title": "Créez votre espace de travail",
+    "title": "Cr\u00e9ez votre espace de travail",
     "fullName": "Votre nom",
     "workspaceName": "Nom de l'espace de travail",
     "email": "E-mail",
     "username": "Nom d'utilisateur",
-    "password": "Mot de passe (8 caractères min.)",
-    "submit": "Créer l'espace de travail",
-    "submitting": "Création...",
-    "haveAccount": "Vous avez déjà un compte ?",
+    "password": "Mot de passe (8 caract\u00e8res min.)",
+    "submit": "Cr\u00e9er l'espace de travail",
+    "submitting": "Cr\u00e9ation...",
+    "haveAccount": "Vous avez d\u00e9j\u00e0 un compte ?",
     "signIn": "Se connecter"
   },
   "dashboard": {
@@ -29,6 +29,49 @@
     "sendInvite": "Envoyer l'invitation",
     "sending": "Envoi...",
     "noClients": "Aucun client pour le moment.",
-    "signOut": "Déconnexion"
+    "signOut": "D\u00e9connexion"
+  },
+  "clientDetail": {
+    "allClients": "Tous les clients",
+    "tabOverview": "Aper\u00e7u",
+    "tabDocuments": "Documents",
+    "tabMessages": "Messages",
+    "tabInvoices": "Factures",
+    "createFirstProject": "Cr\u00e9ez le premier projet pour ce client",
+    "projectName": "Nom du projet",
+    "budget": "Budget (\u20ac)",
+    "createProject": "Cr\u00e9er le projet",
+    "percentComplete": "% termin\u00e9",
+    "milestones": "Jalons",
+    "addMilestone": "Ajouter un jalon...",
+    "add": "Ajouter",
+    "createProjectFirst": "Cr\u00e9ez d'abord un projet, dans l'onglet Aper\u00e7u.",
+    "uploadDocument": "+ T\u00e9l\u00e9verser un document",
+    "uploading": "T\u00e9l\u00e9versement...",
+    "noDocuments": "Aucun document pour le moment.",
+    "writeMessage": "\u00c9crivez un message...",
+    "send": "Envoyer",
+    "noMessages": "Aucun message pour le moment.",
+    "newInvoice": "Nouvelle facture",
+    "invoiceNumber": "Num\u00e9ro de facture",
+    "description": "Description",
+    "amount": "Montant",
+    "addLineItem": "+ Ajouter une ligne",
+    "createInvoice": "Cr\u00e9er la facture",
+    "downloadPdf": "T\u00e9l\u00e9charger le PDF",
+    "noInvoices": "Aucune facture pour le moment."
+  },
+  "clientPortal": {
+    "welcomeBack": "Bon retour,",
+    "noProjectYet": "Pas encore de projet - revenez bient\u00f4t.",
+    "documents": "Documents",
+    "invoices": "Factures",
+    "messages": "Messages",
+    "noDocuments": "Aucun document pour le moment.",
+    "noInvoices": "Aucune facture pour le moment.",
+    "noMessages": "Aucun message pour le moment.",
+    "writeMessage": "\u00c9crivez un message...",
+    "send": "Envoyer",
+    "pdf": "PDF"
   }
 }

@@ -2,16 +2,23 @@
 // project overview, documents, messages, and invoices.
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import api from "../lib/api";
-
-const TABS = ["Overview", "Documents", "Messages", "Invoices"];
+import LanguageToggle from "../components/LanguageToggle.jsx";
 
 export default function ClientDetail() {
+  const { t } = useTranslation();
   const { clientId } = useParams();
   const [client, setClient] = useState(null);
   const [projects, setProjects] = useState([]);
-  const [activeTab, setActiveTab] = useState("Overview");
+  const [activeTab, setActiveTab] = useState("overview");
 
+  const tabs = [
+    ["overview", t("clientDetail.tabOverview")],
+    ["documents", t("clientDetail.tabDocuments")],
+    ["messages", t("clientDetail.tabMessages")],
+    ["invoices", t("clientDetail.tabInvoices")],
+  ];
   async function load() {
     const clientRes = await api.get(`/clients/${clientId}/`);
     setClient(clientRes.data);
@@ -30,48 +37,51 @@ export default function ClientDetail() {
 
   return (
     <div className="min-h-screen bg-blue-50">
-      <header className="bg-white border-b border-blue-100 px-8 py-4">
-        <Link to="/" className="text-sm text-blue-600 underline">
-          &larr; All clients
-        </Link>
-        <h1 className="text-lg font-semibold mt-1">{client.company_name}</h1>
-        <p className="text-sm text-gray-500">{client.contact_email}</p>
+      <header className="bg-white border-b border-blue-100 px-8 py-4 flex justify-between items-start">
+        <div>
+          <Link to="/" className="text-sm text-blue-600 underline">
+            &larr; {t("clientDetail.allClients")}
+          </Link>
+          <h1 className="text-lg font-semibold mt-1">{client.company_name}</h1>
+          <p className="text-sm text-gray-500">{client.contact_email}</p>
+        </div>
+        <LanguageToggle />
       </header>
       <nav className="max-w-2xl mx-auto px-8 pt-4 flex gap-1">
-        {TABS.map((tab) => (
+        {tabs.map(([key, label]) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
+            key={key}
+            onClick={() => setActiveTab(key)}
             className={
-              activeTab === tab
+              activeTab === key
                 ? "px-4 py-2 text-sm rounded-t-lg font-medium bg-white border border-b-0 border-blue-100"
                 : "px-4 py-2 text-sm rounded-t-lg font-medium text-gray-500"
             }
           >
-            {tab}
+            {label}
           </button>
         ))}
       </nav>
       <main className="max-w-2xl mx-auto px-8 pb-8">
         <div className="bg-white border border-blue-100 rounded-b-xl rounded-tr-xl p-6">
-          {activeTab === "Overview" &&
+          {activeTab === "overview" &&
             (project ? (
               <ProjectOverview project={project} onChange={load} />
             ) : (
               <NewProjectForm clientId={clientId} onCreated={load} />
             ))}
-          {activeTab === "Documents" && project && (
+          {activeTab === "documents" && project && (
             <DocumentsTab project={project} />
           )}
-          {activeTab === "Messages" && project && (
+          {activeTab === "messages" && project && (
             <MessagesTab project={project} />
           )}
-          {activeTab === "Invoices" && (
+          {activeTab === "invoices" && (
             <InvoicesTab client={client} project={project} />
           )}
-          {!project && activeTab !== "Overview" && (
+          {!project && activeTab !== "overview" && (
             <p className="text-gray-500 text-sm">
-              Create a project first, in the Overview tab.
+              {t("clientDetail.createProjectFirst")}
             </p>
           )}
         </div>
@@ -81,6 +91,7 @@ export default function ClientDetail() {
 }
 
 function ProjectOverview({ project, onChange }) {
+  const { t } = useTranslation();
   const [newMilestone, setNewMilestone] = useState("");
 
   async function toggleMilestone(milestone) {
@@ -105,7 +116,7 @@ function ProjectOverview({ project, onChange }) {
     <div>
       <h2 className="text-xl font-semibold">{project.name}</h2>
       <p className="text-sm text-gray-500 mb-3">
-        {project.budget && `€${project.budget} · `}
+        {project.budget && `\u20ac${project.budget} \u00b7 `}
         {project.deadline && `Due ${project.deadline}`}
       </p>
       <div className="w-full bg-blue-100 rounded-full h-2 mb-1">
@@ -115,9 +126,10 @@ function ProjectOverview({ project, onChange }) {
         />
       </div>
       <p className="text-xs text-gray-400 mb-6">
-        {project.progress_percent}% complete
+        {project.progress_percent}
+        {t("clientDetail.percentComplete")}
       </p>
-      <h3 className="font-medium mb-2">Milestones</h3>
+      <h3 className="font-medium mb-2">{t("clientDetail.milestones")}</h3>
       <ul className="space-y-1 mb-4">
         {project.milestones.map((milestone) => (
           <li key={milestone.id} className="flex items-center gap-2 text-sm">
@@ -140,11 +152,11 @@ function ProjectOverview({ project, onChange }) {
         <input
           value={newMilestone}
           onChange={(e) => setNewMilestone(e.target.value)}
-          placeholder="Add milestone..."
+          placeholder={t("clientDetail.addMilestone")}
           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
         <button className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium">
-          Add
+          {t("clientDetail.add")}
         </button>
       </form>
     </div>
@@ -152,6 +164,7 @@ function ProjectOverview({ project, onChange }) {
 }
 
 function NewProjectForm({ clientId, onCreated }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [budget, setBudget] = useState("");
   const [deadline, setDeadline] = useState("");
@@ -170,18 +183,18 @@ function NewProjectForm({ clientId, onCreated }) {
   return (
     <form onSubmit={onSubmit}>
       <h2 className="font-medium mb-4">
-        Create the first project for this client
+        {t("clientDetail.createFirstProject")}
       </h2>
       <input
         required
-        placeholder="Project name"
+        placeholder={t("clientDetail.projectName")}
         value={name}
         onChange={(e) => setName(e.target.value)}
         className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
       />
       <input
         type="number"
-        placeholder="Budget (€)"
+        placeholder={t("clientDetail.budget")}
         value={budget}
         onChange={(e) => setBudget(e.target.value)}
         className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
@@ -193,13 +206,14 @@ function NewProjectForm({ clientId, onCreated }) {
         className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg text-sm"
       />
       <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-        Create project
+        {t("clientDetail.createProject")}
       </button>
     </form>
   );
 }
 
 function DocumentsTab({ project }) {
+  const { t } = useTranslation();
   const [documents, setDocuments] = useState([]);
   const [uploading, setUploading] = useState(false);
 
@@ -207,10 +221,10 @@ function DocumentsTab({ project }) {
     const res = await api.get(`/documents/?project=${project.id}`);
     setDocuments(res.data);
   }
-
   useEffect(() => {
     load();
   }, [project.id]);
+
   async function onUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -231,7 +245,9 @@ function DocumentsTab({ project }) {
   return (
     <div>
       <label className="inline-block mb-4 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer">
-        {uploading ? "Uploading..." : "+ Upload document"}
+        {uploading
+          ? t("clientDetail.uploading")
+          : t("clientDetail.uploadDocument")}
         <input
           type="file"
           className="hidden"
@@ -248,7 +264,7 @@ function DocumentsTab({ project }) {
               rel="noreferrer"
               className="text-blue-700 hover:underline"
             >
-              📄 {doc.original_name}
+              {doc.original_name}
             </a>
             <span className="text-gray-400">
               {(doc.size_bytes / 1024).toFixed(0)} KB
@@ -256,7 +272,9 @@ function DocumentsTab({ project }) {
           </li>
         ))}
         {documents.length === 0 && (
-          <p className="text-gray-500 text-sm">No documents yet.</p>
+          <p className="text-gray-500 text-sm">
+            {t("clientDetail.noDocuments")}
+          </p>
         )}
       </ul>
     </div>
@@ -264,6 +282,7 @@ function DocumentsTab({ project }) {
 }
 
 function MessagesTab({ project }) {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState([]);
   const [body, setBody] = useState("");
 
@@ -274,6 +293,7 @@ function MessagesTab({ project }) {
   useEffect(() => {
     load();
   }, [project.id]);
+
   async function onSend(e) {
     e.preventDefault();
     if (!body.trim()) return;
@@ -297,18 +317,20 @@ function MessagesTab({ project }) {
           </div>
         ))}
         {messages.length === 0 && (
-          <p className="text-gray-500 text-sm">No messages yet.</p>
+          <p className="text-gray-500 text-sm">
+            {t("clientDetail.noMessages")}
+          </p>
         )}
       </div>
       <form onSubmit={onSend} className="flex gap-2">
         <input
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="Write a message..."
+          placeholder={t("clientDetail.writeMessage")}
           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
         <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-          Send
+          {t("clientDetail.send")}
         </button>
       </form>
     </div>
@@ -316,6 +338,7 @@ function MessagesTab({ project }) {
 }
 
 function InvoicesTab({ client, project }) {
+  const { t } = useTranslation();
   const [invoices, setInvoices] = useState([]);
   const [number, setNumber] = useState("");
   const [items, setItems] = useState([{ description: "", amount: "" }]);
@@ -333,6 +356,7 @@ function InvoicesTab({ client, project }) {
     next[index][field] = value;
     setItems(next);
   }
+
   async function onCreate(e) {
     e.preventDefault();
     const validItems = items.filter((item) => item.description && item.amount);
@@ -360,10 +384,10 @@ function InvoicesTab({ client, project }) {
         onSubmit={onCreate}
         className="border border-gray-200 rounded-lg p-4 mb-6"
       >
-        <h4 className="font-medium mb-3">New invoice</h4>
+        <h4 className="font-medium mb-3">{t("clientDetail.newInvoice")}</h4>
         <input
           required
-          placeholder="Invoice number"
+          placeholder={t("clientDetail.invoiceNumber")}
           value={number}
           onChange={(e) => setNumber(e.target.value)}
           className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
@@ -371,13 +395,13 @@ function InvoicesTab({ client, project }) {
         {items.map((item, index) => (
           <div key={index} className="flex gap-2 mb-2">
             <input
-              placeholder="Description"
+              placeholder={t("clientDetail.description")}
               value={item.description}
               onChange={(e) => updateItem(index, "description", e.target.value)}
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
             <input
-              placeholder="Amount"
+              placeholder={t("clientDetail.amount")}
               type="number"
               value={item.amount}
               onChange={(e) => updateItem(index, "amount", e.target.value)}
@@ -390,11 +414,11 @@ function InvoicesTab({ client, project }) {
           onClick={() => setItems([...items, { description: "", amount: "" }])}
           className="text-sm text-blue-600 mb-3"
         >
-          + Add line item
+          {t("clientDetail.addLineItem")}
         </button>
         <div>
           <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-            Create invoice
+            {t("clientDetail.createInvoice")}
           </button>
         </div>
       </form>
@@ -407,19 +431,21 @@ function InvoicesTab({ client, project }) {
             <div>
               <p className="font-medium">Invoice #{invoice.number}</p>
               <p className="text-gray-500">
-                €{invoice.total} · {invoice.status}
+                {`\u20ac${invoice.total} \u00b7 ${invoice.status}`}
               </p>
             </div>
             <button
               onClick={() => downloadPdf(invoice.id)}
               className="text-blue-700 underline"
             >
-              Download PDF
+              {t("clientDetail.downloadPdf")}
             </button>
           </li>
         ))}
         {invoices.length === 0 && (
-          <p className="text-gray-500 text-sm">No invoices yet.</p>
+          <p className="text-gray-500 text-sm">
+            {t("clientDetail.noInvoices")}
+          </p>
         )}
       </ul>
     </div>
