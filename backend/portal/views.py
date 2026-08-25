@@ -45,6 +45,10 @@ class MeView(APIView):
         if request.user.role == "owner":
             data["workspace_id"] = request.user.workspace.id
             data["workspace_name"] = request.user.workspace.name
+        else:
+            client = request.user.client_profile
+            data["client_id"] = client.id
+            data["company_name"] = client.company_name
         return Response(data)
 
 
