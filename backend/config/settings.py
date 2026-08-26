@@ -2,7 +2,6 @@
 # environment-specific values (database, allowed hosts, CORS)
 # are read from environment variables so the same code works
 # unchanged locally (SQLite) and in production (Heroku Postgres).
-import os
 from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
