@@ -1,4 +1,14 @@
 {
+  "acceptInvite": {
+    "welcome": "Bienvenue",
+    "subtitle": "Configurez votre compte pour voir votre projet.",
+    "emailFromInvite": "Votre e-mail (depuis l'invitation)",
+    "yourName": "Votre nom",
+    "setPassword": "Définissez un mot de passe",
+    "submit": "Accéder à mon espace",
+    "submitting": "Configuration...",
+    "error": "Ce lien d'invitation est peut-être invalide ou expiré."
+  },
   "login": {
     "title": "Connexion",
     "email": "E-mail",

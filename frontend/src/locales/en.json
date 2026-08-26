@@ -1,4 +1,14 @@
 {
+  "acceptInvite": {
+    "welcome": "Welcome",
+    "subtitle": "Set up your account to see your project.",
+    "emailFromInvite": "Your email (from the invite)",
+    "yourName": "Your name",
+    "setPassword": "Set a password",
+    "submit": "Access my portal",
+    "submitting": "Setting up...",
+    "error": "This invite link may be invalid or expired."
+  },
   "login": {
     "title": "Sign in",
     "email": "Email",

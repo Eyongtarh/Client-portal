@@ -8,6 +8,7 @@ import Register from "./pages/Register.jsx";
 import OwnerDashboard from "./pages/OwnerDashboard.jsx";
 import ClientDetail from "./pages/ClientDetail.jsx";
 import ClientPortal from "./pages/ClientPortal.jsx";
+import AcceptInvite from "./pages/AcceptInvite.jsx";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -27,6 +28,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/accept-invite/:token" element={<AcceptInvite />} />
       <Route
         path="/clients/:clientId"
         element={user ? <ClientDetail /> : <Navigate to="/login" replace />}
