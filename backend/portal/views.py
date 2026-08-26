@@ -29,6 +29,7 @@ from django.core.mail import send_mail
 class RegisterView(generics.CreateAPIView):
     """POST /api/auth/register/ - owner sign-up."""
     serializer_class = RegisterSerializer
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
@@ -86,6 +87,7 @@ class AcceptInviteView(generics.CreateAPIView):
     their invite token and gets an account.
     """
     serializer_class = AcceptInviteSerializer
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
