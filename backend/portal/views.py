@@ -22,6 +22,8 @@ from django.http import FileResponse
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
+from django.conf import settings
+from django.core.mail import send_mail
 
 
 class RegisterView(generics.CreateAPIView):
@@ -53,13 +55,30 @@ class MeView(APIView):
 
 
 class InviteClientView(generics.CreateAPIView):
-    """POST /api/invites/ - owner invites a client by email."""
-
+    """POST /api/invites/ - owner invites a client by email, then
+    sends them a link to accept it and set up their account.
+    """
     serializer_class = ClientInviteCreateSerializer
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(workspace=self.request.user.workspace)
+        workspace = self.request.user.workspace
+        invite = serializer.save(workspace=workspace)
+        link = f"{settings.FRONTEND_URL}/accept-invite/{invite.token}"
+        send_mail(
+            subject=(
+                f"{workspace.name} invited you to their "
+                "client portal"
+            ),
+            message=(
+                f"You've been invited to {workspace.name}'s "
+                f"client portal.\n\nSet up your account here: "
+                f"{link}\n\nThis link expires in 7 days."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[invite.email],
+            fail_silently=False,
+        )
 
 
 class AcceptInviteView(generics.CreateAPIView):
