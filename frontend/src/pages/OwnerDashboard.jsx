@@ -16,6 +16,7 @@ export default function OwnerDashboard() {
   const [inviteCompany, setInviteCompany] = useState("");
   const [inviteError, setInviteError] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
 
   async function loadClients() {
     const res = await api.get("/clients/");
@@ -36,6 +37,7 @@ export default function OwnerDashboard() {
       setInviteEmail("");
       setInviteCompany("");
       setShowInviteForm(false);
+      setInviteSuccess(true);
     } catch (err) {
       setInviteError("Could not send invite.");
     } finally {
@@ -60,12 +62,20 @@ export default function OwnerDashboard() {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">{t("dashboard.clients")}</h2>
           <button
-            onClick={() => setShowInviteForm(!showInviteForm)}
+            onClick={() => {
+              setShowInviteForm(!showInviteForm);
+              setInviteSuccess(false);
+            }}
             className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
           >
             {t("dashboard.inviteClient")}
           </button>
         </div>
+        {inviteSuccess && (
+          <div className="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3">
+            Invite sent successfully.
+          </div>
+        )}
         {showInviteForm && (
           <form
             onSubmit={onInviteSubmit}

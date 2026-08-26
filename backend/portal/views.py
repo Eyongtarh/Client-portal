@@ -78,7 +78,7 @@ class InviteClientView(generics.CreateAPIView):
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[invite.email],
-            fail_silently=False,
+            fail_silently=True,
         )
 
 
