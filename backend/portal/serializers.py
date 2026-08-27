@@ -4,6 +4,11 @@ from .models import (
 )
 from rest_framework import serializers
 from django.utils import timezone
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.conf import settings
+from django.core.mail import send_mail
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -255,3 +260,64 @@ class InvoiceSerializer(serializers.ModelSerializer):
                     invoice=instance, **item
                 )
         return instance
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Owner or client requests a reset link by email."""
+    email = serializers.EmailField()
+
+    def save(self):
+        email = self.validated_data["email"]
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            # Don't reveal whether the email exists.
+            return
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        link = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}"
+        send_mail(
+            subject="Reset your password",
+            message=(
+                f"Click the link below to reset your password.\n\n"
+                f"{link}\n\nIf you didn't request this, ignore this "
+                f"email."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Client/owner submits the token from their email + new
+    password.
+    """
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, attrs):
+        try:
+            user_id = urlsafe_base64_decode(attrs["uid"]).decode()
+            user = User.objects.get(pk=user_id)
+        except (
+            User.DoesNotExist, ValueError, TypeError, OverflowError,
+        ):
+            raise serializers.ValidationError(
+                "This reset link is invalid."
+            )
+        if not default_token_generator.check_token(
+            user, attrs["token"]
+        ):
+            raise serializers.ValidationError(
+                "This reset link is invalid or has expired."
+            )
+        attrs["user"] = user
+        return attrs
+
+    def save(self):
+        user = self.validated_data["user"]
+        user.set_password(self.validated_data["password"])
+        user.save(update_fields=["password"])
+        return user

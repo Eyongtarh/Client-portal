@@ -25,6 +25,14 @@ urlpatterns = [
     path("auth/refresh/", TokenRefreshView.as_view()),
     path("auth/me/", views.MeView.as_view()),
     path("auth/accept-invite/", views.AcceptInviteView.as_view()),
+    path(
+        "auth/password-reset/",
+        views.PasswordResetRequestView.as_view(),
+    ),
+    path(
+        "auth/password-reset/confirm/",
+        views.PasswordResetConfirmView.as_view(),
+    ),
     path("invites/", views.InviteClientView.as_view()),
     path(
         "invoices/<int:pk>/pdf/", views.InvoicePDFView.as_view()

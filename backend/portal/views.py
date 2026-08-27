@@ -16,6 +16,8 @@ from .serializers import (
     MilestoneSerializer,
     ProjectSerializer,
     RegisterSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
 )
 import io
 from django.http import FileResponse
@@ -98,6 +100,36 @@ class AcceptInviteView(generics.CreateAPIView):
             {"company_name": client.company_name},
             status=status.HTTP_201_CREATED,
         )
+
+
+class PasswordResetRequestView(generics.CreateAPIView):
+    """POST /api/auth/password-reset/ - sends a reset link by
+    email if the address matches an account.
+    """
+    serializer_class = PasswordResetRequestSerializer
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_200_OK)
+
+
+class PasswordResetConfirmView(generics.CreateAPIView):
+    """POST /api/auth/password-reset/confirm/ - sets a new
+    password using the uid + token from the reset email.
+    """
+    serializer_class = PasswordResetConfirmSerializer
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_200_OK)
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
