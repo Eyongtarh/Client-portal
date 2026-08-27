@@ -21,6 +21,13 @@ class ClientSerializer(serializers.ModelSerializer):
         read_only_fields = ["workspace"]
 
 
+class WorkspaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Workspace
+        fields = ["id", "name", "slug", "logo"]
+        read_only_fields = ["id", "slug"]
+
+
 class RegisterSerializer(serializers.Serializer):
     """Owner sign-up: creates a User (role=owner) and their Workspace
     together, in one request.

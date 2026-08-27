@@ -18,6 +18,7 @@ from .serializers import (
     RegisterSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    WorkspaceSerializer,
 )
 import io
 from django.http import FileResponse
@@ -100,6 +101,17 @@ class AcceptInviteView(generics.CreateAPIView):
             {"company_name": client.company_name},
             status=status.HTTP_201_CREATED,
         )
+
+
+class WorkspaceUpdateView(generics.RetrieveUpdateAPIView):
+    """GET/PATCH /api/workspace/ - owner views/updates their own
+    workspace, including uploading a logo.
+    """
+    serializer_class = WorkspaceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user.workspace
 
 
 class PasswordResetRequestView(generics.CreateAPIView):

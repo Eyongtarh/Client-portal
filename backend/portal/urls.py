@@ -33,6 +33,9 @@ urlpatterns = [
         "auth/password-reset/confirm/",
         views.PasswordResetConfirmView.as_view(),
     ),
+    path(
+        "workspace/", views.WorkspaceUpdateView.as_view()
+    ),
     path("invites/", views.InviteClientView.as_view()),
     path(
         "invoices/<int:pk>/pdf/", views.InvoicePDFView.as_view()

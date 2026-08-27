@@ -21,6 +21,11 @@ class User(AbstractUser):
         return f"{self.email} ({self.role})"
 
 
+def logo_upload_path(instance, filename):
+    """Logos live under a per-workspace folder."""
+    return f"workspaces/{instance.id}/logo/{filename}"
+
+
 class Workspace(models.Model):
     """One workspace per business/freelancer. Everything else - clients,
     projects, bookings, invoices - hangs off this. This is what makes
@@ -32,6 +37,9 @@ class Workspace(models.Model):
     )
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, blank=True)
+    logo = models.ImageField(
+        upload_to=logo_upload_path, null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

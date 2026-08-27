@@ -1,5 +1,5 @@
 // Owner's home page: lists clients in the workspace and lets the
-// owner invite new ones.
+// owner invite new ones, plus upload a workspace logo.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,8 @@ export default function OwnerDashboard() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [clients, setClients] = useState([]);
+  const [workspace, setWorkspace] = useState(null);
+  const [logoUploading, setLogoUploading] = useState(false);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteCompany, setInviteCompany] = useState("");
@@ -22,9 +24,31 @@ export default function OwnerDashboard() {
     const res = await api.get("/clients/");
     setClients(res.data);
   }
+  async function loadWorkspace() {
+    const res = await api.get("/workspace/");
+    setWorkspace(res.data);
+  }
   useEffect(() => {
     loadClients();
+    loadWorkspace();
   }, []);
+
+  async function onLogoChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLogoUploading(true);
+    const formData = new FormData();
+    formData.append("logo", file);
+    try {
+      const res = await api.patch("/workspace/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setWorkspace(res.data);
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
   async function onInviteSubmit(e) {
     e.preventDefault();
     setInviteError("");
@@ -48,9 +72,31 @@ export default function OwnerDashboard() {
   return (
     <div className="min-h-screen bg-brand-50">
       <header className="bg-white border-b border-brand-100 px-8 py-4 flex justify-between items-center">
-        <h1 className="text-lg font-semibold text-brand-700">
-          {user.workspace_name}
-        </h1>
+        <div className="flex items-center gap-3">
+          <label className="cursor-pointer">
+            {workspace?.logo ? (
+              <img
+                src={workspace.logo}
+                alt="Logo"
+                className="w-10 h-10 rounded-lg object-cover border border-brand-100"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-brand-50 border border-dashed border-brand-200 flex items-center justify-center text-xs text-brand-600">
+                {logoUploading ? "..." : "+"}
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onLogoChange}
+              disabled={logoUploading}
+            />
+          </label>
+          <h1 className="text-lg font-semibold text-brand-700">
+            {user.workspace_name}
+          </h1>
+        </div>
         <div className="flex items-center gap-4">
           <LanguageToggle />
           <button onClick={logout} className="text-sm text-brand-600 underline">
