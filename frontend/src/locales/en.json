@@ -1,4 +1,21 @@
 {
+  "landing": {
+    "signIn": "Sign in",
+    "getStarted": "Get started",
+    "heroTitle": "Give every client their own professional workspace",
+    "heroSubtitle": "Projects, files, invoices, and communication - all in one place.",
+    "heroCta": "Create your workspace",
+    "featureProjectsTitle": "Projects & milestones",
+    "featureProjectsBody": "Track progress your clients can actually see, without a status-update email.",
+    "featureDocsTitle": "Documents",
+    "featureDocsBody": "Share files in one place instead of digging through email threads.",
+    "featureMessagesTitle": "Messaging",
+    "featureMessagesBody": "Keep project conversations organized and out of your personal inbox.",
+    "featureInvoicesTitle": "Invoices",
+    "featureInvoicesBody": "Send professional PDF invoices and get paid faster.",
+    "footerCta": "Ready to give your clients a better experience?",
+    "footerCtaButton": "Get started for free"
+  },
   "acceptInvite": {
     "welcome": "Welcome",
     "subtitle": "Set up your account to see your project.",

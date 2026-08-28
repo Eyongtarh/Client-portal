@@ -1,4 +1,21 @@
 {
+  "landing": {
+    "signIn": "Se connecter",
+    "getStarted": "Commencer",
+    "heroTitle": "Offrez à chaque client son propre espace professionnel",
+    "heroSubtitle": "Projets, fichiers, factures et communication - le tout au même endroit.",
+    "heroCta": "Créez votre espace de travail",
+    "featureProjectsTitle": "Projets et jalons",
+    "featureProjectsBody": "Suivez l'avancement que vos clients peuvent voir, sans e-mail de statut.",
+    "featureDocsTitle": "Documents",
+    "featureDocsBody": "Partagez des fichiers au même endroit, sans fouiller dans les e-mails.",
+    "featureMessagesTitle": "Messagerie",
+    "featureMessagesBody": "Gardez les conversations de projet organisées, hors de votre boîte personnelle.",
+    "featureInvoicesTitle": "Factures",
+    "featureInvoicesBody": "Envoyez des factures PDF professionnelles et soyez payé plus vite.",
+    "footerCta": "Prêt à offrir une meilleure expérience à vos clients ?",
+    "footerCtaButton": "Commencer gratuitement"
+  },
   "acceptInvite": {
     "welcome": "Bienvenue",
     "subtitle": "Configurez votre compte pour voir votre projet.",

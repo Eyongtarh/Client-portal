@@ -1,6 +1,6 @@
-// Top-level routes: public auth pages, plus a protected home
-// route. Owners see the dashboard; clients get a placeholder
-// for now until we build the client-facing portal.
+// Top-level routes: public landing page, auth pages, plus
+// protected routes. Owners see the dashboard; clients see the
+// client portal.
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./lib/AuthContext.jsx";
 import Login from "./pages/Login.jsx";
@@ -11,6 +11,7 @@ import ClientPortal from "./pages/ClientPortal.jsx";
 import AcceptInvite from "./pages/AcceptInvite.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
+import Landing from "./pages/Landing.jsx";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -41,7 +42,7 @@ export default function App() {
         path="/"
         element={
           !user ? (
-            <Navigate to="/login" replace />
+            <Landing />
           ) : user.role === "owner" ? (
             <OwnerDashboard />
           ) : (
