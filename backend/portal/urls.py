@@ -18,6 +18,7 @@ router.register(
 router.register("messages", views.MessageViewSet, basename="message")
 router.register("invoices", views.InvoiceViewSet, basename="invoice")
 router.register("clients", views.ClientViewSet, basename="client")
+router.register("tasks", views.TaskViewSet, basename="task")
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),

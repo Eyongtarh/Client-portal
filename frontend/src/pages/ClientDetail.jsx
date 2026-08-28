@@ -93,6 +93,8 @@ export default function ClientDetail() {
 function ProjectOverview({ project, onChange }) {
   const { t } = useTranslation();
   const [newMilestone, setNewMilestone] = useState("");
+  const [tasks, setTasks] = useState([]);
+  const [newTask, setNewTask] = useState("");
 
   async function toggleMilestone(milestone) {
     await api.patch(`/milestones/${milestone.id}/`, {
@@ -110,6 +112,31 @@ function ProjectOverview({ project, onChange }) {
     });
     setNewMilestone("");
     onChange();
+  }
+
+  async function loadTasks() {
+    const res = await api.get(`/tasks/?project=${project.id}`);
+    setTasks(res.data);
+  }
+  useEffect(() => {
+    loadTasks();
+  }, [project.id]);
+
+  async function toggleTask(task) {
+    await api.patch(`/tasks/${task.id}/`, {
+      is_complete: !task.is_complete,
+    });
+    loadTasks();
+  }
+  async function addTask(e) {
+    e.preventDefault();
+    if (!newTask.trim()) return;
+    await api.post("/tasks/", {
+      project: project.id,
+      title: newTask,
+    });
+    setNewTask("");
+    loadTasks();
   }
 
   return (
@@ -153,6 +180,37 @@ function ProjectOverview({ project, onChange }) {
           value={newMilestone}
           onChange={(e) => setNewMilestone(e.target.value)}
           placeholder={t("clientDetail.addMilestone")}
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+        />
+        <button className="bg-brand-50 text-brand-700 px-4 py-2 rounded-lg text-sm font-medium">
+          {t("clientDetail.add")}
+        </button>
+      </form>
+      <h3 className="font-medium mb-2 mt-6">{t("clientDetail.tasks")}</h3>
+      <ul className="space-y-1 mb-4">
+        {tasks.map((task) => (
+          <li key={task.id} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={task.is_complete}
+              onChange={() => toggleTask(task)}
+            />
+            <span
+              className={task.is_complete ? "line-through text-gray-400" : ""}
+            >
+              {task.title}
+            </span>
+          </li>
+        ))}
+        {tasks.length === 0 && (
+          <p className="text-gray-500 text-sm">{t("clientDetail.noTasks")}</p>
+        )}
+      </ul>
+      <form onSubmit={addTask} className="flex gap-2">
+        <input
+          value={newTask}
+          onChange={(e) => setNewTask(e.target.value)}
+          placeholder={t("clientDetail.addTask")}
           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
         <button className="bg-brand-50 text-brand-700 px-4 py-2 rounded-lg text-sm font-medium">

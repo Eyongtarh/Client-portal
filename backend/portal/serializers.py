@@ -1,6 +1,6 @@
 from .models import (
     Client, ClientInvite, Document, Invoice, InvoiceItem, Message,
-    Milestone, Project, User, Workspace,
+    Milestone, Project, Task, User, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -135,6 +135,32 @@ class MilestoneSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         turning_complete = (
             validated_data.get("is_complete") and not instance.is_complete
+        )
+        if turning_complete:
+            validated_data["completed_at"] = timezone.now()
+        if validated_data.get("is_complete") is False:
+            validated_data["completed_at"] = None
+        return super().update(instance, validated_data)
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    """Handles completion timestamps the same way
+    MilestoneSerializer does.
+    """
+
+    class Meta:
+        model = Task
+        fields = [
+            "id", "project", "milestone", "title", "description",
+            "due_date", "is_complete", "completed_at", "order",
+            "created_at",
+        ]
+        read_only_fields = ["completed_at", "created_at"]
+
+    def update(self, instance, validated_data):
+        turning_complete = (
+            validated_data.get("is_complete")
+            and not instance.is_complete
         )
         if turning_complete:
             validated_data["completed_at"] = timezone.now()

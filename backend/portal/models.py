@@ -170,6 +170,36 @@ class Milestone(models.Model):
         return self.title
 
 
+class Task(models.Model):
+    """A single to-do item within a project, optionally grouped
+    under a milestone. Separate from Milestone: milestones are
+    project stages, tasks are the actual work items within them.
+    """
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="tasks"
+    )
+    milestone = models.ForeignKey(
+        Milestone,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tasks",
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    is_complete = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.title
+
+
 def document_upload_path(instance, filename):
     """Files land under a workspace/project-scoped folder, so uploads
     from different tenants never collide or overwrite each other.

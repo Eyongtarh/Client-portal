@@ -1,9 +1,18 @@
+import io
+
+from django.conf import settings
+from django.core.mail import send_mail
+from django.http import FileResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 from rest_framework import generics, status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
 from .models import (
-    Client, Document, Invoice, Message, Milestone, Project,
+    Client, Document, Invoice, Message, Milestone, Project, Task,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -14,19 +23,13 @@ from .serializers import (
     MeSerializer,
     MessageSerializer,
     MilestoneSerializer,
-    ProjectSerializer,
-    RegisterSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    ProjectSerializer,
+    RegisterSerializer,
+    TaskSerializer,
     WorkspaceSerializer,
 )
-import io
-from django.http import FileResponse
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.pdfgen import canvas
-from django.conf import settings
-from django.core.mail import send_mail
 
 
 class RegisterView(generics.CreateAPIView):
@@ -179,6 +182,22 @@ class MilestoneViewSet(viewsets.ModelViewSet):
         )
 
 
+class TaskViewSet(viewsets.ModelViewSet):
+    """Same tenant-scoping pattern as MilestoneViewSet."""
+    serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "owner":
+            return Task.objects.filter(
+                project__workspace=user.workspace
+            )
+        return Task.objects.filter(
+            project__client=user.client_profile
+        )
+
+
 class DocumentViewSet(viewsets.ModelViewSet):
     """Same tenant-scoping pattern as MilestoneViewSet. On create,
     we capture who uploaded it and the file's size automatically -
@@ -232,7 +251,6 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     """Same tenant-scoping pattern as the other workspace-scoped
     viewsets.
     """
-
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
 
@@ -250,7 +268,6 @@ class InvoicePDFView(APIView):
     """GET /api/invoices/<id>/pdf/ - renders the invoice as a
     downloadable PDF using reportlab.
     """
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
@@ -260,12 +277,10 @@ class InvoicePDFView(APIView):
         else:
             qs = Invoice.objects.filter(client=user.client_profile)
         invoice = generics.get_object_or_404(qs, pk=pk)
-
         buf = io.BytesIO()
         pdf = canvas.Canvas(buf, pagesize=A4)
         width, height = A4
         y = height - 30 * mm
-
         pdf.setFont("Helvetica-Bold", 18)
         pdf.drawString(20 * mm, y, f"Invoice #{invoice.number}")
         y -= 10 * mm
@@ -277,14 +292,12 @@ class InvoicePDFView(APIView):
             y -= 6 * mm
             pdf.drawString(20 * mm, y, f"Due: {invoice.due_at}")
         y -= 14 * mm
-
         pdf.setFont("Helvetica-Bold", 11)
         pdf.drawString(20 * mm, y, "Description")
         pdf.drawString(150 * mm, y, "Amount")
         y -= 4 * mm
         pdf.line(20 * mm, y, 190 * mm, y)
         y -= 8 * mm
-
         pdf.setFont("Helvetica", 11)
         for item in invoice.items.all():
             pdf.drawString(20 * mm, y, item.description[:60])
