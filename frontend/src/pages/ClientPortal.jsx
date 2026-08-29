@@ -1,5 +1,5 @@
 // What a client sees when they log in: their project's
-// progress, documents, messages, and invoices.
+// progress, documents, messages, invoices, and approvals.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
@@ -13,6 +13,8 @@ export default function ClientPortal() {
   const [documents, setDocuments] = useState([]);
   const [messages, setMessages] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [approvals, setApprovals] = useState([]);
+  const [comments, setComments] = useState({});
   const [body, setBody] = useState("");
 
   async function loadAll() {
@@ -20,14 +22,17 @@ export default function ClientPortal() {
     const currentProject = projectsRes.data[0] || null;
     setProject(currentProject);
     if (currentProject) {
-      const [docsRes, messagesRes, invoicesRes] = await Promise.all([
-        api.get(`/documents/?project=${currentProject.id}`),
-        api.get(`/messages/?project=${currentProject.id}`),
-        api.get(`/invoices/?client=${user.client_id}`),
-      ]);
+      const [docsRes, messagesRes, invoicesRes, approvalsRes] =
+        await Promise.all([
+          api.get(`/documents/?project=${currentProject.id}`),
+          api.get(`/messages/?project=${currentProject.id}`),
+          api.get(`/invoices/?client=${user.client_id}`),
+          api.get(`/approvals/?project=${currentProject.id}`),
+        ]);
       setDocuments(docsRes.data);
       setMessages(messagesRes.data);
       setInvoices(invoicesRes.data);
+      setApprovals(approvalsRes.data);
     }
   }
   useEffect(() => {
@@ -49,6 +54,13 @@ export default function ClientPortal() {
     });
     const url = URL.createObjectURL(res.data);
     window.open(url, "_blank");
+  }
+  async function decide(approvalId, decisionStatus) {
+    await api.post(`/approvals/${approvalId}/decide/`, {
+      status: decisionStatus,
+      client_comment: comments[approvalId] || "",
+    });
+    loadAll();
   }
 
   return (
@@ -143,6 +155,70 @@ export default function ClientPortal() {
               {invoices.length === 0 && (
                 <p className="text-gray-500 text-sm">
                   {t("clientPortal.noInvoices")}
+                </p>
+              )}
+            </ul>
+          </section>
+        )}
+        {project && (
+          <section className="bg-white border border-brand-100 rounded-xl p-6">
+            <h3 className="font-medium mb-3">{t("clientPortal.approvals")}</h3>
+            <ul className="space-y-3">
+              {approvals.map((approval) => (
+                <li
+                  key={approval.id}
+                  className="border border-gray-200 rounded-lg p-4"
+                >
+                  <p className="font-medium">{approval.title}</p>
+                  {approval.description && (
+                    <p className="text-sm text-gray-600 mb-2">
+                      {approval.description}
+                    </p>
+                  )}
+                  {approval.status === "pending" ? (
+                    <div>
+                      <input
+                        value={comments[approval.id] || ""}
+                        onChange={(e) =>
+                          setComments({
+                            ...comments,
+                            [approval.id]: e.target.value,
+                          })
+                        }
+                        placeholder={t("clientPortal.commentPlaceholder")}
+                        className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => decide(approval.id, "approved")}
+                          className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
+                        >
+                          {t("clientPortal.approve")}
+                        </button>
+                        <button
+                          onClick={() =>
+                            decide(approval.id, "changes_requested")
+                          }
+                          className="bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium"
+                        >
+                          {t("clientPortal.requestChanges")}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      {approval.status === "approved"
+                        ? t("clientDetail.statusApproved")
+                        : t("clientDetail.statusChangesRequested")}
+                      {approval.client_comment &&
+                        ` \u2014 "${approval.client_comment}"`}
+                    </p>
+                  )}
+                </li>
+              ))}
+              {approvals.length === 0 && (
+                <p className="text-gray-500 text-sm">
+                  {t("clientPortal.noApprovals")}
                 </p>
               )}
             </ul>
