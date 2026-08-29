@@ -89,7 +89,16 @@
     "addLineItem": "+ Add line item",
     "createInvoice": "Create invoice",
     "downloadPdf": "Download PDF",
-    "noInvoices": "No invoices yet."
+    "noInvoices": "No invoices yet.",
+    "tabApprovals": "Approvals",
+    "newApproval": "New approval request",
+    "approvalTitle": "Title",
+    "approvalDescription": "Description (optional)",
+    "createApproval": "Request approval",
+    "noApprovals": "No approval requests yet.",
+    "statusPending": "Pending",
+    "statusApproved": "Approved",
+    "statusChangesRequested": "Changes requested"
   },
   "clientPortal": {
     "welcomeBack": "Welcome back,",
@@ -102,6 +111,11 @@
     "noMessages": "No messages yet.",
     "writeMessage": "Write a message...",
     "send": "Send",
-    "pdf": "PDF"
+    "pdf": "PDF",
+    "approvals": "Approvals",
+    "noApprovals": "No approval requests yet.",
+    "approve": "Approve",
+    "requestChanges": "Request changes",
+    "commentPlaceholder": "Add a comment (optional)..."
   }
 }

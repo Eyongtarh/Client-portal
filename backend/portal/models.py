@@ -200,6 +200,38 @@ class Task(models.Model):
         return self.title
 
 
+class Approval(models.Model):
+    """A request for the client to formally approve (or reject)
+    a deliverable. Gives both sides a recorded decision instead
+    of an email thread.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        CHANGES_REQUESTED = (
+            "changes_requested", "Changes requested"
+        )
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="approvals"
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    client_comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
 def document_upload_path(instance, filename):
     """Files land under a workspace/project-scoped folder, so uploads
     from different tenants never collide or overwrite each other.

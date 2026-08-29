@@ -89,7 +89,16 @@
     "addLineItem": "+ Ajouter une ligne",
     "createInvoice": "Cr\u00e9er la facture",
     "downloadPdf": "T\u00e9l\u00e9charger le PDF",
-    "noInvoices": "Aucune facture pour le moment."
+    "noInvoices": "Aucune facture pour le moment.",
+    "tabApprovals": "Approbations",
+    "newApproval": "Nouvelle demande d'approbation",
+    "approvalTitle": "Titre",
+    "approvalDescription": "Description (facultatif)",
+    "createApproval": "Demander l'approbation",
+    "noApprovals": "Aucune demande d'approbation pour le moment.",
+    "statusPending": "En attente",
+    "statusApproved": "Approuvé",
+    "statusChangesRequested": "Modifications demandées"
   },
   "clientPortal": {
     "welcomeBack": "Bon retour,",
@@ -102,6 +111,11 @@
     "noMessages": "Aucun message pour le moment.",
     "writeMessage": "\u00c9crivez un message...",
     "send": "Envoyer",
-    "pdf": "PDF"
+    "pdf": "PDF",
+    "approvals": "Approbations",
+    "noApprovals": "Aucune demande d'approbation pour le moment.",
+    "approve": "Approuver",
+    "requestChanges": "Demander des modifications",
+    "commentPlaceholder": "Ajouter un commentaire (facultatif)..."
   }
 }

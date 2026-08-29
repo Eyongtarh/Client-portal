@@ -1,6 +1,6 @@
 from .models import (
-    Client, ClientInvite, Document, Invoice, InvoiceItem, Message,
-    Milestone, Project, Task, User, Workspace,
+    Approval, Client, ClientInvite, Document, Invoice, InvoiceItem,
+    Message, Milestone, Project, Task, User, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -167,6 +167,34 @@ class TaskSerializer(serializers.ModelSerializer):
         if validated_data.get("is_complete") is False:
             validated_data["completed_at"] = None
         return super().update(instance, validated_data)
+
+
+class ApprovalSerializer(serializers.ModelSerializer):
+    """Owner creates/reads approvals. Clients use a separate
+    action (ApprovalDecisionSerializer below) to record their
+    decision, so a client can never edit the title/description
+    of a request they're deciding on.
+    """
+
+    class Meta:
+        model = Approval
+        fields = [
+            "id", "project", "title", "description", "status",
+            "client_comment", "created_at", "decided_at",
+        ]
+        read_only_fields = [
+            "status", "client_comment", "created_at", "decided_at",
+        ]
+
+
+class ApprovalDecisionSerializer(serializers.Serializer):
+    """Client's decision on a pending approval."""
+    status = serializers.ChoiceField(
+        choices=["approved", "changes_requested"]
+    )
+    client_comment = serializers.CharField(
+        required=False, allow_blank=True
+    )
 
 
 class ProjectSerializer(serializers.ModelSerializer):

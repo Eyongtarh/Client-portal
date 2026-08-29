@@ -10,12 +10,16 @@ from rest_framework import generics, status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from django.utils import timezone
+from rest_framework.exceptions import PermissionDenied
 from .models import (
-    Client, Document, Invoice, Message, Milestone, Project, Task,
+    Approval, Client, Document, Invoice, Message, Milestone, Project,
+    Task,
 )
 from .serializers import (
     AcceptInviteSerializer,
+    ApprovalDecisionSerializer,
+    ApprovalSerializer,
     ClientInviteCreateSerializer,
     ClientSerializer,
     DocumentSerializer,
@@ -196,6 +200,76 @@ class TaskViewSet(viewsets.ModelViewSet):
         return Task.objects.filter(
             project__client=user.client_profile
         )
+
+
+class ApprovalViewSet(viewsets.ModelViewSet):
+    """Same tenant-scoping pattern as TaskViewSet. Owners can
+    create/edit; clients get read-only access here and record
+    their decision through the separate 'decide' action below.
+    """
+    serializer_class = ApprovalSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "owner":
+            return Approval.objects.filter(
+                project__workspace=user.workspace
+            )
+        return Approval.objects.filter(
+            project__client=user.client_profile
+        )
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAuthenticated()]
+        return [IsAuthenticated()]
+
+    def perform_update(self, serializer):
+        # Owners edit title/description only; status/comment come
+        # through the decide action, never a plain PATCH here.
+        if self.request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the owner can edit an approval request."
+            )
+        serializer.save()
+
+    def perform_create(self, serializer):
+        if self.request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the owner can request an approval."
+            )
+        serializer.save()
+
+
+class ApprovalDecisionView(APIView):
+    """POST /api/approvals/<id>/decide/ - client approves or
+    requests changes on a pending approval.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        user = request.user
+        if user.role != "client":
+            raise PermissionDenied(
+                "Only the client can decide on an approval."
+            )
+        qs = Approval.objects.filter(
+            project__client=user.client_profile
+        )
+        approval = generics.get_object_or_404(qs, pk=pk)
+
+        serializer = ApprovalDecisionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        approval.status = serializer.validated_data["status"]
+        approval.client_comment = serializer.validated_data.get(
+            "client_comment", ""
+        )
+        approval.decided_at = timezone.now()
+        approval.save()
+
+        return Response(ApprovalSerializer(approval).data)
 
 
 class DocumentViewSet(viewsets.ModelViewSet):

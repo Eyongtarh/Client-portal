@@ -1,5 +1,6 @@
 // Owner's view of a single client: tabbed access to the
-// project overview, documents, messages, and invoices.
+// project overview, documents, messages, invoices, and
+// approvals.
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -18,6 +19,7 @@ export default function ClientDetail() {
     ["documents", t("clientDetail.tabDocuments")],
     ["messages", t("clientDetail.tabMessages")],
     ["invoices", t("clientDetail.tabInvoices")],
+    ["approvals", t("clientDetail.tabApprovals")],
   ];
   async function load() {
     const clientRes = await api.get(`/clients/${clientId}/`);
@@ -78,6 +80,9 @@ export default function ClientDetail() {
           )}
           {activeTab === "invoices" && (
             <InvoicesTab client={client} project={project} />
+          )}
+          {activeTab === "approvals" && project && (
+            <ApprovalsTab project={project} />
           )}
           {!project && activeTab !== "overview" && (
             <p className="text-gray-500 text-sm">
@@ -503,6 +508,111 @@ function InvoicesTab({ client, project }) {
         {invoices.length === 0 && (
           <p className="text-gray-500 text-sm">
             {t("clientDetail.noInvoices")}
+          </p>
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function ApprovalsTab({ project }) {
+  const { t } = useTranslation();
+  const [approvals, setApprovals] = useState([]);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+
+  async function load() {
+    const res = await api.get(`/approvals/?project=${project.id}`);
+    setApprovals(res.data);
+  }
+  useEffect(() => {
+    load();
+  }, [project.id]);
+
+  async function onCreate(e) {
+    e.preventDefault();
+    await api.post("/approvals/", {
+      project: project.id,
+      title,
+      description,
+    });
+    setTitle("");
+    setDescription("");
+    load();
+  }
+
+  function statusLabel(status) {
+    if (status === "approved") return t("clientDetail.statusApproved");
+    if (status === "changes_requested") {
+      return t("clientDetail.statusChangesRequested");
+    }
+    return t("clientDetail.statusPending");
+  }
+
+  function statusClass(status) {
+    if (status === "approved") {
+      return "bg-green-50 text-green-700 border-green-200";
+    }
+    if (status === "changes_requested") {
+      return "bg-red-50 text-red-700 border-red-200";
+    }
+    return "bg-gray-50 text-gray-600 border-gray-200";
+  }
+
+  return (
+    <div>
+      <form
+        onSubmit={onCreate}
+        className="border border-gray-200 rounded-lg p-4 mb-6"
+      >
+        <h4 className="font-medium mb-3">{t("clientDetail.newApproval")}</h4>
+        <input
+          required
+          placeholder={t("clientDetail.approvalTitle")}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+        />
+        <textarea
+          placeholder={t("clientDetail.approvalDescription")}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          rows={2}
+        />
+        <button className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+          {t("clientDetail.createApproval")}
+        </button>
+      </form>
+      <ul className="space-y-3">
+        {approvals.map((approval) => (
+          <li
+            key={approval.id}
+            className="border border-gray-200 rounded-lg p-4"
+          >
+            <div className="flex justify-between items-start mb-1">
+              <p className="font-medium">{approval.title}</p>
+              <span
+                className={`text-xs px-2 py-1 rounded-full border ${statusClass(approval.status)}`}
+              >
+                {statusLabel(approval.status)}
+              </span>
+            </div>
+            {approval.description && (
+              <p className="text-sm text-gray-600 mb-1">
+                {approval.description}
+              </p>
+            )}
+            {approval.client_comment && (
+              <p className="text-sm text-gray-500 italic">
+                &ldquo;{approval.client_comment}&rdquo;
+              </p>
+            )}
+          </li>
+        ))}
+        {approvals.length === 0 && (
+          <p className="text-gray-500 text-sm">
+            {t("clientDetail.noApprovals")}
           </p>
         )}
       </ul>
