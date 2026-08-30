@@ -34,6 +34,7 @@ export default function Register() {
       setForm({ ...form, [field]: e.target.value });
     };
   }
+
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
@@ -62,31 +63,45 @@ export default function Register() {
       >
         <h1 className="text-xl font-semibold mb-6">{t("register.title")}</h1>
         {error && (
-          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+          <div
+            role="alert"
+            className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2"
+          >
             {error}
           </div>
         )}
         {fields.map(([field, label, type]) => (
           <div key={field} className="mb-4">
-            <label className="block text-sm mb-1 text-gray-600">{label}</label>
+            <label
+              htmlFor={`register-${field}`}
+              className="block text-sm mb-1 text-gray-600"
+            >
+              {label}
+            </label>
             <input
+              id={`register-${field}`}
               type={type}
               required
               value={form[field]}
               onChange={setField(field)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
           </div>
         ))}
         <button
           disabled={busy}
-          className="w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium disabled:opacity-50"
+          aria-label={t("register.submit")}
+          className="w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           {busy ? t("register.submitting") : t("register.submit")}
         </button>
         <p className="text-sm text-gray-500 mt-4 text-center">
           {t("register.haveAccount")}{" "}
-          <Link to="/login" className="text-brand-600 font-medium underline">
+          <Link
+            to="/login"
+            aria-label="Sign in to your existing account"
+            className="text-brand-600 font-medium underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
             {t("register.signIn")}
           </Link>
         </p>

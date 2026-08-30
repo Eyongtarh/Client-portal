@@ -43,11 +43,11 @@ export default function AcceptInvite() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-blue-50 gap-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-brand-50 gap-4">
       <LanguageToggle />
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm bg-white p-8 rounded-xl shadow-sm border border-blue-100"
+        className="w-full max-w-sm bg-white p-8 rounded-xl shadow-sm border border-brand-100"
       >
         <h1 className="text-xl font-semibold mb-1">
           {t("acceptInvite.welcome")}
@@ -56,43 +56,59 @@ export default function AcceptInvite() {
           {t("acceptInvite.subtitle")}
         </p>
         {error && (
-          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+          <div
+            role="alert"
+            className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2"
+          >
             {error}
           </div>
         )}
-        <label className="block text-sm mb-1 text-gray-600">
+        <label
+          htmlFor="accept-email"
+          className="block text-sm mb-1 text-gray-600"
+        >
           {t("acceptInvite.emailFromInvite")}
         </label>
         <input
+          id="accept-email"
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg"
+          className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
-        <label className="block text-sm mb-1 text-gray-600">
+        <label
+          htmlFor="accept-name"
+          className="block text-sm mb-1 text-gray-600"
+        >
           {t("acceptInvite.yourName")}
         </label>
         <input
+          id="accept-name"
           type="text"
           required
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg"
+          className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
-        <label className="block text-sm mb-1 text-gray-600">
+        <label
+          htmlFor="accept-password"
+          className="block text-sm mb-1 text-gray-600"
+        >
           {t("acceptInvite.setPassword")}
         </label>
         <input
+          id="accept-password"
           type="password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-6 px-3 py-2 border border-gray-300 rounded-lg"
+          className="w-full mb-6 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
         <button
           disabled={busy}
-          className="w-full bg-blue-600 text-white rounded-lg py-2.5 font-medium disabled:opacity-50"
+          aria-label={t("acceptInvite.submit")}
+          className="w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           {busy ? t("acceptInvite.submitting") : t("acceptInvite.submit")}
         </button>

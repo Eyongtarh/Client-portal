@@ -24,12 +24,17 @@ export default function Landing() {
         </span>
         <div className="flex items-center gap-4">
           <LanguageToggle />
-          <Link to="/login" className="text-sm text-brand-600 underline">
+          <Link
+            to="/login"
+            aria-label={t("landing.signIn")}
+            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
             {t("landing.signIn")}
           </Link>
           <Link
             to="/register"
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            aria-label={t("landing.getStarted")}
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             {t("landing.getStarted")}
           </Link>
@@ -45,7 +50,8 @@ export default function Landing() {
           </p>
           <Link
             to="/register"
-            className="inline-block mt-8 bg-brand-600 text-white px-6 py-3 rounded-lg font-medium"
+            aria-label={t("landing.heroCta")}
+            className="inline-block mt-8 bg-brand-600 text-white px-6 py-3 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             {t("landing.heroCta")}
           </Link>
@@ -54,7 +60,7 @@ export default function Landing() {
           {FEATURES.map(([titleKey, bodyKey]) => (
             <div
               key={titleKey}
-              className="bg-white border border-brand-100 rounded-xl p-6"
+              className="bg-white border border-brand-100 rounded-xl p-6 transition-shadow hover:shadow-md"
             >
               <h3 className="font-semibold text-brand-800 mb-2">
                 {t(`landing.${titleKey}`)}
@@ -69,7 +75,8 @@ export default function Landing() {
           </h2>
           <Link
             to="/register"
-            className="inline-block bg-brand-600 text-white px-6 py-3 rounded-lg font-medium"
+            aria-label={t("landing.footerCtaButton")}
+            className="inline-block bg-brand-600 text-white px-6 py-3 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             {t("landing.footerCtaButton")}
           </Link>

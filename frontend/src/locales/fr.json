@@ -34,7 +34,8 @@
     "submitting": "Connexion...",
     "error": "E-mail ou mot de passe invalide.",
     "newHere": "Nouveau ici ?",
-    "createWorkspace": "Cr\u00e9er un espace de travail"
+    "createWorkspace": "Cr\u00e9er un espace de travail",
+    "forgotPassword": "Mot de passe oublié ?"
   },
   "register": {
     "title": "Cr\u00e9ez votre espace de travail",

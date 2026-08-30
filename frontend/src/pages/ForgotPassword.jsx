@@ -27,7 +27,7 @@ export default function ForgotPassword() {
       <LanguageToggle />
       <div className="w-full max-w-sm bg-white p-8 rounded-xl shadow-sm border border-brand-100">
         {sent ? (
-          <p className="text-sm text-gray-700">
+          <p role="status" className="text-sm text-gray-700">
             If an account exists for that email, a reset link has been sent.
             Check your inbox.
           </p>
@@ -37,24 +37,35 @@ export default function ForgotPassword() {
             <p className="text-sm text-gray-500 mb-6">
               Enter your email and we'll send you a reset link.
             </p>
-            <label className="block text-sm mb-1 text-gray-600">Email</label>
+            <label
+              htmlFor="forgot-email"
+              className="block text-sm mb-1 text-gray-600"
+            >
+              Email
+            </label>
             <input
+              id="forgot-email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full mb-6 px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full mb-6 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
             <button
               disabled={busy}
-              className="w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium disabled:opacity-50"
+              aria-label="Send password reset link"
+              className="w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               {busy ? "Sending..." : "Send reset link"}
             </button>
           </form>
         )}
         <p className="text-sm text-gray-500 mt-4 text-center">
-          <Link to="/login" className="text-brand-600 underline">
+          <Link
+            to="/login"
+            aria-label="Back to sign in"
+            className="text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
             Back to sign in
           </Link>
         </p>

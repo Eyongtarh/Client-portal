@@ -73,15 +73,21 @@ export default function OwnerDashboard() {
     <div className="min-h-screen bg-brand-50">
       <header className="bg-white border-b border-brand-100 px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <label className="cursor-pointer">
+          <label
+            className="cursor-pointer rounded-lg focus-within:ring-2 focus-within:ring-brand-400"
+            title="Upload or change workspace logo"
+          >
             {workspace?.logo ? (
               <img
                 src={workspace.logo}
-                alt="Logo"
-                className="w-10 h-10 rounded-lg object-cover border border-brand-100"
+                alt={`${workspace.name} logo`}
+                className="w-10 h-10 rounded-lg object-cover border border-brand-100 transition-opacity hover:opacity-80"
               />
             ) : (
-              <div className="w-10 h-10 rounded-lg bg-brand-50 border border-dashed border-brand-200 flex items-center justify-center text-xs text-brand-600">
+              <div
+                aria-hidden="true"
+                className="w-10 h-10 rounded-lg bg-brand-50 border border-dashed border-brand-200 flex items-center justify-center text-xs text-brand-600 transition-colors hover:bg-brand-100"
+              >
                 {logoUploading ? "..." : "+"}
               </div>
             )}
@@ -91,6 +97,7 @@ export default function OwnerDashboard() {
               className="hidden"
               onChange={onLogoChange}
               disabled={logoUploading}
+              aria-label="Upload workspace logo"
             />
           </label>
           <h1 className="text-lg font-semibold text-brand-700">
@@ -99,7 +106,11 @@ export default function OwnerDashboard() {
         </div>
         <div className="flex items-center gap-4">
           <LanguageToggle />
-          <button onClick={logout} className="text-sm text-brand-600 underline">
+          <button
+            onClick={logout}
+            aria-label={t("dashboard.signOut")}
+            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
             {t("dashboard.signOut")}
           </button>
         </div>
@@ -112,13 +123,18 @@ export default function OwnerDashboard() {
               setShowInviteForm(!showInviteForm);
               setInviteSuccess(false);
             }}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+            aria-expanded={showInviteForm}
+            aria-label={t("dashboard.inviteClient")}
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             {t("dashboard.inviteClient")}
           </button>
         </div>
         {inviteSuccess && (
-          <div className="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3">
+          <div
+            role="status"
+            className="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+          >
             Invite sent successfully.
           </div>
         )}
@@ -128,32 +144,44 @@ export default function OwnerDashboard() {
             className="bg-white border border-brand-100 rounded-xl p-6 mb-6"
           >
             {inviteError && (
-              <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
+              <div
+                role="alert"
+                className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2"
+              >
                 {inviteError}
               </div>
             )}
-            <label className="block text-sm mb-1 text-gray-600">
+            <label
+              htmlFor="invite-company"
+              className="block text-sm mb-1 text-gray-600"
+            >
               {t("dashboard.companyName")}
             </label>
             <input
+              id="invite-company"
               required
               value={inviteCompany}
               onChange={(e) => setInviteCompany(e.target.value)}
-              className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
-            <label className="block text-sm mb-1 text-gray-600">
+            <label
+              htmlFor="invite-email"
+              className="block text-sm mb-1 text-gray-600"
+            >
               {t("dashboard.clientEmail")}
             </label>
             <input
+              id="invite-email"
               type="email"
               required
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
-              className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg"
+              className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
             <button
               disabled={inviteBusy}
-              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+              aria-label={t("dashboard.sendInvite")}
+              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               {inviteBusy ? t("dashboard.sending") : t("dashboard.sendInvite")}
             </button>
@@ -164,7 +192,8 @@ export default function OwnerDashboard() {
             <Link
               key={client.id}
               to={`/clients/${client.id}`}
-              className="block bg-white border border-brand-100 rounded-xl p-4 hover:shadow-md transition"
+              aria-label={`View ${client.company_name}`}
+              className="block bg-white border border-brand-100 rounded-xl p-4 transition-all hover:shadow-md hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               <p className="font-medium">{client.company_name}</p>
               <p className="text-sm text-gray-500">{client.contact_email}</p>

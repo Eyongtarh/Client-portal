@@ -74,7 +74,11 @@ export default function ClientPortal() {
         </div>
         <div className="flex items-center gap-4">
           <LanguageToggle />
-          <button onClick={logout} className="text-sm text-brand-600 underline">
+          <button
+            onClick={logout}
+            aria-label={t("dashboard.signOut")}
+            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
             {t("dashboard.signOut")}
           </button>
         </div>
@@ -118,7 +122,8 @@ export default function ClientPortal() {
                     href={doc.file}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-brand-700 hover:underline"
+                    aria-label={`Open ${doc.original_name} in a new tab`}
+                    className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
                   >
                     {doc.original_name}
                   </a>
@@ -146,7 +151,8 @@ export default function ClientPortal() {
                   </span>
                   <button
                     onClick={() => downloadPdf(invoice.id)}
-                    className="text-brand-700 underline"
+                    aria-label={`Download invoice ${invoice.number} as PDF`}
+                    className="text-brand-700 underline transition-colors hover:text-brand-900 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
                   >
                     {t("clientPortal.pdf")}
                   </button>
@@ -177,7 +183,14 @@ export default function ClientPortal() {
                   )}
                   {approval.status === "pending" ? (
                     <div>
+                      <label
+                        htmlFor={`approval-comment-${approval.id}`}
+                        className="sr-only"
+                      >
+                        Comment for {approval.title}
+                      </label>
                       <input
+                        id={`approval-comment-${approval.id}`}
                         value={comments[approval.id] || ""}
                         onChange={(e) =>
                           setComments({
@@ -186,12 +199,13 @@ export default function ClientPortal() {
                           })
                         }
                         placeholder={t("clientPortal.commentPlaceholder")}
-                        className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                       />
                       <div className="flex gap-2">
                         <button
                           onClick={() => decide(approval.id, "approved")}
-                          className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
+                          aria-label={`Approve ${approval.title}`}
+                          className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400"
                         >
                           {t("clientPortal.approve")}
                         </button>
@@ -199,7 +213,8 @@ export default function ClientPortal() {
                           onClick={() =>
                             decide(approval.id, "changes_requested")
                           }
-                          className="bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium"
+                          aria-label={`Request changes on ${approval.title}`}
+                          className="bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-400"
                         >
                           {t("clientPortal.requestChanges")}
                         </button>
@@ -243,13 +258,20 @@ export default function ClientPortal() {
               )}
             </div>
             <form onSubmit={onSend} className="flex gap-2">
+              <label htmlFor="client-message" className="sr-only">
+                {t("clientPortal.writeMessage")}
+              </label>
               <input
+                id="client-message"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 placeholder={t("clientPortal.writeMessage")}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
               />
-              <button className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+              <button
+                aria-label={t("clientPortal.send")}
+                className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
                 {t("clientPortal.send")}
               </button>
             </form>

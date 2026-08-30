@@ -41,7 +41,11 @@ export default function ClientDetail() {
     <div className="min-h-screen bg-brand-50">
       <header className="bg-white border-b border-brand-100 px-8 py-4 flex justify-between items-start">
         <div>
-          <Link to="/" className="text-sm text-brand-600 underline">
+          <Link
+            to="/"
+            aria-label={t("clientDetail.allClients")}
+            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
             &larr; {t("clientDetail.allClients")}
           </Link>
           <h1 className="text-lg font-semibold mt-1">{client.company_name}</h1>
@@ -49,15 +53,20 @@ export default function ClientDetail() {
         </div>
         <LanguageToggle />
       </header>
-      <nav className="max-w-2xl mx-auto px-8 pt-4 flex gap-1">
+      <nav
+        className="max-w-2xl mx-auto px-8 pt-4 flex gap-1"
+        aria-label="Client detail tabs"
+      >
         {tabs.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
+            aria-current={activeTab === key ? "page" : undefined}
+            aria-label={label}
             className={
               activeTab === key
-                ? "px-4 py-2 text-sm rounded-t-lg font-medium bg-white border border-b-0 border-brand-100"
-                : "px-4 py-2 text-sm rounded-t-lg font-medium text-gray-500"
+                ? "px-4 py-2 text-sm rounded-t-lg font-medium bg-white border border-b-0 border-brand-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                : "px-4 py-2 text-sm rounded-t-lg font-medium text-gray-500 transition-colors hover:text-brand-700 hover:bg-white/60 focus:outline-none focus:ring-2 focus:ring-brand-400"
             }
           >
             {label}
@@ -153,7 +162,7 @@ function ProjectOverview({ project, onChange }) {
       </p>
       <div className="w-full bg-brand-100 rounded-full h-2 mb-1">
         <div
-          className="bg-brand-600 h-2 rounded-full"
+          className="bg-brand-600 h-2 rounded-full transition-all"
           style={{ width: `${project.progress_percent}%` }}
         />
       </div>
@@ -167,27 +176,40 @@ function ProjectOverview({ project, onChange }) {
           <li key={milestone.id} className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
+              id={`milestone-${milestone.id}`}
               checked={milestone.is_complete}
               onChange={() => toggleMilestone(milestone)}
+              aria-label={`Mark milestone "${milestone.title}" as ${milestone.is_complete ? "incomplete" : "complete"}`}
+              className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
             />
-            <span
+            <label
+              htmlFor={`milestone-${milestone.id}`}
               className={
-                milestone.is_complete ? "line-through text-gray-400" : ""
+                milestone.is_complete
+                  ? "line-through text-gray-400 cursor-pointer"
+                  : "cursor-pointer"
               }
             >
               {milestone.title}
-            </span>
+            </label>
           </li>
         ))}
       </ul>
       <form onSubmit={addMilestone} className="flex gap-2">
+        <label htmlFor="new-milestone" className="sr-only">
+          {t("clientDetail.addMilestone")}
+        </label>
         <input
+          id="new-milestone"
           value={newMilestone}
           onChange={(e) => setNewMilestone(e.target.value)}
           placeholder={t("clientDetail.addMilestone")}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
-        <button className="bg-brand-50 text-brand-700 px-4 py-2 rounded-lg text-sm font-medium">
+        <button
+          aria-label={t("clientDetail.add")}
+          className="bg-brand-50 text-brand-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        >
           {t("clientDetail.add")}
         </button>
       </form>
@@ -197,14 +219,22 @@ function ProjectOverview({ project, onChange }) {
           <li key={task.id} className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
+              id={`task-${task.id}`}
               checked={task.is_complete}
               onChange={() => toggleTask(task)}
+              aria-label={`Mark task "${task.title}" as ${task.is_complete ? "incomplete" : "complete"}`}
+              className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
             />
-            <span
-              className={task.is_complete ? "line-through text-gray-400" : ""}
+            <label
+              htmlFor={`task-${task.id}`}
+              className={
+                task.is_complete
+                  ? "line-through text-gray-400 cursor-pointer"
+                  : "cursor-pointer"
+              }
             >
               {task.title}
-            </span>
+            </label>
           </li>
         ))}
         {tasks.length === 0 && (
@@ -212,13 +242,20 @@ function ProjectOverview({ project, onChange }) {
         )}
       </ul>
       <form onSubmit={addTask} className="flex gap-2">
+        <label htmlFor="new-task" className="sr-only">
+          {t("clientDetail.addTask")}
+        </label>
         <input
+          id="new-task"
           value={newTask}
           onChange={(e) => setNewTask(e.target.value)}
           placeholder={t("clientDetail.addTask")}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
-        <button className="bg-brand-50 text-brand-700 px-4 py-2 rounded-lg text-sm font-medium">
+        <button
+          aria-label={t("clientDetail.add")}
+          className="bg-brand-50 text-brand-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        >
           {t("clientDetail.add")}
         </button>
       </form>
@@ -248,27 +285,42 @@ function NewProjectForm({ clientId, onCreated }) {
       <h2 className="font-medium mb-4">
         {t("clientDetail.createFirstProject")}
       </h2>
+      <label htmlFor="new-project-name" className="sr-only">
+        {t("clientDetail.projectName")}
+      </label>
       <input
+        id="new-project-name"
         required
         placeholder={t("clientDetail.projectName")}
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+        className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />
+      <label htmlFor="new-project-budget" className="sr-only">
+        {t("clientDetail.budget")}
+      </label>
       <input
+        id="new-project-budget"
         type="number"
         placeholder={t("clientDetail.budget")}
         value={budget}
         onChange={(e) => setBudget(e.target.value)}
-        className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+        className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />
+      <label htmlFor="new-project-deadline" className="sr-only">
+        Deadline
+      </label>
       <input
+        id="new-project-deadline"
         type="date"
         value={deadline}
         onChange={(e) => setDeadline(e.target.value)}
-        className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+        className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />
-      <button className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+      <button
+        aria-label={t("clientDetail.createProject")}
+        className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+      >
         {t("clientDetail.createProject")}
       </button>
     </form>
@@ -307,7 +359,10 @@ function DocumentsTab({ project }) {
 
   return (
     <div>
-      <label className="inline-block mb-4 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer">
+      <label
+        className="inline-block mb-4 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-brand-700 focus-within:ring-2 focus-within:ring-brand-400"
+        title={t("clientDetail.uploadDocument")}
+      >
         {uploading
           ? t("clientDetail.uploading")
           : t("clientDetail.uploadDocument")}
@@ -316,6 +371,7 @@ function DocumentsTab({ project }) {
           className="hidden"
           onChange={onUpload}
           disabled={uploading}
+          aria-label={t("clientDetail.uploadDocument")}
         />
       </label>
       <ul className="divide-y divide-gray-100">
@@ -325,7 +381,8 @@ function DocumentsTab({ project }) {
               href={doc.file}
               target="_blank"
               rel="noreferrer"
-              className="text-brand-700 hover:underline"
+              aria-label={`Open ${doc.original_name} in a new tab`}
+              className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
             >
               {doc.original_name}
             </a>
@@ -386,13 +443,20 @@ function MessagesTab({ project }) {
         )}
       </div>
       <form onSubmit={onSend} className="flex gap-2">
+        <label htmlFor="owner-message" className="sr-only">
+          {t("clientDetail.writeMessage")}
+        </label>
         <input
+          id="owner-message"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder={t("clientDetail.writeMessage")}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
-        <button className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        <button
+          aria-label={t("clientDetail.send")}
+          className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        >
           {t("clientDetail.send")}
         </button>
       </form>
@@ -448,39 +512,55 @@ function InvoicesTab({ client, project }) {
         className="border border-gray-200 rounded-lg p-4 mb-6"
       >
         <h4 className="font-medium mb-3">{t("clientDetail.newInvoice")}</h4>
+        <label htmlFor="invoice-number" className="sr-only">
+          {t("clientDetail.invoiceNumber")}
+        </label>
         <input
+          id="invoice-number"
           required
           placeholder={t("clientDetail.invoiceNumber")}
           value={number}
           onChange={(e) => setNumber(e.target.value)}
-          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
         {items.map((item, index) => (
           <div key={index} className="flex gap-2 mb-2">
+            <label htmlFor={`invoice-item-desc-${index}`} className="sr-only">
+              {t("clientDetail.description")}
+            </label>
             <input
+              id={`invoice-item-desc-${index}`}
               placeholder={t("clientDetail.description")}
               value={item.description}
               onChange={(e) => updateItem(index, "description", e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
+            <label htmlFor={`invoice-item-amount-${index}`} className="sr-only">
+              {t("clientDetail.amount")}
+            </label>
             <input
+              id={`invoice-item-amount-${index}`}
               placeholder={t("clientDetail.amount")}
               type="number"
               value={item.amount}
               onChange={(e) => updateItem(index, "amount", e.target.value)}
-              className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
           </div>
         ))}
         <button
           type="button"
           onClick={() => setItems([...items, { description: "", amount: "" }])}
-          className="text-sm text-brand-600 mb-3"
+          aria-label={t("clientDetail.addLineItem")}
+          className="text-sm text-brand-600 mb-3 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
           {t("clientDetail.addLineItem")}
         </button>
         <div>
-          <button className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+          <button
+            aria-label={t("clientDetail.createInvoice")}
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
             {t("clientDetail.createInvoice")}
           </button>
         </div>
@@ -499,7 +579,8 @@ function InvoicesTab({ client, project }) {
             </div>
             <button
               onClick={() => downloadPdf(invoice.id)}
-              className="text-brand-700 underline"
+              aria-label={`Download invoice ${invoice.number} as PDF`}
+              className="text-brand-700 underline transition-colors hover:text-brand-900 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
             >
               {t("clientDetail.downloadPdf")}
             </button>
@@ -566,21 +647,32 @@ function ApprovalsTab({ project }) {
         className="border border-gray-200 rounded-lg p-4 mb-6"
       >
         <h4 className="font-medium mb-3">{t("clientDetail.newApproval")}</h4>
+        <label htmlFor="approval-title" className="sr-only">
+          {t("clientDetail.approvalTitle")}
+        </label>
         <input
+          id="approval-title"
           required
           placeholder={t("clientDetail.approvalTitle")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
+        <label htmlFor="approval-description" className="sr-only">
+          {t("clientDetail.approvalDescription")}
+        </label>
         <textarea
+          id="approval-description"
           placeholder={t("clientDetail.approvalDescription")}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
           rows={2}
         />
-        <button className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        <button
+          aria-label={t("clientDetail.createApproval")}
+          className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        >
           {t("clientDetail.createApproval")}
         </button>
       </form>

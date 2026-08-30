@@ -34,7 +34,8 @@
     "submitting": "Signing in...",
     "error": "Invalid email or password.",
     "newHere": "New here?",
-    "createWorkspace": "Create a workspace"
+    "createWorkspace": "Create a workspace",
+    "forgotPassword": "Forgot your password?"
   },
   "register": {
     "title": "Create your workspace",
