@@ -232,6 +232,96 @@ class Approval(models.Model):
         return self.title
 
 
+class Service(models.Model):
+    """A bookable offering - e.g. "Haircut", "Consultation".
+    Defines duration and price; availability is computed from
+    WorkingHours minus existing Bookings.
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="services"
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    duration_minutes = models.PositiveIntegerField()
+    price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class WorkingHours(models.Model):
+    """One weekly recurring availability window per workspace.
+    Multiple rows can exist for the same weekday (e.g. a lunch
+    break splits the day into two windows).
+    """
+
+    class Weekday(models.IntegerChoices):
+        MONDAY = 0, "Monday"
+        TUESDAY = 1, "Tuesday"
+        WEDNESDAY = 2, "Wednesday"
+        THURSDAY = 3, "Thursday"
+        FRIDAY = 4, "Friday"
+        SATURDAY = 5, "Saturday"
+        SUNDAY = 6, "Sunday"
+
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name="working_hours",
+    )
+    weekday = models.IntegerField(choices=Weekday.choices)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    class Meta:
+        ordering = ["weekday", "start_time"]
+
+    def __str__(self):
+        return (
+            f"{self.get_weekday_display()} "
+            f"{self.start_time}-{self.end_time}"
+        )
+
+
+class Booking(models.Model):
+    """A confirmed appointment. MVP keeps this simple - one
+    client, one service, one time slot, no recurrence/groups/
+    resources yet.
+    """
+
+    class Status(models.TextChoices):
+        CONFIRMED = "confirmed", "Confirmed"
+        CANCELLED = "cancelled", "Cancelled"
+        COMPLETED = "completed", "Completed"
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="bookings"
+    )
+    service = models.ForeignKey(
+        Service, on_delete=models.CASCADE, related_name="bookings"
+    )
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name="bookings"
+    )
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.CONFIRMED
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["start_time"]
+
+    def __str__(self):
+        return f"{self.service.name} - {self.client.company_name}"
+
+
 def document_upload_path(instance, filename):
     """Files land under a workspace/project-scoped folder, so uploads
     from different tenants never collide or overwrite each other.

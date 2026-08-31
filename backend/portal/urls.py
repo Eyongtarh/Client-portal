@@ -22,6 +22,15 @@ router.register("tasks", views.TaskViewSet, basename="task")
 router.register(
     "approvals", views.ApprovalViewSet, basename="approval"
 )
+router.register(
+    "services", views.ServiceViewSet, basename="service"
+)
+router.register(
+    "working-hours", views.WorkingHoursViewSet, basename="workinghours"
+)
+router.register(
+    "bookings", views.BookingViewSet, basename="booking"
+)
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),
@@ -49,4 +58,5 @@ urlpatterns = [
         "invoices/<int:pk>/pdf/", views.InvoicePDFView.as_view()
     ),
     path("", include(router.urls)),
+    path("availability/", views.AvailabilityView.as_view()),
 ]

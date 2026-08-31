@@ -11,10 +11,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
+from datetime import datetime, timedelta
 from rest_framework.exceptions import PermissionDenied
 from .models import (
     Approval, Client, Document, Invoice, Message, Milestone, Project,
-    Task,
+    Service, Task, WorkingHours, Booking,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -33,6 +34,9 @@ from .serializers import (
     RegisterSerializer,
     TaskSerializer,
     WorkspaceSerializer,
+    BookingSerializer,
+    ServiceSerializer,
+    WorkingHoursSerializer,
 )
 
 
@@ -409,3 +413,130 @@ class ClientViewSet(viewsets.ModelViewSet):
         if user.role == "owner":
             return Client.objects.filter(workspace=user.workspace)
         return Client.objects.filter(id=user.client_profile.id)
+
+
+class ServiceViewSet(viewsets.ModelViewSet):
+    """Owners manage services; clients get read-only access so
+    they can see what's bookable.
+    """
+    serializer_class = ServiceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "owner":
+            return Service.objects.filter(workspace=user.workspace)
+        return Service.objects.filter(
+            workspace=user.client_profile.workspace, is_active=True
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(workspace=self.request.user.workspace)
+
+
+class WorkingHoursViewSet(viewsets.ModelViewSet):
+    """Owners manage their weekly hours; clients get read-only
+    access (used to render available days before picking a slot).
+    """
+    serializer_class = WorkingHoursSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "owner":
+            return WorkingHours.objects.filter(
+                workspace=user.workspace
+            )
+        return WorkingHours.objects.filter(
+            workspace=user.client_profile.workspace
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(workspace=self.request.user.workspace)
+
+
+class BookingViewSet(viewsets.ModelViewSet):
+    """Owners see/manage every booking in their workspace; clients
+    see only their own and can only ever create bookings for
+    themselves (client is forced here, never trusted from the
+    request body).
+    """
+    serializer_class = BookingSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "owner":
+            return Booking.objects.filter(workspace=user.workspace)
+        return Booking.objects.filter(client=user.client_profile)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role == "owner":
+            serializer.save(workspace=user.workspace)
+        else:
+            serializer.save(
+                workspace=user.client_profile.workspace,
+                client=user.client_profile,
+            )
+
+
+class AvailabilityView(APIView):
+    """GET /api/availability/?service=<id>&date=YYYY-MM-DD
+    Returns open time slots for that service on that date, by
+    taking the workspace's working hours for that weekday and
+    subtracting any already-confirmed bookings.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        service_id = request.query_params.get("service")
+        date_str = request.query_params.get("date")
+        if not service_id or not date_str:
+            return Response(
+                {"detail": "service and date are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user = request.user
+        workspace = (
+            user.workspace
+            if user.role == "owner"
+            else user.client_profile.workspace
+        )
+        service = generics.get_object_or_404(
+            Service, pk=service_id, workspace=workspace
+        )
+        target_date = datetime.strptime(
+            date_str, "%Y-%m-%d"
+        ).date()
+        weekday = target_date.weekday()
+
+        windows = WorkingHours.objects.filter(
+            workspace=workspace, weekday=weekday
+        )
+        existing = Booking.objects.filter(
+            workspace=workspace,
+            status="confirmed",
+            start_time__date=target_date,
+        )
+        slot_length = timedelta(minutes=service.duration_minutes)
+        slots = []
+        for window in windows:
+            cursor = datetime.combine(
+                target_date, window.start_time
+            )
+            window_end = datetime.combine(
+                target_date, window.end_time
+            )
+            while cursor + slot_length <= window_end:
+                slot_end = cursor + slot_length
+                overlaps = any(
+                    cursor < b.end_time.replace(tzinfo=None)
+                    and slot_end > b.start_time.replace(tzinfo=None)
+                    for b in existing
+                )
+                if not overlaps:
+                    slots.append(cursor.strftime("%H:%M"))
+                cursor += slot_length
+
+        return Response({"date": date_str, "slots": slots})

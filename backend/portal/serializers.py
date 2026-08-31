@@ -1,6 +1,7 @@
 from .models import (
     Approval, Client, ClientInvite, Document, Invoice, InvoiceItem,
-    Message, Milestone, Project, Task, User, Workspace,
+    Message, Milestone, Project, Service, Task, User, WorkingHours,
+    Booking, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -321,6 +322,71 @@ class InvoiceSerializer(serializers.ModelSerializer):
                     invoice=instance, **item
                 )
         return instance
+
+
+class ServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = [
+            "id", "workspace", "name", "description",
+            "duration_minutes", "price", "is_active",
+        ]
+        read_only_fields = ["workspace"]
+
+
+class WorkingHoursSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkingHours
+        fields = [
+            "id", "workspace", "weekday", "start_time", "end_time",
+        ]
+        read_only_fields = ["workspace"]
+
+
+class BookingSerializer(serializers.ModelSerializer):
+    """Owner creates bookings for any of their clients; clients
+    create bookings for themselves only (client is forced server
+    -side in the view, never trusted from the request body).
+    """
+    service_name = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Booking
+        fields = [
+            "id", "workspace", "service", "service_name", "client",
+            "client_name", "start_time", "end_time", "status",
+            "notes", "created_at",
+        ]
+        read_only_fields = ["workspace", "end_time"]
+
+    def get_service_name(self, obj):
+        return obj.service.name
+
+    def get_client_name(self, obj):
+        return obj.client.company_name
+
+    def validate(self, attrs):
+        service = attrs.get("service") or self.instance.service
+        start = attrs.get("start_time") or self.instance.start_time
+        from datetime import timedelta
+
+        attrs["end_time"] = start + timedelta(
+            minutes=service.duration_minutes
+        )
+        overlapping = Booking.objects.filter(
+            workspace=service.workspace,
+            status="confirmed",
+            start_time__lt=attrs["end_time"],
+            end_time__gt=start,
+        )
+        if self.instance:
+            overlapping = overlapping.exclude(pk=self.instance.pk)
+        if overlapping.exists():
+            raise serializers.ValidationError(
+                "This time slot is no longer available."
+            )
+        return attrs
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
