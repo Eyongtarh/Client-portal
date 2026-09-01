@@ -119,6 +119,7 @@ function ServicesSection() {
     setPrice("");
     setCapacity("1");
     setShowForm(false);
+    setStatusMsg({ text: "Service created.", type: "success" });
     load();
   }
 
@@ -169,7 +170,10 @@ function ServicesSection() {
       <div className="flex justify-between items-center mb-3">
         <h2 className="font-medium">{t("booking.servicesTitle")}</h2>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            setShowForm(!showForm);
+            setStatusMsg(null);
+          }}
           aria-expanded={showForm}
           aria-label={t("booking.addService")}
           className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
