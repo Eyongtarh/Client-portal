@@ -317,7 +317,6 @@ function BookingSection() {
       return;
     }
     setLoadingSlots(true);
-    setStatusMsg(null);
     setSelectedSlot("");
     try {
       const res = await api.get(
@@ -340,7 +339,7 @@ function BookingSection() {
 
   async function confirmBooking() {
     try {
-      const startTime = `${date}T${selectedSlot}:00`;
+      const startTime = new Date(`${date}T${selectedSlot}:00`).toISOString();
       await api.post("/bookings/", {
         service: selectedService,
         start_time: startTime,
@@ -359,6 +358,7 @@ function BookingSection() {
         ? Object.values(data).flat().join(" ")
         : "Could not create this booking.";
       setStatusMsg({ text: message, type: "error" });
+      loadSlots();
     }
   }
 

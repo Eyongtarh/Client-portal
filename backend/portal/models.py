@@ -302,10 +302,36 @@ class WorkingHours(models.Model):
         )
 
 
+class RecurringSeries(models.Model):
+    """Groups a set of Bookings created together on a weekly
+    repeat, so a client can cancel one occurrence or the whole
+    series. The Bookings themselves still carry all the actual
+    scheduling data - this is just the grouping.
+    """
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name="recurring_series",
+    )
+    service = models.ForeignKey(
+        Service, on_delete=models.CASCADE, related_name="recurring_series"
+    )
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="recurring_series",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.service.name} series ({self.client.company_name})"
+
+
 class Booking(models.Model):
     """A confirmed appointment. Multiple bookings can share the
     same slot up to the service's capacity (see BookingSerializer
-    for the capacity check).
+    for the capacity check). series is set only for bookings
+    created as part of a weekly-recurring set.
     """
 
     class Status(models.TextChoices):
@@ -321,6 +347,13 @@ class Booking(models.Model):
     )
     client = models.ForeignKey(
         Client, on_delete=models.CASCADE, related_name="bookings"
+    )
+    series = models.ForeignKey(
+        RecurringSeries,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bookings",
     )
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()

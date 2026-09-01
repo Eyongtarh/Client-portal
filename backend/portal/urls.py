@@ -59,4 +59,12 @@ urlpatterns = [
     ),
     path("", include(router.urls)),
     path("availability/", views.AvailabilityView.as_view()),
+    path(
+        "recurring-series/",
+        views.RecurringSeriesCreateView.as_view(),
+    ),
+    path(
+        "recurring-series/<int:pk>/cancel/",
+        views.RecurringSeriesCancelView.as_view(),
+    ),
 ]

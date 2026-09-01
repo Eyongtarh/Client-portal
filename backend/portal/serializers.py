@@ -1,7 +1,7 @@
 from .models import (
     Approval, Client, ClientInvite, Document, Invoice, InvoiceItem,
     Message, Milestone, Project, Service, Task, User, WorkingHours,
-    Booking, Workspace,
+    Booking, RecurringSeries, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -359,8 +359,8 @@ class BookingSerializer(serializers.ModelSerializer):
         model = Booking
         fields = [
             "id", "workspace", "service", "service_name", "client",
-            "client_name", "start_time", "end_time", "status",
-            "notes", "created_at",
+            "client_name", "series", "start_time", "end_time",
+            "status", "notes", "created_at",
         ]
         read_only_fields = ["workspace", "end_time"]
 
@@ -397,6 +397,57 @@ class BookingSerializer(serializers.ModelSerializer):
                 "This time slot is fully booked."
             )
         return attrs
+
+
+class RecurringSeriesCreateSerializer(serializers.Serializer):
+    """Creates a RecurringSeries plus a Booking for each week,
+    validating each occurrence the same way a single booking
+    would (past-time, capacity). If any occurrence fails, the
+    whole series is rolled back - so the client never ends up
+    with a partial series.
+    """
+
+    service = serializers.PrimaryKeyRelatedField(
+        queryset=Service.objects.all()
+    )
+    client = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.all(), required=False
+    )
+    start_time = serializers.DateTimeField()
+    occurrences = serializers.IntegerField(min_value=2, max_value=52)
+
+    def create(self, validated_data):
+        from datetime import timedelta
+        from django.db import transaction
+
+        service = validated_data["service"]
+        client = validated_data["client"]
+        first_start = validated_data["start_time"]
+        occurrences = validated_data["occurrences"]
+
+        with transaction.atomic():
+            series = RecurringSeries.objects.create(
+                workspace=service.workspace,
+                service=service,
+                client=client,
+            )
+            bookings = []
+            for week in range(occurrences):
+                start = first_start + timedelta(weeks=week)
+                booking_serializer = BookingSerializer(
+                    data={
+                        "service": service.id,
+                        "start_time": start,
+                    }
+                )
+                booking_serializer.is_valid(raise_exception=True)
+                booking = booking_serializer.save(
+                    workspace=service.workspace,
+                    client=client,
+                    series=series,
+                )
+                bookings.append(booking)
+            return series, bookings
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

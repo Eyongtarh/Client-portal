@@ -16,7 +16,7 @@ from rest_framework.views import APIView
 
 from .models import (
     Approval, Booking, Client, Document, Invoice, Message, Milestone,
-    Project, Service, Task, WorkingHours,
+    Project, RecurringSeries, Service, Task, WorkingHours,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -33,6 +33,7 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     ProjectSerializer,
+    RecurringSeriesCreateSerializer,
     RegisterSerializer,
     ServiceSerializer,
     TaskSerializer,
@@ -522,6 +523,84 @@ class BookingViewSet(viewsets.ModelViewSet):
                 recipient_list=[booking.client.contact_email],
                 fail_silently=True,
             )
+
+
+class RecurringSeriesCreateView(APIView):
+    """POST /api/recurring-series/ - creates a weekly-repeating
+    set of bookings. Owners can book for any client; clients
+    book only for themselves (client is forced here, same
+    pattern as BookingViewSet).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        data = request.data.copy()
+        if user.role == "owner":
+            pass
+        else:
+            data["client"] = user.client_profile.id
+
+        serializer = RecurringSeriesCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        series, bookings = serializer.save()
+
+        first_booking = bookings[0]
+        send_mail(
+            subject=f"Recurring booking confirmed: {series.service.name}",
+            message=(
+                f"Your recurring booking for {series.service.name} "
+                f"is confirmed, starting "
+                f"{first_booking.start_time.strftime('%A %d %B %Y at %H:%M')}"
+                f", repeating weekly for {len(bookings)} weeks."
+                f"\n\nYou can cancel individual sessions or the "
+                f"whole series from your client portal."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[series.client.contact_email],
+            fail_silently=True,
+        )
+
+        return Response(
+            BookingSerializer(bookings, many=True).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class RecurringSeriesCancelView(APIView):
+    """POST /api/recurring-series/<id>/cancel/ - cancels every
+    still-confirmed booking in a series at once.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        user = request.user
+        if user.role == "owner":
+            qs = RecurringSeries.objects.filter(workspace=user.workspace)
+        else:
+            qs = RecurringSeries.objects.filter(
+                client=user.client_profile
+            )
+        series = generics.get_object_or_404(qs, pk=pk)
+
+        bookings = series.bookings.filter(status="confirmed")
+        count = bookings.count()
+        bookings.update(status="cancelled")
+
+        send_mail(
+            subject=f"Recurring booking cancelled: {series.service.name}",
+            message=(
+                f"Your recurring booking series for "
+                f"{series.service.name} has been cancelled "
+                f"({count} remaining session"
+                f"{'s' if count != 1 else ''} removed)."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[series.client.contact_email],
+            fail_silently=True,
+        )
+
+        return Response({"cancelled_count": count})
 
 
 class AvailabilityView(APIView):
