@@ -339,19 +339,27 @@ function BookingSection() {
   }
 
   async function confirmBooking() {
-    const startTime = `${date}T${selectedSlot}:00`;
-    await api.post("/bookings/", {
-      service: selectedService,
-      start_time: startTime,
-    });
-    setStatusMsg({
-      text: t("booking.bookingConfirmed"),
-      type: "success",
-    });
-    setSlots([]);
-    setSelectedSlot("");
-    setDate("");
-    loadMyBookings();
+    try {
+      const startTime = `${date}T${selectedSlot}:00`;
+      await api.post("/bookings/", {
+        service: selectedService,
+        start_time: startTime,
+      });
+      setStatusMsg({
+        text: t("booking.bookingConfirmed"),
+        type: "success",
+      });
+      setSlots([]);
+      setSelectedSlot("");
+      setDate("");
+      loadMyBookings();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data
+        ? Object.values(data).flat().join(" ")
+        : "Could not create this booking.";
+      setStatusMsg({ text: message, type: "error" });
+    }
   }
 
   async function cancelMine(bookingId) {
@@ -368,7 +376,9 @@ function BookingSection() {
 
   return (
     <section className="bg-white border border-brand-100 rounded-xl p-6">
-      <h3 className="font-medium mb-3">{t("booking.bookAppointment")}</h3>
+      <h3 className="font-medium mb-3 text-blue-700">
+        {t("booking.bookAppointment")}
+      </h3>
 
       {statusMsg && (
         <div

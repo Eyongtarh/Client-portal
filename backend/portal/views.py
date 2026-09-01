@@ -1,26 +1,28 @@
 import io
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.core.mail import send_mail
 from django.http import FileResponse
+from django.utils import timezone
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from rest_framework import generics, status, viewsets
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.utils import timezone
-from datetime import datetime, timedelta
-from rest_framework.exceptions import PermissionDenied
+
 from .models import (
-    Approval, Client, Document, Invoice, Message, Milestone, Project,
-    Service, Task, WorkingHours, Booking,
+    Approval, Booking, Client, Document, Invoice, Message, Milestone,
+    Project, Service, Task, WorkingHours,
 )
 from .serializers import (
     AcceptInviteSerializer,
     ApprovalDecisionSerializer,
     ApprovalSerializer,
+    BookingSerializer,
     ClientInviteCreateSerializer,
     ClientSerializer,
     DocumentSerializer,
@@ -32,11 +34,10 @@ from .serializers import (
     PasswordResetRequestSerializer,
     ProjectSerializer,
     RegisterSerializer,
-    TaskSerializer,
-    WorkspaceSerializer,
-    BookingSerializer,
     ServiceSerializer,
+    TaskSerializer,
     WorkingHoursSerializer,
+    WorkspaceSerializer,
 )
 
 
@@ -471,7 +472,9 @@ class BookingViewSet(viewsets.ModelViewSet):
     """Owners see/manage every booking in their workspace; clients
     see only their own and can only ever create bookings for
     themselves (client is forced here, never trusted from the
-    request body).
+    request body). Sends a confirmation email on create and a
+    cancellation email whenever a booking's status changes to
+    cancelled.
     """
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
@@ -485,11 +488,39 @@ class BookingViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         if user.role == "owner":
-            serializer.save(workspace=user.workspace)
+            booking = serializer.save(workspace=user.workspace)
         else:
-            serializer.save(
+            booking = serializer.save(
                 workspace=user.client_profile.workspace,
                 client=user.client_profile,
+            )
+        send_mail(
+            subject=f"Booking confirmed: {booking.service.name}",
+            message=(
+                f"Your booking for {booking.service.name} is "
+                f"confirmed for "
+                f"{booking.start_time.strftime('%A %d %B %Y at %H:%M')}."
+                f"\n\nIf you need to cancel or reschedule, do so "
+                f"from your client portal."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[booking.client.contact_email],
+            fail_silently=True,
+        )
+
+    def perform_update(self, serializer):
+        booking = serializer.save()
+        if booking.status == "cancelled":
+            send_mail(
+                subject=f"Booking cancelled: {booking.service.name}",
+                message=(
+                    f"Your booking for {booking.service.name} on "
+                    f"{booking.start_time.strftime('%A %d %B %Y at %H:%M')}"
+                    f" has been cancelled."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[booking.client.contact_email],
+                fail_silently=True,
             )
 
 

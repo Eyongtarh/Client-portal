@@ -375,6 +375,11 @@ class BookingSerializer(serializers.ModelSerializer):
         start = attrs.get("start_time") or self.instance.start_time
         from datetime import timedelta
 
+        if not self.instance and start < timezone.now():
+            raise serializers.ValidationError(
+                "You cannot book a time in the past."
+            )
+
         attrs["end_time"] = start + timedelta(
             minutes=service.duration_minutes
         )
