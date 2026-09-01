@@ -72,6 +72,8 @@ function ServicesSection() {
   const [durationUnit, setDurationUnit] = useState("minutes");
   const [price, setPrice] = useState("");
   const [capacity, setCapacity] = useState("1");
+  const [newPhoto, setNewPhoto] = useState(null);
+  const [newPhotoPreview, setNewPhotoPreview] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -105,19 +107,28 @@ function ServicesSection() {
       durationUnit === "hours"
         ? Math.round(parseFloat(duration) * 60)
         : parseInt(duration, 10);
-    await api.post("/services/", {
+    const res = await api.post("/services/", {
       name,
       description,
       duration_minutes: minutes,
       price: price || null,
       capacity,
     });
+    if (newPhoto) {
+      const formData = new FormData();
+      formData.append("photo", newPhoto);
+      await api.patch(`/services/${res.data.id}/`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
     setName("");
     setDescription("");
     setDuration("60");
     setDurationUnit("minutes");
     setPrice("");
     setCapacity("1");
+    setNewPhoto(null);
+    setNewPhotoPreview(null);
     setShowForm(false);
     setStatusMsg({ text: "Service created.", type: "success" });
     load();
@@ -253,6 +264,42 @@ function ServicesSection() {
             rows={2}
             className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
           />
+
+          <label
+            className="flex items-center gap-2 mb-2 cursor-pointer w-fit"
+            title="Add a photo for this service"
+          >
+            {newPhotoPreview ? (
+              <img
+                src={newPhotoPreview}
+                alt="Service photo preview"
+                className="w-12 h-12 rounded-lg object-cover border border-gray-200"
+              />
+            ) : (
+              <div
+                aria-hidden="true"
+                className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400 transition-colors hover:bg-gray-100"
+              >
+                +
+              </div>
+            )}
+            <span className="text-xs text-gray-500">
+              {newPhotoPreview ? "Change photo" : "Add photo (optional)"}
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setNewPhoto(file);
+                setNewPhotoPreview(URL.createObjectURL(file));
+              }}
+              aria-label="Add photo for this service"
+            />
+          </label>
+
           <div className="flex gap-2 mb-2">
             <label htmlFor="service-duration" className="sr-only">
               {t("booking.serviceDuration")}
