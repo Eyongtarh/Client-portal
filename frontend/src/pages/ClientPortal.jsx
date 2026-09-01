@@ -1,5 +1,6 @@
 // What a client sees when they log in: their project's
-// progress, documents, messages, invoices, and approvals.
+// progress, documents, messages, invoices, approvals, and
+// appointment booking.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
@@ -84,6 +85,7 @@ export default function ClientPortal() {
         </div>
       </header>
       <main className="max-w-2xl mx-auto px-8 py-8 space-y-6">
+        <BookingSection />
         {!project && (
           <p className="text-gray-500">{t("clientPortal.noProjectYet")}</p>
         )}
@@ -279,5 +281,237 @@ export default function ClientPortal() {
         )}
       </main>
     </div>
+  );
+}
+
+function BookingSection() {
+  const { t } = useTranslation();
+  const [services, setServices] = useState([]);
+  const [selectedService, setSelectedService] = useState("");
+  const [date, setDate] = useState("");
+  const [slots, setSlots] = useState([]);
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [myBookings, setMyBookings] = useState([]);
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [currency, setCurrency] = useState("EUR");
+
+  async function loadServices() {
+    const res = await api.get("/services/");
+    setServices(res.data);
+    const workspaceRes = await api.get("/workspace/");
+    setCurrency(workspaceRes.data.currency);
+  }
+  async function loadMyBookings() {
+    const res = await api.get("/bookings/");
+    setMyBookings(res.data);
+  }
+  useEffect(() => {
+    loadServices();
+    loadMyBookings();
+  }, []);
+
+  async function loadSlots() {
+    if (!selectedService || !date) {
+      setSlots([]);
+      return;
+    }
+    setLoadingSlots(true);
+    setStatusMsg(null);
+    setSelectedSlot("");
+    try {
+      const res = await api.get(
+        `/availability/?service=${selectedService}&date=${date}`,
+      );
+      setSlots(res.data.slots);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }
+  useEffect(() => {
+    loadSlots();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedService, date]);
+
+  function selectSlot(time) {
+    setSelectedSlot(time);
+    setStatusMsg(null);
+  }
+
+  async function confirmBooking() {
+    const startTime = `${date}T${selectedSlot}:00`;
+    await api.post("/bookings/", {
+      service: selectedService,
+      start_time: startTime,
+    });
+    setStatusMsg({
+      text: t("booking.bookingConfirmed"),
+      type: "success",
+    });
+    setSlots([]);
+    setSelectedSlot("");
+    setDate("");
+    loadMyBookings();
+  }
+
+  async function cancelMine(bookingId) {
+    if (!window.confirm("Cancel this booking?")) return;
+    await api.patch(`/bookings/${bookingId}/`, {
+      status: "cancelled",
+    });
+    setStatusMsg({ text: "Booking cancelled.", type: "error" });
+    loadMyBookings();
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const confirmedBookings = myBookings.filter((b) => b.status === "confirmed");
+
+  return (
+    <section className="bg-white border border-brand-100 rounded-xl p-6">
+      <h3 className="font-medium mb-3">{t("booking.bookAppointment")}</h3>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {statusMsg.text}
+        </div>
+      )}
+
+      <p className="text-xs text-gray-500 mb-2">{t("booking.selectService")}</p>
+      <div className="space-y-2 mb-3">
+        {services.map((service) => (
+          <button
+            key={service.id}
+            onClick={() => setSelectedService(String(service.id))}
+            aria-pressed={selectedService === String(service.id)}
+            aria-label={`Select ${service.name}`}
+            className={
+              selectedService === String(service.id)
+                ? "w-full flex items-start gap-3 p-3 border-2 border-brand-600 bg-brand-50 rounded-lg text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                : "w-full flex items-start gap-3 p-3 border border-gray-200 rounded-lg text-left transition-colors hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            }
+          >
+            {service.photo ? (
+              <img
+                src={service.photo}
+                alt={`${service.name} photo`}
+                className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0"
+              />
+            ) : (
+              <div
+                aria-hidden="true"
+                className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 shrink-0"
+              />
+            )}
+            <div>
+              <p className="text-sm font-medium">
+                {service.name}
+                {" \u00b7 "}
+                {service.duration_minutes} min
+                {service.price && ` \u00b7 ${service.price} ${currency}`}
+              </p>
+              {service.description && (
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {service.description}
+                </p>
+              )}
+            </div>
+          </button>
+        ))}
+        {services.length === 0 && (
+          <p className="text-gray-500 text-sm">{t("booking.noServices")}</p>
+        )}
+      </div>
+
+      <label htmlFor="book-date" className="block text-xs text-gray-500 mb-1">
+        {t("booking.selectDate")}
+      </label>
+      <input
+        id="book-date"
+        type="date"
+        min={today}
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+      />
+
+      {selectedService && date && (
+        <div className="mb-4">
+          <p className="text-xs text-gray-500 mb-2">
+            {t("booking.availableSlots")}
+          </p>
+          {loadingSlots && (
+            <p className="text-sm text-gray-500">{t("booking.loadingSlots")}</p>
+          )}
+          {!loadingSlots && slots.length === 0 && (
+            <p className="text-sm text-gray-500">{t("booking.noSlots")}</p>
+          )}
+          {!loadingSlots && slots.length > 0 && (
+            <div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {slots.map((slot) => (
+                  <button
+                    key={slot}
+                    onClick={() => selectSlot(slot)}
+                    aria-pressed={selectedSlot === slot}
+                    aria-label={`Select ${slot}`}
+                    className={
+                      selectedSlot === slot
+                        ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                        : "px-3 py-1.5 rounded-lg text-sm border border-brand-200 transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    }
+                  >
+                    {slot}
+                  </button>
+                ))}
+              </div>
+              {selectedSlot && (
+                <button
+                  onClick={confirmBooking}
+                  aria-label={t("booking.confirmBooking")}
+                  className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("booking.confirmBooking")} ({selectedSlot})
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <h4 className="text-xs text-gray-500 mb-2 mt-4">
+        {t("booking.bookingsTitle")}
+      </h4>
+      <ul className="divide-y divide-gray-100">
+        {confirmedBookings.map((booking) => (
+          <li
+            key={booking.id}
+            className="py-2 flex justify-between items-center text-sm"
+          >
+            <span>
+              {booking.service_name}
+              {" \u00b7 "}
+              {new Date(booking.start_time).toLocaleString()}
+            </span>
+            <button
+              onClick={() => cancelMine(booking.id)}
+              aria-label={`Cancel booking for ${booking.service_name}`}
+              className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+            >
+              {t("booking.cancelBooking")}
+            </button>
+          </li>
+        ))}
+        {confirmedBookings.length === 0 && (
+          <p className="text-gray-500 text-sm">{t("booking.noBookings")}</p>
+        )}
+      </ul>
+    </section>
   );
 }

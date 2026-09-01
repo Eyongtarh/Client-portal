@@ -115,14 +115,26 @@ class AcceptInviteView(generics.CreateAPIView):
 
 
 class WorkspaceUpdateView(generics.RetrieveUpdateAPIView):
-    """GET/PATCH /api/workspace/ - owner views/updates their own
-    workspace, including uploading a logo.
+    """GET /api/workspace/ - owner or client views their
+    workspace (clients need this for currency/logo when
+    booking). PATCH /api/workspace/ - owner-only update,
+    including uploading a logo.
     """
     serializer_class = WorkspaceSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        return self.request.user.workspace
+        user = self.request.user
+        if user.role == "owner":
+            return user.workspace
+        return user.client_profile.workspace
+
+    def update(self, request, *args, **kwargs):
+        if request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the owner can update the workspace."
+            )
+        return super().update(request, *args, **kwargs)
 
 
 class PasswordResetRequestView(generics.CreateAPIView):

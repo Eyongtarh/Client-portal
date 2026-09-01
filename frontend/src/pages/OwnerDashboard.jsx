@@ -105,6 +105,13 @@ export default function OwnerDashboard() {
           </h1>
         </div>
         <div className="flex items-center gap-4">
+          <Link
+            to="/booking"
+            aria-label="Manage bookings"
+            className="text-sm text-white bg-brand-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            Booking
+          </Link>
           <LanguageToggle />
           <button
             onClick={logout}

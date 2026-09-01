@@ -12,6 +12,7 @@ import AcceptInvite from "./pages/AcceptInvite.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import Landing from "./pages/Landing.jsx";
+import Booking from "./pages/Booking.jsx";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -35,6 +36,16 @@ export default function App() {
       <Route
         path="/clients/:clientId"
         element={user ? <ClientDetail /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/booking"
+        element={
+          user && user.role === "owner" ? (
+            <Booking />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
       />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />

@@ -25,7 +25,7 @@ class ClientSerializer(serializers.ModelSerializer):
 class WorkspaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workspace
-        fields = ["id", "name", "slug", "logo"]
+        fields = ["id", "name", "slug", "logo", "currency"]
         read_only_fields = ["id", "slug"]
 
 
@@ -203,7 +203,6 @@ class ProjectSerializer(serializers.ModelSerializer):
     the frontend gets everything it needs for a project card/page in
     one request.
     """
-
     milestones = MilestoneSerializer(many=True, read_only=True)
     progress_percent = serializers.SerializerMethodField()
     client_name = serializers.SerializerMethodField()
@@ -328,7 +327,7 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = [
-            "id", "workspace", "name", "description",
+            "id", "workspace", "name", "description", "photo",
             "duration_minutes", "price", "is_active",
         ]
         read_only_fields = ["workspace"]
@@ -347,9 +346,14 @@ class BookingSerializer(serializers.ModelSerializer):
     """Owner creates bookings for any of their clients; clients
     create bookings for themselves only (client is forced server
     -side in the view, never trusted from the request body).
+    client is required=False here because clients booking for
+    themselves never send it - the view fills it in.
     """
     service_name = serializers.SerializerMethodField()
     client_name = serializers.SerializerMethodField()
+    client = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.all(), required=False
+    )
 
     class Meta:
         model = Booking

@@ -40,6 +40,7 @@ class Workspace(models.Model):
     logo = models.ImageField(
         upload_to=logo_upload_path, null=True, blank=True
     )
+    currency = models.CharField(max_length=5, default="EUR")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -232,6 +233,14 @@ class Approval(models.Model):
         return self.title
 
 
+def service_photo_upload_path(instance, filename):
+    """Service photos live under a per-workspace folder."""
+    return (
+        f"workspaces/{instance.workspace_id}/"
+        f"services/{filename}"
+    )
+
+
 class Service(models.Model):
     """A bookable offering - e.g. "Haircut", "Consultation".
     Defines duration and price; availability is computed from
@@ -242,6 +251,9 @@ class Service(models.Model):
     )
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    photo = models.ImageField(
+        upload_to=service_photo_upload_path, null=True, blank=True
+    )
     duration_minutes = models.PositiveIntegerField()
     price = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
