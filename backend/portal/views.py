@@ -528,7 +528,8 @@ class AvailabilityView(APIView):
     """GET /api/availability/?service=<id>&date=YYYY-MM-DD
     Returns open time slots for that service on that date, by
     taking the workspace's working hours for that weekday and
-    subtracting any already-confirmed bookings.
+    subtracting bookings for that specific service against its
+    capacity (not just any overlap), and excluding past times.
     """
     permission_classes = [IsAuthenticated]
 
@@ -559,10 +560,14 @@ class AvailabilityView(APIView):
         )
         existing = Booking.objects.filter(
             workspace=workspace,
+            service=service,
             status="confirmed",
             start_time__date=target_date,
         )
         slot_length = timedelta(minutes=service.duration_minutes)
+        now_naive = timezone.localtime(timezone.now()).replace(
+            tzinfo=None
+        )
         slots = []
         for window in windows:
             cursor = datetime.combine(
@@ -573,12 +578,15 @@ class AvailabilityView(APIView):
             )
             while cursor + slot_length <= window_end:
                 slot_end = cursor + slot_length
-                overlaps = any(
-                    cursor < b.end_time.replace(tzinfo=None)
-                    and slot_end > b.start_time.replace(tzinfo=None)
+                overlap_count = sum(
+                    1
                     for b in existing
+                    if cursor < b.end_time.replace(tzinfo=None)
+                    and slot_end > b.start_time.replace(tzinfo=None)
                 )
-                if not overlaps:
+                in_the_past = cursor < now_naive
+                is_full = overlap_count >= service.capacity
+                if not is_full and not in_the_past:
                     slots.append(cursor.strftime("%H:%M"))
                 cursor += slot_length
 

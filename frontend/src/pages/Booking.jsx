@@ -1,8 +1,8 @@
 // Owner's booking management page: create services (with a
-// photo, description, free-text workspace currency, and
-// duration in minutes or hours), set weekly working hours
-// (with remove), and see upcoming bookings (with cancel
-// confirmation and a status message).
+// photo, description, free-text workspace currency, max per
+// slot capacity, and duration in minutes or hours), set weekly
+// working hours (with remove), and see upcoming bookings (with
+// cancel confirmation and a status message).
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -70,6 +70,7 @@ function ServicesSection() {
   const [duration, setDuration] = useState("60");
   const [durationUnit, setDurationUnit] = useState("minutes");
   const [price, setPrice] = useState("");
+  const [capacity, setCapacity] = useState("1");
 
   async function load() {
     const res = await api.get("/services/");
@@ -102,12 +103,14 @@ function ServicesSection() {
       description,
       duration_minutes: minutes,
       price: price || null,
+      capacity,
     });
     setName("");
     setDescription("");
     setDuration("60");
     setDurationUnit("minutes");
     setPrice("");
+    setCapacity("1");
     setShowForm(false);
     load();
   }
@@ -232,6 +235,19 @@ function ServicesSection() {
               onChange={(e) => setPrice(e.target.value)}
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
+            <label htmlFor="service-capacity" className="sr-only">
+              Max per slot
+            </label>
+            <input
+              id="service-capacity"
+              type="number"
+              min="1"
+              title="Maximum clients per time slot"
+              placeholder="Max per slot"
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
           </div>
           <button
             aria-label={t("booking.createService")}
@@ -276,6 +292,8 @@ function ServicesSection() {
               {" \u00b7 "}
               {service.duration_minutes} min
               {service.price && ` \u00b7 ${service.price} ${currency}`}
+              {service.capacity > 1 &&
+                ` \u00b7 up to ${service.capacity} per slot`}
               {service.description && (
                 <p className="text-gray-500 mt-0.5">{service.description}</p>
               )}

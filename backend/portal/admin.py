@@ -1,6 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Client, ClientInvite, User, Workspace
+from .models import (
+    Client, ClientInvite, User, Workspace, Service, Booking,
+    WorkingHours,
+)
 
 
 @admin.register(User)
@@ -24,3 +27,6 @@ class ClientInviteAdmin(admin.ModelAdmin):
 
 admin.site.register(Workspace)
 admin.site.register(Client)
+admin.site.register(Service)
+admin.site.register(Booking)
+admin.site.register(WorkingHours)

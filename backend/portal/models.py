@@ -244,7 +244,9 @@ def service_photo_upload_path(instance, filename):
 class Service(models.Model):
     """A bookable offering - e.g. "Haircut", "Consultation".
     Defines duration and price; availability is computed from
-    WorkingHours minus existing Bookings.
+    WorkingHours minus existing Bookings. capacity is how many
+    clients can book the same time slot - 1 for a normal one-
+    on-one appointment, higher for a class or group session.
     """
     workspace = models.ForeignKey(
         Workspace, on_delete=models.CASCADE, related_name="services"
@@ -258,6 +260,7 @@ class Service(models.Model):
     price = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
+    capacity = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -300,9 +303,9 @@ class WorkingHours(models.Model):
 
 
 class Booking(models.Model):
-    """A confirmed appointment. MVP keeps this simple - one
-    client, one service, one time slot, no recurrence/groups/
-    resources yet.
+    """A confirmed appointment. Multiple bookings can share the
+    same slot up to the service's capacity (see BookingSerializer
+    for the capacity check).
     """
 
     class Status(models.TextChoices):

@@ -328,7 +328,7 @@ class ServiceSerializer(serializers.ModelSerializer):
         model = Service
         fields = [
             "id", "workspace", "name", "description", "photo",
-            "duration_minutes", "price", "is_active",
+            "duration_minutes", "price", "capacity", "is_active",
         ]
         read_only_fields = ["workspace"]
 
@@ -385,15 +385,16 @@ class BookingSerializer(serializers.ModelSerializer):
         )
         overlapping = Booking.objects.filter(
             workspace=service.workspace,
+            service=service,
             status="confirmed",
             start_time__lt=attrs["end_time"],
             end_time__gt=start,
         )
         if self.instance:
             overlapping = overlapping.exclude(pk=self.instance.pk)
-        if overlapping.exists():
+        if overlapping.count() >= service.capacity:
             raise serializers.ValidationError(
-                "This time slot is no longer available."
+                "This time slot is fully booked."
             )
         return attrs
 
