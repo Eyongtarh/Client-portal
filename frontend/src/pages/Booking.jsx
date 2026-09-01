@@ -1,8 +1,9 @@
-// Owner's booking management page: create services (with a
-// photo, description, free-text workspace currency, max per
-// slot capacity, and duration in minutes or hours), set weekly
-// working hours (with remove), and see upcoming bookings (with
-// cancel confirmation and a status message).
+// Owner's booking management page: create, edit, and delete
+// services (with a photo, description, free-text workspace
+// currency, max per slot capacity, and duration in minutes or
+// hours), set weekly working hours (with remove), and see
+// upcoming bookings (with cancel confirmation and a status
+// message).
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -71,6 +72,12 @@ function ServicesSection() {
   const [durationUnit, setDurationUnit] = useState("minutes");
   const [price, setPrice] = useState("");
   const [capacity, setCapacity] = useState("1");
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editCapacity, setEditCapacity] = useState("1");
+  const [statusMsg, setStatusMsg] = useState(null);
 
   async function load() {
     const res = await api.get("/services/");
@@ -125,6 +132,38 @@ function ServicesSection() {
     load();
   }
 
+  function startEdit(service) {
+    setEditingId(service.id);
+    setEditName(service.name);
+    setEditDescription(service.description || "");
+    setEditPrice(service.price || "");
+    setEditCapacity(String(service.capacity));
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(serviceId) {
+    await api.patch(`/services/${serviceId}/`, {
+      name: editName,
+      description: editDescription,
+      price: editPrice || null,
+      capacity: editCapacity,
+    });
+    setEditingId(null);
+    setStatusMsg({ text: "Service updated.", type: "success" });
+    load();
+  }
+
+  async function deleteService(serviceId, serviceName) {
+    if (!window.confirm(`Delete "${serviceName}"? This cannot be undone.`))
+      return;
+    await api.delete(`/services/${serviceId}/`);
+    setStatusMsg({ text: `"${serviceName}" deleted.`, type: "error" });
+    load();
+  }
+
   return (
     <section className="bg-white border border-brand-100 rounded-xl p-6">
       <div className="flex justify-between items-center mb-3">
@@ -138,6 +177,19 @@ function ServicesSection() {
           {t("booking.addService")}
         </button>
       </div>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {statusMsg.text}
+        </div>
+      )}
 
       <div className="mb-4">
         <label
@@ -260,44 +312,137 @@ function ServicesSection() {
 
       <ul className="divide-y divide-gray-100">
         {services.map((service) => (
-          <li key={service.id} className="py-3 flex items-start gap-3 text-sm">
-            <label
-              className="shrink-0 cursor-pointer rounded-lg focus-within:ring-2 focus-within:ring-brand-400"
-              title="Upload or change service photo"
-            >
-              {service.photo ? (
-                <img
-                  src={service.photo}
-                  alt={`${service.name} photo`}
-                  className="w-12 h-12 rounded-lg object-cover border border-gray-200 transition-opacity hover:opacity-80"
+          <li key={service.id} className="py-3 text-sm">
+            {editingId === service.id ? (
+              <div className="border border-brand-200 rounded-lg p-3">
+                <label htmlFor={`edit-name-${service.id}`} className="sr-only">
+                  Name
+                </label>
+                <input
+                  id={`edit-name-${service.id}`}
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                 />
-              ) : (
-                <div
-                  aria-hidden="true"
-                  className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400 transition-colors hover:bg-gray-100"
-                >
-                  +
+                <label htmlFor={`edit-desc-${service.id}`} className="sr-only">
+                  Description
+                </label>
+                <textarea
+                  id={`edit-desc-${service.id}`}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={2}
+                  className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <div className="flex gap-2 mb-2">
+                  <label
+                    htmlFor={`edit-price-${service.id}`}
+                    className="sr-only"
+                  >
+                    Price
+                  </label>
+                  <input
+                    id={`edit-price-${service.id}`}
+                    type="number"
+                    placeholder={`Price (${currency})`}
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                  <label
+                    htmlFor={`edit-capacity-${service.id}`}
+                    className="sr-only"
+                  >
+                    Max per slot
+                  </label>
+                  <input
+                    id={`edit-capacity-${service.id}`}
+                    type="number"
+                    min="1"
+                    placeholder="Max per slot"
+                    value={editCapacity}
+                    onChange={(e) => setEditCapacity(e.target.value)}
+                    className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
                 </div>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => onPhotoChange(service.id, e.target.files[0])}
-                aria-label={`Upload photo for ${service.name}`}
-              />
-            </label>
-            <div>
-              <span className="font-medium">{service.name}</span>
-              {" \u00b7 "}
-              {service.duration_minutes} min
-              {service.price && ` \u00b7 ${service.price} ${currency}`}
-              {service.capacity > 1 &&
-                ` \u00b7 up to ${service.capacity} per slot`}
-              {service.description && (
-                <p className="text-gray-500 mt-0.5">{service.description}</p>
-              )}
-            </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => saveEdit(service.id)}
+                    aria-label="Save changes"
+                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    aria-label="Cancel editing"
+                    className="text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3">
+                <label
+                  className="shrink-0 cursor-pointer rounded-lg focus-within:ring-2 focus-within:ring-brand-400"
+                  title="Upload or change service photo"
+                >
+                  {service.photo ? (
+                    <img
+                      src={service.photo}
+                      alt={`${service.name} photo`}
+                      className="w-12 h-12 rounded-lg object-cover border border-gray-200 transition-opacity hover:opacity-80"
+                    />
+                  ) : (
+                    <div
+                      aria-hidden="true"
+                      className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400 transition-colors hover:bg-gray-100"
+                    >
+                      +
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      onPhotoChange(service.id, e.target.files[0])
+                    }
+                    aria-label={`Upload photo for ${service.name}`}
+                  />
+                </label>
+                <div className="flex-1">
+                  <span className="font-medium">{service.name}</span>
+                  {" \u00b7 "}
+                  {service.duration_minutes} min
+                  {service.price && ` \u00b7 ${service.price} ${currency}`}
+                  {service.capacity > 1 &&
+                    ` \u00b7 up to ${service.capacity} per slot`}
+                  {service.description && (
+                    <p className="text-gray-500 mt-0.5">
+                      {service.description}
+                    </p>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => startEdit(service)}
+                      aria-label={`Edit ${service.name}`}
+                      className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteService(service.id, service.name)}
+                      aria-label={`Delete ${service.name}`}
+                      className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </li>
         ))}
         {services.length === 0 && (
