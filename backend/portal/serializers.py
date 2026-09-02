@@ -25,7 +25,9 @@ class ClientSerializer(serializers.ModelSerializer):
 class WorkspaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Workspace
-        fields = ["id", "name", "slug", "logo", "currency"]
+        fields = [
+            "id", "name", "slug", "logo", "currency", "timezone",
+        ]
         read_only_fields = ["id", "slug"]
 
 

@@ -1,9 +1,9 @@
 // Owner's booking management page: create, edit, and delete
 // services (with a photo, description, free-text workspace
-// currency, max per slot capacity, and duration in minutes or
-// hours), set weekly working hours (with remove), and see
-// upcoming bookings (with cancel confirmation and a status
-// message).
+// currency, timezone, max per slot capacity, and duration in
+// minutes or hours), set weekly working hours (with remove),
+// and see upcoming bookings (with cancel confirmation and a
+// status message).
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -65,6 +65,7 @@ function ServicesSection() {
   const [services, setServices] = useState([]);
   const [workspace, setWorkspace] = useState(null);
   const [currency, setCurrency] = useState("");
+  const [timezoneValue, setTimezoneValue] = useState("UTC");
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -89,6 +90,7 @@ function ServicesSection() {
     const res = await api.get("/workspace/");
     setWorkspace(res.data);
     setCurrency(res.data.currency);
+    setTimezoneValue(res.data.timezone);
   }
   useEffect(() => {
     load();
@@ -98,6 +100,13 @@ function ServicesSection() {
   async function onCurrencyBlur() {
     if (!currency || currency === workspace?.currency) return;
     const res = await api.patch("/workspace/", { currency });
+    setWorkspace(res.data);
+  }
+
+  async function onTimezoneChange(e) {
+    const value = e.target.value;
+    setTimezoneValue(value);
+    const res = await api.patch("/workspace/", { timezone: value });
     setWorkspace(res.data);
   }
 
@@ -206,35 +215,63 @@ function ServicesSection() {
         </div>
       )}
 
-      <div className="mb-4">
-        <label
-          htmlFor="workspace-currency"
-          className="block text-xs text-gray-500 mb-1"
-        >
-          Currency (e.g. EUR, USD, SEK)
-        </label>
-        <input
-          id="workspace-currency"
-          list="currency-suggestions"
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-          onBlur={onCurrencyBlur}
-          maxLength={5}
-          placeholder={workspace?.currency || "EUR"}
-          className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm uppercase transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
-        />
-        <datalist id="currency-suggestions">
-          <option value="EUR" />
-          <option value="USD" />
-          <option value="GBP" />
-          <option value="SEK" />
-          <option value="NOK" />
-          <option value="DKK" />
-          <option value="CHF" />
-          <option value="CAD" />
-          <option value="AUD" />
-          <option value="XAF" />
-        </datalist>
+      <div className="flex flex-wrap gap-4 mb-4">
+        <div>
+          <label
+            htmlFor="workspace-currency"
+            className="block text-xs text-gray-500 mb-1"
+          >
+            Currency (e.g. EUR, USD, SEK)
+          </label>
+          <input
+            id="workspace-currency"
+            list="currency-suggestions"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+            onBlur={onCurrencyBlur}
+            maxLength={5}
+            placeholder={workspace?.currency || "EUR"}
+            className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm uppercase transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+          <datalist id="currency-suggestions">
+            <option value="EUR" />
+            <option value="USD" />
+            <option value="GBP" />
+            <option value="SEK" />
+            <option value="NOK" />
+            <option value="DKK" />
+            <option value="CHF" />
+            <option value="CAD" />
+            <option value="AUD" />
+            <option value="XAF" />
+          </datalist>
+        </div>
+
+        <div>
+          <label
+            htmlFor="workspace-timezone"
+            className="block text-xs text-gray-500 mb-1"
+          >
+            Timezone
+          </label>
+          <select
+            id="workspace-timezone"
+            value={timezoneValue}
+            onChange={onTimezoneChange}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          >
+            <option value="UTC">UTC</option>
+            <option value="Europe/Stockholm">Europe/Stockholm</option>
+            <option value="Europe/London">Europe/London</option>
+            <option value="Europe/Paris">Europe/Paris</option>
+            <option value="Europe/Berlin">Europe/Berlin</option>
+            <option value="Africa/Douala">Africa/Douala</option>
+            <option value="Africa/Lagos">Africa/Lagos</option>
+            <option value="America/New_York">America/New_York</option>
+            <option value="America/Los_Angeles">America/Los_Angeles</option>
+            <option value="Asia/Dubai">Asia/Dubai</option>
+          </select>
+        </div>
       </div>
 
       {showForm && (

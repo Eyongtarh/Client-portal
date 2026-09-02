@@ -1,5 +1,6 @@
 import io
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -605,10 +606,9 @@ class RecurringSeriesCancelView(APIView):
 
 class AvailabilityView(APIView):
     """GET /api/availability/?service=<id>&date=YYYY-MM-DD
-    Returns open time slots for that service on that date, by
-    taking the workspace's working hours for that weekday and
-    subtracting bookings for that specific service against its
-    capacity (not just any overlap), and excluding past times.
+    Returns open time slots for that service on that date, using
+    the workspace's own timezone (not the server's) for working
+    hours, capacity checks, and excluding past times.
     """
     permission_classes = [IsAuthenticated]
 
@@ -629,6 +629,7 @@ class AvailabilityView(APIView):
         service = generics.get_object_or_404(
             Service, pk=service_id, workspace=workspace
         )
+        tz = ZoneInfo(workspace.timezone)
         target_date = datetime.strptime(
             date_str, "%Y-%m-%d"
         ).date()
@@ -637,14 +638,25 @@ class AvailabilityView(APIView):
         windows = WorkingHours.objects.filter(
             workspace=workspace, weekday=weekday
         )
+
+        # Query a full local day's worth of UTC range, using the
+        # workspace's own timezone - not the server's - so
+        # bookings near local midnight aren't missed or double-
+        # counted.
+        day_start_local = datetime.combine(
+            target_date, datetime.min.time(), tzinfo=tz
+        )
+        day_end_local = day_start_local + timedelta(days=1)
         existing = Booking.objects.filter(
             workspace=workspace,
             service=service,
             status="confirmed",
-            start_time__date=target_date,
+            start_time__gte=day_start_local,
+            start_time__lt=day_end_local,
         )
+
         slot_length = timedelta(minutes=service.duration_minutes)
-        now_naive = timezone.localtime(timezone.now()).replace(
+        now_local = timezone.now().astimezone(tz).replace(
             tzinfo=None
         )
         slots = []
@@ -660,10 +672,14 @@ class AvailabilityView(APIView):
                 overlap_count = sum(
                     1
                     for b in existing
-                    if cursor < b.end_time.replace(tzinfo=None)
-                    and slot_end > b.start_time.replace(tzinfo=None)
+                    if cursor
+                    < b.end_time.astimezone(tz).replace(tzinfo=None)
+                    and slot_end
+                    > b.start_time.astimezone(tz).replace(
+                        tzinfo=None
+                    )
                 )
-                in_the_past = cursor < now_naive
+                in_the_past = cursor < now_local
                 is_full = overlap_count >= service.capacity
                 if not is_full and not in_the_past:
                     slots.append(cursor.strftime("%H:%M"))

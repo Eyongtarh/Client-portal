@@ -31,7 +31,13 @@
     "noSlots": "Aucun horaire disponible \u00e0 cette date.",
     "confirmBooking": "Confirmer le rendez-vous",
     "bookingConfirmed": "Rendez-vous confirm\u00e9 !",
-    "loadingSlots": "Chargement des horaires..."
+    "loadingSlots": "Chargement des horaires...",
+    "repeatWeekly": "R\u00e9p\u00e9ter chaque semaine",
+    "numberOfWeeks": "Nombre de semaines",
+    "recurringBookingConfirmed": "R\u00e9servation r\u00e9currente confirm\u00e9e !",
+    "cancelThisOne": "Annuler celle-ci",
+    "cancelWholeSeries": "Annuler toute la s\u00e9rie",
+    "partOfSeries": "Fait partie d'une s\u00e9rie r\u00e9currente"
   },
   "landing": {
     "signIn": "Se connecter",

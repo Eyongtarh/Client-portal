@@ -31,7 +31,13 @@
     "noSlots": "No available times on this date.",
     "confirmBooking": "Confirm booking",
     "bookingConfirmed": "Booking confirmed!",
-    "loadingSlots": "Loading available times..."
+    "loadingSlots": "Loading available times...",
+    "repeatWeekly": "Repeat weekly",
+    "numberOfWeeks": "Number of weeks",
+    "recurringBookingConfirmed": "Recurring booking confirmed!",
+    "cancelThisOne": "Cancel this one",
+    "cancelWholeSeries": "Cancel whole series",
+    "partOfSeries": "Part of a recurring series"
   },
   "landing": {
     "signIn": "Sign in",

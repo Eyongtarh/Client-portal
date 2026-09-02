@@ -30,7 +30,10 @@ class Workspace(models.Model):
     """One workspace per business/freelancer. Everything else - clients,
     projects, bookings, invoices - hangs off this. This is what makes
     the app multi-tenant: every query gets scoped to a workspace so one
-    business never sees another's data.
+    business never sees another's data. timezone is an IANA name (e.g.
+    "Europe/Stockholm") and drives working-hours/availability math -
+    it's the business's actual location, independent of the server's
+    own clock.
     """
     owner = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name="workspace"
@@ -41,6 +44,7 @@ class Workspace(models.Model):
         upload_to=logo_upload_path, null=True, blank=True
     )
     currency = models.CharField(max_length=5, default="EUR")
+    timezone = models.CharField(max_length=50, default="UTC")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

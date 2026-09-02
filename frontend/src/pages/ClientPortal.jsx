@@ -1,6 +1,6 @@
 // What a client sees when they log in: their project's
 // progress, documents, messages, invoices, approvals, and
-// appointment booking.
+// appointment booking (including weekly-repeating bookings).
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
@@ -295,6 +295,8 @@ function BookingSection() {
   const [myBookings, setMyBookings] = useState([]);
   const [statusMsg, setStatusMsg] = useState(null);
   const [currency, setCurrency] = useState("EUR");
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
+  const [numberOfWeeks, setNumberOfWeeks] = useState("4");
 
   async function loadServices() {
     const res = await api.get("/services/");
@@ -340,17 +342,31 @@ function BookingSection() {
   async function confirmBooking() {
     try {
       const startTime = new Date(`${date}T${selectedSlot}:00`).toISOString();
-      await api.post("/bookings/", {
-        service: selectedService,
-        start_time: startTime,
-      });
-      setStatusMsg({
-        text: t("booking.bookingConfirmed"),
-        type: "success",
-      });
+      if (repeatWeekly) {
+        await api.post("/recurring-series/", {
+          service: selectedService,
+          start_time: startTime,
+          occurrences: parseInt(numberOfWeeks, 10),
+        });
+        setStatusMsg({
+          text: t("booking.recurringBookingConfirmed"),
+          type: "success",
+        });
+      } else {
+        await api.post("/bookings/", {
+          service: selectedService,
+          start_time: startTime,
+        });
+        setStatusMsg({
+          text: t("booking.bookingConfirmed"),
+          type: "success",
+        });
+      }
       setSlots([]);
       setSelectedSlot("");
       setDate("");
+      setRepeatWeekly(false);
+      setNumberOfWeeks("4");
       loadMyBookings();
     } catch (err) {
       const data = err.response?.data;
@@ -368,6 +384,13 @@ function BookingSection() {
       status: "cancelled",
     });
     setStatusMsg({ text: "Booking cancelled.", type: "error" });
+    loadMyBookings();
+  }
+
+  async function cancelSeries(seriesId) {
+    if (!window.confirm("Cancel the whole recurring series?")) return;
+    await api.post(`/recurring-series/${seriesId}/cancel/`);
+    setStatusMsg({ text: "Recurring series cancelled.", type: "error" });
     loadMyBookings();
   }
 
@@ -451,6 +474,37 @@ function BookingSection() {
         className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />
 
+      <label className="flex items-center gap-2 mb-3 cursor-pointer w-fit">
+        <input
+          type="checkbox"
+          checked={repeatWeekly}
+          onChange={(e) => setRepeatWeekly(e.target.checked)}
+          className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+        />
+        <span className="text-sm text-gray-700">
+          {t("booking.repeatWeekly")}
+        </span>
+      </label>
+      {repeatWeekly && (
+        <div className="mb-3">
+          <label
+            htmlFor="number-of-weeks"
+            className="block text-xs text-gray-500 mb-1"
+          >
+            {t("booking.numberOfWeeks")}
+          </label>
+          <input
+            id="number-of-weeks"
+            type="number"
+            min="2"
+            max="52"
+            value={numberOfWeeks}
+            onChange={(e) => setNumberOfWeeks(e.target.value)}
+            className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+        </div>
+      )}
+
       {selectedService && date && (
         <div className="mb-4">
           <p className="text-xs text-gray-500 mb-2">
@@ -500,22 +554,35 @@ function BookingSection() {
       </h4>
       <ul className="divide-y divide-gray-100">
         {confirmedBookings.map((booking) => (
-          <li
-            key={booking.id}
-            className="py-2 flex justify-between items-center text-sm"
-          >
-            <span>
-              {booking.service_name}
-              {" \u00b7 "}
-              {new Date(booking.start_time).toLocaleString()}
-            </span>
-            <button
-              onClick={() => cancelMine(booking.id)}
-              aria-label={`Cancel booking for ${booking.service_name}`}
-              className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
-            >
-              {t("booking.cancelBooking")}
-            </button>
+          <li key={booking.id} className="py-2 text-sm">
+            <div className="flex justify-between items-center">
+              <span>
+                {booking.service_name}
+                {" \u00b7 "}
+                {new Date(booking.start_time).toLocaleString()}
+              </span>
+              <button
+                onClick={() => cancelMine(booking.id)}
+                aria-label={`Cancel booking for ${booking.service_name}`}
+                className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+              >
+                {t("booking.cancelThisOne")}
+              </button>
+            </div>
+            {booking.series && (
+              <div className="flex justify-between items-center mt-1">
+                <span className="text-xs text-gray-400">
+                  {t("booking.partOfSeries")}
+                </span>
+                <button
+                  onClick={() => cancelSeries(booking.series)}
+                  aria-label="Cancel the whole recurring series"
+                  className="text-red-700 text-xs underline transition-colors hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-400 rounded"
+                >
+                  {t("booking.cancelWholeSeries")}
+                </button>
+              </div>
+            )}
           </li>
         ))}
         {confirmedBookings.length === 0 && (
