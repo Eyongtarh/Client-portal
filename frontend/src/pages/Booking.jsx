@@ -472,7 +472,7 @@ function ServicesSection() {
                   <button
                     onClick={cancelEdit}
                     aria-label={t("booking.cancel")}
-                    className="text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     {t("booking.cancel")}
                   </button>
@@ -779,7 +779,7 @@ function WorkingHoursSection() {
                 <button
                   onClick={cancelEdit}
                   aria-label={t("booking.cancel")}
-                  className="text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   {t("booking.cancel")}
                 </button>
@@ -979,7 +979,7 @@ function BookingsSection() {
                   <button
                     onClick={cancelEdit}
                     aria-label={t("booking.cancel")}
-                    className="text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     {t("booking.cancel")}
                   </button>

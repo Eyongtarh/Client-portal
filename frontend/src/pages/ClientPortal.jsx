@@ -636,7 +636,7 @@ function BookingSection() {
                     htmlFor={`edit-mybooking-time-${booking.id}`}
                     className="block text-xs text-gray-500 mb-1"
                   >
-                    Time
+                    {t("booking.startTime")}
                   </label>
                   <input
                     id={`edit-mybooking-time-${booking.id}`}
@@ -648,17 +648,17 @@ function BookingSection() {
                 </div>
                 <button
                   onClick={() => saveEditMine(booking.id)}
-                  aria-label="Save"
+                  aria-label={t("booking.save")}
                   className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
-                  Save
+                  {t("booking.save")}
                 </button>
                 <button
                   onClick={cancelEditMine}
-                  aria-label="Cancel editing"
-                  className="text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  aria-label={t("booking.cancel")}
+                  className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
-                  Cancel
+                  {t("booking.cancel")}
                 </button>
               </div>
             ) : (
@@ -672,10 +672,10 @@ function BookingSection() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => startEditMine(booking)}
-                      aria-label={`Edit booking for ${booking.service_name}`}
+                      aria-label={`${t("booking.edit")} booking for ${booking.service_name}`}
                       className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                     >
-                      Edit
+                      {t("booking.edit")}
                     </button>
                     <button
                       onClick={() => cancelMine(booking.id)}
