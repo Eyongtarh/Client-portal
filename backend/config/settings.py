@@ -27,13 +27,13 @@ CORS_ALLOWED_ORIGINS = config(
 )
 
 INSTALLED_APPS = [
-    "cloudinary_storage",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "cloudinary_storage",
     "cloudinary",
     "rest_framework",
     "rest_framework_simplejwt",
@@ -160,11 +160,14 @@ STORAGES = {
     },
     "staticfiles": {
         "BACKEND": (
-            "whitenoise.storage."
-            "CompressedManifestStaticFilesStorage"
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
         ),
     },
 }
+
+STATICFILES_STORAGE = (
+    "django.contrib.staticfiles.storage.StaticFilesStorage"
+)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
