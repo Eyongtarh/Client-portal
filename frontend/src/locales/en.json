@@ -58,7 +58,9 @@
     "confirmDeleteService": "Delete \"{{name}}\"? This cannot be undone.",
     "confirmRemoveWorkingHours": "Remove these working hours?",
     "confirmCancelBooking": "Cancel this booking?",
-    "bookingCancelledMsg": "Booking cancelled."
+    "bookingCancelledMsg": "Booking cancelled.",
+    "bookingRescheduled": "Booking rescheduled.",
+    "couldNotReschedule": "Could not reschedule this booking."
   },
   "landing": {
     "signIn": "Sign in",

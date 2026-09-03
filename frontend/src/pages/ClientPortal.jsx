@@ -297,6 +297,10 @@ function BookingSection() {
   const [currency, setCurrency] = useState("EUR");
   const [repeatWeekly, setRepeatWeekly] = useState(false);
   const [numberOfWeeks, setNumberOfWeeks] = useState("4");
+  const [editingId, setEditingId] = useState(null);
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editService, setEditService] = useState("");
 
   async function loadServices() {
     const res = await api.get("/services/");
@@ -385,6 +389,40 @@ function BookingSection() {
     });
     setStatusMsg({ text: "Booking cancelled.", type: "error" });
     loadMyBookings();
+  }
+
+  function startEditMine(booking) {
+    const start = new Date(booking.start_time);
+    setEditingId(booking.id);
+    setEditDate(start.toISOString().slice(0, 10));
+    setEditTime(start.toTimeString().slice(0, 5));
+    setEditService(String(booking.service));
+  }
+
+  function cancelEditMine() {
+    setEditingId(null);
+  }
+
+  async function saveEditMine(bookingId) {
+    try {
+      const startTime = new Date(`${editDate}T${editTime}:00`).toISOString();
+      await api.patch(`/bookings/${bookingId}/`, {
+        service: editService,
+        start_time: startTime,
+      });
+      setEditingId(null);
+      setStatusMsg({
+        text: t("booking.bookingRescheduled"),
+        type: "success",
+      });
+      loadMyBookings();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data
+        ? Object.values(data).flat().join(" ")
+        : t("booking.couldNotReschedule");
+      setStatusMsg({ text: message, type: "error" });
+    }
   }
 
   async function cancelSeries(seriesId) {
@@ -555,33 +593,114 @@ function BookingSection() {
       <ul className="divide-y divide-gray-100">
         {confirmedBookings.map((booking) => (
           <li key={booking.id} className="py-2 text-sm">
-            <div className="flex justify-between items-center">
-              <span>
-                {booking.service_name}
-                {" \u00b7 "}
-                {new Date(booking.start_time).toLocaleString()}
-              </span>
-              <button
-                onClick={() => cancelMine(booking.id)}
-                aria-label={`Cancel booking for ${booking.service_name}`}
-                className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
-              >
-                {t("booking.cancelThisOne")}
-              </button>
-            </div>
-            {booking.series && (
-              <div className="flex justify-between items-center mt-1">
-                <span className="text-xs text-gray-400">
-                  {t("booking.partOfSeries")}
-                </span>
+            {editingId === booking.id ? (
+              <div className="border border-brand-200 rounded-lg p-3 flex flex-wrap gap-2 items-end">
+                <div>
+                  <label
+                    htmlFor={`edit-mybooking-service-${booking.id}`}
+                    className="block text-xs text-gray-500 mb-1"
+                  >
+                    {t("booking.selectService")}
+                  </label>
+                  <select
+                    id={`edit-mybooking-service-${booking.id}`}
+                    value={editService}
+                    onChange={(e) => setEditService(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  >
+                    {services.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor={`edit-mybooking-date-${booking.id}`}
+                    className="block text-xs text-gray-500 mb-1"
+                  >
+                    {t("booking.selectDate")}
+                  </label>
+                  <input
+                    id={`edit-mybooking-date-${booking.id}`}
+                    type="date"
+                    min={today}
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor={`edit-mybooking-time-${booking.id}`}
+                    className="block text-xs text-gray-500 mb-1"
+                  >
+                    Time
+                  </label>
+                  <input
+                    id={`edit-mybooking-time-${booking.id}`}
+                    type="time"
+                    value={editTime}
+                    onChange={(e) => setEditTime(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
                 <button
-                  onClick={() => cancelSeries(booking.series)}
-                  aria-label="Cancel the whole recurring series"
-                  className="text-red-700 text-xs underline transition-colors hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-400 rounded"
+                  onClick={() => saveEditMine(booking.id)}
+                  aria-label="Save"
+                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
-                  {t("booking.cancelWholeSeries")}
+                  Save
+                </button>
+                <button
+                  onClick={cancelEditMine}
+                  aria-label="Cancel editing"
+                  className="text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  Cancel
                 </button>
               </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <span>
+                    {booking.service_name}
+                    {" \u00b7 "}
+                    {new Date(booking.start_time).toLocaleString()}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => startEditMine(booking)}
+                      aria-label={`Edit booking for ${booking.service_name}`}
+                      className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => cancelMine(booking.id)}
+                      aria-label={`Cancel booking for ${booking.service_name}`}
+                      className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    >
+                      {t("booking.cancelThisOne")}
+                    </button>
+                  </div>
+                </div>
+                {booking.series && (
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-xs text-gray-400">
+                      {t("booking.partOfSeries")}
+                    </span>
+                    <button
+                      onClick={() => cancelSeries(booking.series)}
+                      aria-label="Cancel the whole recurring series"
+                      className="text-red-700 text-xs underline transition-colors hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-400 rounded"
+                    >
+                      {t("booking.cancelWholeSeries")}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </li>
         ))}

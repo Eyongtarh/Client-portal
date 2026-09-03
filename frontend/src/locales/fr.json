@@ -58,7 +58,9 @@
     "confirmDeleteService": "Supprimer \u00ab\u00a0{{name}}\u00a0\u00bb\u00a0? Cette action est irr\u00e9versible.",
     "confirmRemoveWorkingHours": "Retirer ces heures d'ouverture\u00a0?",
     "confirmCancelBooking": "Annuler cette r\u00e9servation\u00a0?",
-    "bookingCancelledMsg": "R\u00e9servation annul\u00e9e."
+    "bookingCancelledMsg": "R\u00e9servation annul\u00e9e.",
+    "bookingRescheduled": "R\u00e9servation report\u00e9e.",
+    "couldNotReschedule": "Impossible de reporter cette r\u00e9servation."
   },
   "landing": {
     "signIn": "Se connecter",

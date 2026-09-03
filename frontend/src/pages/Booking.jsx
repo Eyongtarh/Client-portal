@@ -828,14 +828,24 @@ function WorkingHoursSection() {
 function BookingsSection() {
   const { t } = useTranslation();
   const [bookings, setBookings] = useState([]);
-  const [cancelledMsg, setCancelledMsg] = useState(false);
+  const [services, setServices] = useState([]);
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editService, setEditService] = useState("");
 
   async function load() {
     const res = await api.get("/bookings/");
     setBookings(res.data);
   }
+  async function loadServices() {
+    const res = await api.get("/services/");
+    setServices(res.data);
+  }
   useEffect(() => {
     load();
+    loadServices();
   }, []);
 
   async function cancel(bookingId) {
@@ -843,41 +853,162 @@ function BookingsSection() {
     await api.patch(`/bookings/${bookingId}/`, {
       status: "cancelled",
     });
-    setCancelledMsg(true);
+    setStatusMsg({
+      text: t("booking.bookingCancelledMsg"),
+      type: "error",
+    });
     load();
   }
+
+  function startEdit(booking) {
+    const start = new Date(booking.start_time);
+    setEditingId(booking.id);
+    setEditDate(start.toISOString().slice(0, 10));
+    setEditTime(start.toTimeString().slice(0, 5));
+    setEditService(String(booking.service));
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(bookingId) {
+    try {
+      const startTime = new Date(`${editDate}T${editTime}:00`).toISOString();
+      await api.patch(`/bookings/${bookingId}/`, {
+        service: editService,
+        start_time: startTime,
+      });
+      setEditingId(null);
+      setStatusMsg({
+        text: t("booking.bookingRescheduled"),
+        type: "success",
+      });
+      load();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data
+        ? Object.values(data).flat().join(" ")
+        : t("booking.couldNotReschedule");
+      setStatusMsg({ text: message, type: "error" });
+    }
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <section className="bg-white border border-brand-100 rounded-xl p-6">
       <h2 className="font-medium mb-3">{t("booking.bookingsTitle")}</h2>
-      {cancelledMsg && (
+      {statusMsg && (
         <div
           role="status"
-          className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
         >
-          {t("booking.bookingCancelledMsg")}
+          {statusMsg.text}
         </div>
       )}
       <ul className="divide-y divide-gray-100">
         {bookings
           .filter((b) => b.status === "confirmed")
           .map((booking) => (
-            <li
-              key={booking.id}
-              className="py-2 flex justify-between items-center text-sm"
-            >
-              <span>
-                {booking.service_name} {"\u00b7"} {booking.client_name}
-                {" \u00b7 "}
-                {new Date(booking.start_time).toLocaleString()}
-              </span>
-              <button
-                onClick={() => cancel(booking.id)}
-                aria-label={`Cancel booking for ${booking.client_name}`}
-                className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
-              >
-                {t("booking.cancelBooking")}
-              </button>
+            <li key={booking.id} className="py-2 text-sm">
+              {editingId === booking.id ? (
+                <div className="border border-brand-200 rounded-lg p-3 flex flex-wrap gap-2 items-end">
+                  <div>
+                    <label
+                      htmlFor={`edit-booking-service-${booking.id}`}
+                      className="block text-xs text-gray-500 mb-1"
+                    >
+                      {t("booking.selectService")}
+                    </label>
+                    <select
+                      id={`edit-booking-service-${booking.id}`}
+                      value={editService}
+                      onChange={(e) => setEditService(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    >
+                      {services.map((service) => (
+                        <option key={service.id} value={service.id}>
+                          {service.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`edit-booking-date-${booking.id}`}
+                      className="block text-xs text-gray-500 mb-1"
+                    >
+                      {t("booking.selectDate")}
+                    </label>
+                    <input
+                      id={`edit-booking-date-${booking.id}`}
+                      type="date"
+                      min={today}
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`edit-booking-time-${booking.id}`}
+                      className="block text-xs text-gray-500 mb-1"
+                    >
+                      {t("booking.startTime")}
+                    </label>
+                    <input
+                      id={`edit-booking-time-${booking.id}`}
+                      type="time"
+                      value={editTime}
+                      onChange={(e) => setEditTime(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                  </div>
+                  <button
+                    onClick={() => saveEdit(booking.id)}
+                    aria-label={t("booking.save")}
+                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("booking.save")}
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    aria-label={t("booking.cancel")}
+                    className="text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("booking.cancel")}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <span>
+                    {booking.service_name} {"\u00b7"} {booking.client_name}
+                    {" \u00b7 "}
+                    {new Date(booking.start_time).toLocaleString()}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => startEdit(booking)}
+                      aria-label={`${t("booking.edit")} booking for ${booking.client_name}`}
+                      className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      {t("booking.edit")}
+                    </button>
+                    <button
+                      onClick={() => cancel(booking.id)}
+                      aria-label={`Cancel booking for ${booking.client_name}`}
+                      className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    >
+                      {t("booking.cancelBooking")}
+                    </button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         {bookings.filter((b) => b.status === "confirmed").length === 0 && (
