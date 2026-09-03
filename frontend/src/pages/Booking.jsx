@@ -1,9 +1,9 @@
 // Owner's booking management page: create, edit, and delete
 // services (with a photo, description, free-text workspace
 // currency, timezone, max per slot capacity, and duration in
-// minutes or hours), set weekly working hours (with remove),
-// and see upcoming bookings (with cancel confirmation and a
-// status message).
+// minutes or hours), set weekly working hours (with edit and
+// remove), and see upcoming bookings (with cancel confirmation
+// and a status message).
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -139,7 +139,7 @@ function ServicesSection() {
     setNewPhoto(null);
     setNewPhotoPreview(null);
     setShowForm(false);
-    setStatusMsg({ text: "Service created.", type: "success" });
+    setStatusMsg({ text: t("booking.serviceCreated"), type: "success" });
     load();
   }
 
@@ -173,15 +173,20 @@ function ServicesSection() {
       capacity: editCapacity,
     });
     setEditingId(null);
-    setStatusMsg({ text: "Service updated.", type: "success" });
+    setStatusMsg({ text: t("booking.serviceUpdated"), type: "success" });
     load();
   }
 
   async function deleteService(serviceId, serviceName) {
-    if (!window.confirm(`Delete "${serviceName}"? This cannot be undone.`))
+    if (
+      !window.confirm(t("booking.confirmDeleteService", { name: serviceName }))
+    )
       return;
     await api.delete(`/services/${serviceId}/`);
-    setStatusMsg({ text: `"${serviceName}" deleted.`, type: "error" });
+    setStatusMsg({
+      text: t("booking.serviceDeleted", { name: serviceName }),
+      type: "error",
+    });
     load();
   }
 
@@ -221,7 +226,7 @@ function ServicesSection() {
             htmlFor="workspace-currency"
             className="block text-xs text-gray-500 mb-1"
           >
-            Currency (e.g. EUR, USD, SEK)
+            {t("booking.currencyLabel")}
           </label>
           <input
             id="workspace-currency"
@@ -252,7 +257,7 @@ function ServicesSection() {
             htmlFor="workspace-timezone"
             className="block text-xs text-gray-500 mb-1"
           >
-            Timezone
+            {t("booking.timezoneLabel")}
           </label>
           <select
             id="workspace-timezone"
@@ -291,11 +296,11 @@ function ServicesSection() {
             className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
           />
           <label htmlFor="service-description" className="sr-only">
-            Description
+            {t("booking.descriptionOptional")}
           </label>
           <textarea
             id="service-description"
-            placeholder="Description (optional)"
+            placeholder={t("booking.descriptionOptional")}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
@@ -304,7 +309,7 @@ function ServicesSection() {
 
           <label
             className="flex items-center gap-2 mb-2 cursor-pointer w-fit"
-            title="Add a photo for this service"
+            title={t("booking.addPhotoOptional")}
           >
             {newPhotoPreview ? (
               <img
@@ -321,7 +326,9 @@ function ServicesSection() {
               </div>
             )}
             <span className="text-xs text-gray-500">
-              {newPhotoPreview ? "Change photo" : "Add photo (optional)"}
+              {newPhotoPreview
+                ? t("booking.changePhoto")
+                : t("booking.addPhotoOptional")}
             </span>
             <input
               type="file"
@@ -333,7 +340,7 @@ function ServicesSection() {
                 setNewPhoto(file);
                 setNewPhotoPreview(URL.createObjectURL(file));
               }}
-              aria-label="Add photo for this service"
+              aria-label={t("booking.addPhotoOptional")}
             />
           </label>
 
@@ -376,14 +383,14 @@ function ServicesSection() {
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
             <label htmlFor="service-capacity" className="sr-only">
-              Max per slot
+              {t("booking.maxPerSlot")}
             </label>
             <input
               id="service-capacity"
               type="number"
               min="1"
-              title="Maximum clients per time slot"
-              placeholder="Max per slot"
+              title={t("booking.maxPerSlot")}
+              placeholder={t("booking.maxPerSlot")}
               value={capacity}
               onChange={(e) => setCapacity(e.target.value)}
               className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
@@ -413,10 +420,11 @@ function ServicesSection() {
                   className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                 />
                 <label htmlFor={`edit-desc-${service.id}`} className="sr-only">
-                  Description
+                  {t("booking.descriptionOptional")}
                 </label>
                 <textarea
                   id={`edit-desc-${service.id}`}
+                  placeholder={t("booking.descriptionOptional")}
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   rows={2}
@@ -441,13 +449,13 @@ function ServicesSection() {
                     htmlFor={`edit-capacity-${service.id}`}
                     className="sr-only"
                   >
-                    Max per slot
+                    {t("booking.maxPerSlot")}
                   </label>
                   <input
                     id={`edit-capacity-${service.id}`}
                     type="number"
                     min="1"
-                    placeholder="Max per slot"
+                    placeholder={t("booking.maxPerSlot")}
                     value={editCapacity}
                     onChange={(e) => setEditCapacity(e.target.value)}
                     className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
@@ -456,17 +464,17 @@ function ServicesSection() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => saveEdit(service.id)}
-                    aria-label="Save changes"
+                    aria-label={t("booking.save")}
                     className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
-                    Save
+                    {t("booking.save")}
                   </button>
                   <button
                     onClick={cancelEdit}
-                    aria-label="Cancel editing"
+                    aria-label={t("booking.cancel")}
                     className="text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
-                    Cancel
+                    {t("booking.cancel")}
                   </button>
                 </div>
               </div>
@@ -515,17 +523,17 @@ function ServicesSection() {
                   <div className="flex gap-2 mt-2">
                     <button
                       onClick={() => startEdit(service)}
-                      aria-label={`Edit ${service.name}`}
+                      aria-label={`${t("booking.edit")} ${service.name}`}
                       className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                     >
-                      Edit
+                      {t("booking.edit")}
                     </button>
                     <button
                       onClick={() => deleteService(service.id, service.name)}
-                      aria-label={`Delete ${service.name}`}
+                      aria-label={`${t("booking.delete")} ${service.name}`}
                       className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                     >
-                      Delete
+                      {t("booking.delete")}
                     </button>
                   </div>
                 </div>
@@ -548,6 +556,11 @@ function WorkingHoursSection() {
   const [weekday, setWeekday] = useState("0");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
+  const [editingId, setEditingId] = useState(null);
+  const [editWeekday, setEditWeekday] = useState("0");
+  const [editStartTime, setEditStartTime] = useState("09:00");
+  const [editEndTime, setEditEndTime] = useState("17:00");
+  const [statusMsg, setStatusMsg] = useState(null);
 
   async function load() {
     const res = await api.get("/working-hours/");
@@ -565,12 +578,45 @@ function WorkingHoursSection() {
       end_time: `${endTime}:00`,
     });
     setShowForm(false);
+    setStatusMsg({
+      text: t("booking.workingHoursAdded"),
+      type: "success",
+    });
+    load();
+  }
+
+  function startEdit(window) {
+    setEditingId(window.id);
+    setEditWeekday(String(window.weekday));
+    setEditStartTime(window.start_time.slice(0, 5));
+    setEditEndTime(window.end_time.slice(0, 5));
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(hoursId) {
+    await api.patch(`/working-hours/${hoursId}/`, {
+      weekday: editWeekday,
+      start_time: `${editStartTime}:00`,
+      end_time: `${editEndTime}:00`,
+    });
+    setEditingId(null);
+    setStatusMsg({
+      text: t("booking.workingHoursUpdated"),
+      type: "success",
+    });
     load();
   }
 
   async function deleteHours(hoursId) {
-    if (!window.confirm("Remove these working hours?")) return;
+    if (!window.confirm(t("booking.confirmRemoveWorkingHours"))) return;
     await api.delete(`/working-hours/${hoursId}/`);
+    setStatusMsg({
+      text: t("booking.workingHoursRemoved"),
+      type: "error",
+    });
     load();
   }
 
@@ -579,7 +625,10 @@ function WorkingHoursSection() {
       <div className="flex justify-between items-center mb-3">
         <h2 className="font-medium">{t("booking.workingHoursTitle")}</h2>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            setShowForm(!showForm);
+            setStatusMsg(null);
+          }}
           aria-expanded={showForm}
           aria-label={t("booking.addWorkingHours")}
           className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
@@ -587,6 +636,19 @@ function WorkingHoursSection() {
           {t("booking.addWorkingHours")}
         </button>
       </div>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {statusMsg.text}
+        </div>
+      )}
 
       {showForm && (
         <form
@@ -654,24 +716,105 @@ function WorkingHoursSection() {
 
       <ul className="divide-y divide-gray-100">
         {hours.map((window) => (
-          <li
-            key={window.id}
-            className="py-2 flex justify-between items-center text-sm"
-          >
-            <span>
-              {t(`booking.${WEEKDAY_KEYS[window.weekday]}`)}
-              {" \u00b7 "}
-              {window.start_time.slice(0, 5)}
-              {"\u2013"}
-              {window.end_time.slice(0, 5)}
-            </span>
-            <button
-              onClick={() => deleteHours(window.id)}
-              aria-label={`Remove ${t(`booking.${WEEKDAY_KEYS[window.weekday]}`)} hours`}
-              className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
-            >
-              Remove
-            </button>
+          <li key={window.id} className="py-2 text-sm">
+            {editingId === window.id ? (
+              <div className="border border-brand-200 rounded-lg p-3 flex flex-wrap gap-2 items-end">
+                <div>
+                  <label
+                    htmlFor={`edit-wh-weekday-${window.id}`}
+                    className="block text-xs text-gray-500 mb-1"
+                  >
+                    {t("booking.weekday")}
+                  </label>
+                  <select
+                    id={`edit-wh-weekday-${window.id}`}
+                    value={editWeekday}
+                    onChange={(e) => setEditWeekday(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  >
+                    {WEEKDAY_KEYS.map((key, index) => (
+                      <option key={key} value={index}>
+                        {t(`booking.${key}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor={`edit-wh-start-${window.id}`}
+                    className="block text-xs text-gray-500 mb-1"
+                  >
+                    {t("booking.startTime")}
+                  </label>
+                  <input
+                    id={`edit-wh-start-${window.id}`}
+                    type="time"
+                    value={editStartTime}
+                    onChange={(e) => setEditStartTime(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor={`edit-wh-end-${window.id}`}
+                    className="block text-xs text-gray-500 mb-1"
+                  >
+                    {t("booking.endTime")}
+                  </label>
+                  <input
+                    id={`edit-wh-end-${window.id}`}
+                    type="time"
+                    value={editEndTime}
+                    onChange={(e) => setEditEndTime(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+                <button
+                  onClick={() => saveEdit(window.id)}
+                  aria-label={t("booking.save")}
+                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("booking.save")}
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  aria-label={t("booking.cancel")}
+                  className="text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("booking.cancel")}
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center">
+                <span>
+                  {t(`booking.${WEEKDAY_KEYS[window.weekday]}`)}
+                  {" \u00b7 "}
+                  {window.start_time.slice(0, 5)}
+                  {"\u2013"}
+                  {window.end_time.slice(0, 5)}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startEdit(window)}
+                    aria-label={`${t("booking.edit")} ${t(
+                      `booking.${WEEKDAY_KEYS[window.weekday]}`,
+                    )} hours`}
+                    className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("booking.edit")}
+                  </button>
+                  <button
+                    onClick={() => deleteHours(window.id)}
+                    aria-label={`${t("booking.remove")} ${t(
+                      `booking.${WEEKDAY_KEYS[window.weekday]}`,
+                    )} hours`}
+                    className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  >
+                    {t("booking.remove")}
+                  </button>
+                </div>
+              </div>
+            )}
           </li>
         ))}
         {hours.length === 0 && (
@@ -696,7 +839,7 @@ function BookingsSection() {
   }, []);
 
   async function cancel(bookingId) {
-    if (!window.confirm("Cancel this booking?")) return;
+    if (!window.confirm(t("booking.confirmCancelBooking"))) return;
     await api.patch(`/bookings/${bookingId}/`, {
       status: "cancelled",
     });
@@ -712,7 +855,7 @@ function BookingsSection() {
           role="status"
           className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
         >
-          Booking cancelled.
+          {t("booking.bookingCancelledMsg")}
         </div>
       )}
       <ul className="divide-y divide-gray-100">
