@@ -31,6 +31,9 @@ router.register(
 router.register(
     "bookings", views.BookingViewSet, basename="booking"
 )
+router.register(
+    "waitlist", views.WaitlistEntryViewSet, basename="waitlist"
+)
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),

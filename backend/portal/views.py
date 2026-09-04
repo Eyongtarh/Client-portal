@@ -17,7 +17,8 @@ from rest_framework.views import APIView
 
 from .models import (
     Approval, Booking, Client, Document, Invoice, Message, Milestone,
-    Project, RecurringSeries, Service, Task, WorkingHours,
+    Project, RecurringSeries, Service, Task, WaitlistEntry,
+    WorkingHours,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -38,6 +39,7 @@ from .serializers import (
     RegisterSerializer,
     ServiceSerializer,
     TaskSerializer,
+    WaitlistEntrySerializer,
     WorkingHoursSerializer,
     WorkspaceSerializer,
 )
@@ -476,7 +478,8 @@ class BookingViewSet(viewsets.ModelViewSet):
     themselves (client is forced here, never trusted from the
     request body). Sends a confirmation email on create and a
     cancellation email whenever a booking's status changes to
-    cancelled.
+    cancelled, and notifies anyone on the waitlist for that exact
+    service+time that a spot has opened up.
     """
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
@@ -524,6 +527,28 @@ class BookingViewSet(viewsets.ModelViewSet):
                 recipient_list=[booking.client.contact_email],
                 fail_silently=True,
             )
+            waiting = WaitlistEntry.objects.filter(
+                workspace=booking.workspace,
+                service=booking.service,
+                start_time=booking.start_time,
+                notified=False,
+            ).order_by("created_at")
+            for entry in waiting:
+                send_mail(
+                    subject=f"A spot opened up: {entry.service.name}",
+                    message=(
+                        f"Good news - a spot just opened up for "
+                        f"{entry.service.name} at "
+                        f"{entry.start_time.strftime('%A %d %B %Y at %H:%M')}."
+                        f"\n\nBook it now from your client portal "
+                        f"before someone else does."
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[entry.client.contact_email],
+                    fail_silently=True,
+                )
+                entry.notified = True
+                entry.save(update_fields=["notified"])
 
 
 class RecurringSeriesCreateView(APIView):
@@ -602,6 +627,46 @@ class RecurringSeriesCancelView(APIView):
         )
 
         return Response({"cancelled_count": count})
+
+
+class WaitlistEntryViewSet(viewsets.ModelViewSet):
+    """Full CRUD for waitlist entries. Owners see/manage every
+    entry in their workspace; clients see only their own and can
+    only ever create entries for themselves (client is forced
+    here, never trusted from the request body).
+    """
+    serializer_class = WaitlistEntrySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "owner":
+            return WaitlistEntry.objects.filter(workspace=user.workspace)
+        return WaitlistEntry.objects.filter(client=user.client_profile)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role == "owner":
+            entry = serializer.save(workspace=user.workspace)
+        else:
+            entry = serializer.save(
+                workspace=user.client_profile.workspace,
+                client=user.client_profile,
+            )
+        send_mail(
+            subject=f"You're on the waitlist: {entry.service.name}",
+            message=(
+                f"You've been added to the waitlist for "
+                f"{entry.service.name} at "
+                f"{entry.start_time.strftime('%A %d %B %Y at %H:%M')}."
+                f"\n\nWe'll email you if that slot opens up - you'll "
+                f"still need to book it yourself from your client "
+                f"portal, first come first served."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[entry.client.contact_email],
+            fail_silently=True,
+        )
 
 
 class AvailabilityView(APIView):

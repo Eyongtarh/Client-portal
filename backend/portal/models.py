@@ -331,6 +331,35 @@ class RecurringSeries(models.Model):
         return f"{self.service.name} series ({self.client.company_name})"
 
 
+class WaitlistEntry(models.Model):
+    """A client's request to be notified if a specific fully-
+    booked slot opens up. Notifying doesn't auto-book anything -
+    the client still has to complete the booking themselves once
+    they get the email, first come first served.
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="waitlist_entries"
+    )
+    service = models.ForeignKey(
+        Service, on_delete=models.CASCADE, related_name="waitlist_entries"
+    )
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name="waitlist_entries"
+    )
+    start_time = models.DateTimeField()
+    notified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return (
+            f"{self.client.company_name} waiting for "
+            f"{self.service.name} at {self.start_time}"
+        )
+
+
 class Booking(models.Model):
     """A confirmed appointment. Multiple bookings can share the
     same slot up to the service's capacity (see BookingSerializer

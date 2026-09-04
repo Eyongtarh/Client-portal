@@ -1,7 +1,7 @@
 from .models import (
     Approval, Client, ClientInvite, Document, Invoice, InvoiceItem,
-    Message, Milestone, Project, Service, Task, User, WorkingHours,
-    Booking, RecurringSeries, Workspace,
+    Message, Milestone, Project, RecurringSeries, Service, Task, User,
+    WaitlistEntry, WorkingHours, Booking, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -450,6 +450,33 @@ class RecurringSeriesCreateSerializer(serializers.Serializer):
                 )
                 bookings.append(booking)
             return series, bookings
+
+
+class WaitlistEntrySerializer(serializers.ModelSerializer):
+    """Owner creates/manages entries for any client; clients create
+    entries for themselves only (client is forced server-side in
+    the view, never trusted from the request body). client is
+    required=False here for the same reason as BookingSerializer.
+    """
+    service_name = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
+    client = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.all(), required=False
+    )
+
+    class Meta:
+        model = WaitlistEntry
+        fields = [
+            "id", "workspace", "service", "service_name", "client",
+            "client_name", "start_time", "notified", "created_at",
+        ]
+        read_only_fields = ["workspace", "notified", "created_at"]
+
+    def get_service_name(self, obj):
+        return obj.service.name
+
+    def get_client_name(self, obj):
+        return obj.client.company_name
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
