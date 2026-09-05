@@ -1,6 +1,7 @@
 // What a client sees when they log in: their project's
 // progress, documents, messages, invoices, approvals, and
-// appointment booking (including weekly-repeating bookings).
+// appointment booking (including weekly-repeating bookings and
+// a waitlist for full slots).
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
@@ -301,6 +302,13 @@ function BookingSection() {
   const [editDate, setEditDate] = useState("");
   const [editTime, setEditTime] = useState("");
   const [editService, setEditService] = useState("");
+  const [myWaitlist, setMyWaitlist] = useState([]);
+  const [waitlistDate, setWaitlistDate] = useState("");
+  const [waitlistTime, setWaitlistTime] = useState("");
+  const [editingWaitlistId, setEditingWaitlistId] = useState(null);
+  const [editWaitlistService, setEditWaitlistService] = useState("");
+  const [editWaitlistDate, setEditWaitlistDate] = useState("");
+  const [editWaitlistTime, setEditWaitlistTime] = useState("");
 
   async function loadServices() {
     const res = await api.get("/services/");
@@ -312,9 +320,14 @@ function BookingSection() {
     const res = await api.get("/bookings/");
     setMyBookings(res.data);
   }
+  async function loadMyWaitlist() {
+    const res = await api.get("/waitlist/");
+    setMyWaitlist(res.data);
+  }
   useEffect(() => {
     loadServices();
     loadMyBookings();
+    loadMyWaitlist();
   }, []);
 
   async function loadSlots() {
@@ -353,7 +366,7 @@ function BookingSection() {
           occurrences: parseInt(numberOfWeeks, 10),
         });
         setStatusMsg({
-          text: t("booking.recurringBookingConfirmed"),
+          key: "booking.recurringBookingConfirmed",
           type: "success",
         });
       } else {
@@ -362,7 +375,7 @@ function BookingSection() {
           start_time: startTime,
         });
         setStatusMsg({
-          text: t("booking.bookingConfirmed"),
+          key: "booking.bookingConfirmed",
           type: "success",
         });
       }
@@ -374,20 +387,22 @@ function BookingSection() {
       loadMyBookings();
     } catch (err) {
       const data = err.response?.data;
-      const message = data
-        ? Object.values(data).flat().join(" ")
-        : "Could not create this booking.";
-      setStatusMsg({ text: message, type: "error" });
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "booking.couldNotCreateBooking", type: "error" },
+      );
       loadSlots();
     }
   }
 
   async function cancelMine(bookingId) {
-    if (!window.confirm("Cancel this booking?")) return;
+    if (!window.confirm(t("booking.confirmCancelBooking"))) return;
     await api.patch(`/bookings/${bookingId}/`, {
       status: "cancelled",
     });
-    setStatusMsg({ text: "Booking cancelled.", type: "error" });
+    setStatusMsg({ key: "booking.bookingCancelledMsg", type: "error" });
     loadMyBookings();
   }
 
@@ -412,24 +427,95 @@ function BookingSection() {
       });
       setEditingId(null);
       setStatusMsg({
-        text: t("booking.bookingRescheduled"),
+        key: "booking.bookingRescheduled",
         type: "success",
       });
       loadMyBookings();
     } catch (err) {
       const data = err.response?.data;
-      const message = data
-        ? Object.values(data).flat().join(" ")
-        : t("booking.couldNotReschedule");
-      setStatusMsg({ text: message, type: "error" });
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "booking.couldNotReschedule", type: "error" },
+      );
     }
   }
 
   async function cancelSeries(seriesId) {
-    if (!window.confirm("Cancel the whole recurring series?")) return;
+    if (!window.confirm(t("booking.cancelWholeSeries"))) return;
     await api.post(`/recurring-series/${seriesId}/cancel/`);
-    setStatusMsg({ text: "Recurring series cancelled.", type: "error" });
+    setStatusMsg({ key: "booking.recurringSeriesCancelled", type: "error" });
     loadMyBookings();
+  }
+
+  async function joinWaitlist() {
+    try {
+      const startTime = new Date(
+        `${waitlistDate}T${waitlistTime}:00`,
+      ).toISOString();
+      await api.post("/waitlist/", {
+        service: selectedService,
+        start_time: startTime,
+      });
+      setStatusMsg({
+        key: "booking.joinedWaitlist",
+        type: "success",
+      });
+      setWaitlistDate("");
+      setWaitlistTime("");
+      loadMyWaitlist();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "booking.couldNotJoinWaitlist", type: "error" },
+      );
+    }
+  }
+
+  async function leaveWaitlist(entryId) {
+    if (!window.confirm(t("booking.confirmLeaveWaitlist"))) return;
+    await api.delete(`/waitlist/${entryId}/`);
+    setStatusMsg({ key: "booking.leftWaitlist", type: "error" });
+    loadMyWaitlist();
+  }
+
+  function startEditWaitlist(entry) {
+    const start = new Date(entry.start_time);
+    setEditingWaitlistId(entry.id);
+    setEditWaitlistService(String(entry.service));
+    setEditWaitlistDate(start.toISOString().slice(0, 10));
+    setEditWaitlistTime(start.toTimeString().slice(0, 5));
+  }
+
+  function cancelEditWaitlist() {
+    setEditingWaitlistId(null);
+  }
+
+  async function saveEditWaitlist(entryId) {
+    try {
+      const startTime = new Date(
+        `${editWaitlistDate}T${editWaitlistTime}:00`,
+      ).toISOString();
+      await api.patch(`/waitlist/${entryId}/`, {
+        service: editWaitlistService,
+        start_time: startTime,
+      });
+      setEditingWaitlistId(null);
+      setStatusMsg({ key: "booking.waitlistEntryUpdated", type: "success" });
+      loadMyWaitlist();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "booking.couldNotUpdateWaitlist", type: "error" },
+      );
+    }
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -450,7 +536,7 @@ function BookingSection() {
               : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
           }
         >
-          {statusMsg.text}
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
         </div>
       )}
 
@@ -586,6 +672,184 @@ function BookingSection() {
           )}
         </div>
       )}
+
+      <div className="mb-4 border-t border-gray-100 pt-4">
+        <p className="text-xs text-gray-500 mb-2">
+          {t("booking.waitlistTitle")}
+        </p>
+        <div className="flex flex-wrap gap-2 mb-2">
+          <div>
+            <label
+              htmlFor="waitlist-service"
+              className="block text-xs text-gray-500 mb-1"
+            >
+              {t("booking.selectService")}
+            </label>
+            <select
+              id="waitlist-service"
+              value={selectedService}
+              onChange={(e) => setSelectedService(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            >
+              <option value="">{t("booking.selectService")}</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="waitlist-date"
+              className="block text-xs text-gray-500 mb-1"
+            >
+              {t("booking.selectDate")}
+            </label>
+            <input
+              id="waitlist-date"
+              type="date"
+              min={today}
+              value={waitlistDate}
+              onChange={(e) => setWaitlistDate(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="waitlist-time"
+              className="block text-xs text-gray-500 mb-1"
+            >
+              {t("booking.startTime")}
+            </label>
+            <input
+              id="waitlist-time"
+              type="time"
+              value={waitlistTime}
+              onChange={(e) => setWaitlistTime(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+          </div>
+          <button
+            onClick={joinWaitlist}
+            disabled={!selectedService || !waitlistDate || !waitlistTime}
+            aria-label={t("booking.joinWaitlist")}
+            className="bg-brand-50 text-brand-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:opacity-50 disabled:cursor-not-allowed self-end"
+          >
+            {t("booking.joinWaitlist")}
+          </button>
+        </div>
+        <ul className="divide-y divide-gray-100">
+          {myWaitlist.map((entry) => (
+            <li key={entry.id} className="py-2 text-sm">
+              {editingWaitlistId === entry.id ? (
+                <div className="border border-brand-200 rounded-lg p-3 flex flex-wrap gap-2 items-end">
+                  <div>
+                    <label
+                      htmlFor={`edit-waitlist-service-${entry.id}`}
+                      className="block text-xs text-gray-500 mb-1"
+                    >
+                      {t("booking.selectService")}
+                    </label>
+                    <select
+                      id={`edit-waitlist-service-${entry.id}`}
+                      value={editWaitlistService}
+                      onChange={(e) => setEditWaitlistService(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    >
+                      {services.map((service) => (
+                        <option key={service.id} value={service.id}>
+                          {service.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`edit-waitlist-date-${entry.id}`}
+                      className="block text-xs text-gray-500 mb-1"
+                    >
+                      {t("booking.selectDate")}
+                    </label>
+                    <input
+                      id={`edit-waitlist-date-${entry.id}`}
+                      type="date"
+                      min={today}
+                      value={editWaitlistDate}
+                      onChange={(e) => setEditWaitlistDate(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`edit-waitlist-time-${entry.id}`}
+                      className="block text-xs text-gray-500 mb-1"
+                    >
+                      {t("booking.startTime")}
+                    </label>
+                    <input
+                      id={`edit-waitlist-time-${entry.id}`}
+                      type="time"
+                      value={editWaitlistTime}
+                      onChange={(e) => setEditWaitlistTime(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                  </div>
+                  <button
+                    onClick={() => saveEditWaitlist(entry.id)}
+                    aria-label={t("booking.save")}
+                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("booking.save")}
+                  </button>
+                  <button
+                    onClick={cancelEditWaitlist}
+                    aria-label={t("booking.cancel")}
+                    className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("booking.cancel")}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <span>
+                    {entry.service_name}
+                    {" \u00b7 "}
+                    {new Date(entry.start_time).toLocaleString()}
+                    {" \u00b7 "}
+                    <span className="text-xs text-gray-400">
+                      {entry.notified
+                        ? t("booking.notified")
+                        : t("booking.waiting")}
+                    </span>
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => startEditWaitlist(entry)}
+                      aria-label={`${t("booking.edit")} waitlist entry`}
+                      className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      {t("booking.edit")}
+                    </button>
+                    <button
+                      onClick={() => leaveWaitlist(entry.id)}
+                      aria-label={t("booking.leaveWaitlist")}
+                      className="bg-gray-100 text-gray-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      {t("booking.leaveWaitlist")}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </li>
+          ))}
+          {myWaitlist.length === 0 && (
+            <p className="text-gray-500 text-xs">
+              {t("booking.noWaitlistEntries")}
+            </p>
+          )}
+        </ul>
+      </div>
 
       <h4 className="text-xs text-gray-500 mb-2 mt-4">
         {t("booking.bookingsTitle")}

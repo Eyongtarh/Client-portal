@@ -2,8 +2,8 @@
 // services (with a photo, description, free-text workspace
 // currency, timezone, max per slot capacity, and duration in
 // minutes or hours), set weekly working hours (with edit and
-// remove), and see upcoming bookings (with cancel confirmation
-// and a status message).
+// remove), see upcoming bookings (with cancel confirmation and
+// a status message), and manage the waitlist.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -55,6 +55,7 @@ export default function Booking() {
         <ServicesSection />
         <WorkingHoursSection />
         <BookingsSection />
+        <WaitlistSection />
       </main>
     </div>
   );
@@ -139,7 +140,7 @@ function ServicesSection() {
     setNewPhoto(null);
     setNewPhotoPreview(null);
     setShowForm(false);
-    setStatusMsg({ text: t("booking.serviceCreated"), type: "success" });
+    setStatusMsg({ key: "booking.serviceCreated", type: "success" });
     load();
   }
 
@@ -173,7 +174,7 @@ function ServicesSection() {
       capacity: editCapacity,
     });
     setEditingId(null);
-    setStatusMsg({ text: t("booking.serviceUpdated"), type: "success" });
+    setStatusMsg({ key: "booking.serviceUpdated", type: "success" });
     load();
   }
 
@@ -184,7 +185,8 @@ function ServicesSection() {
       return;
     await api.delete(`/services/${serviceId}/`);
     setStatusMsg({
-      text: t("booking.serviceDeleted", { name: serviceName }),
+      key: "booking.serviceDeleted",
+      params: { name: serviceName },
       type: "error",
     });
     load();
@@ -216,7 +218,7 @@ function ServicesSection() {
               : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
           }
         >
-          {statusMsg.text}
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
         </div>
       )}
 
@@ -579,7 +581,7 @@ function WorkingHoursSection() {
     });
     setShowForm(false);
     setStatusMsg({
-      text: t("booking.workingHoursAdded"),
+      key: "booking.workingHoursAdded",
       type: "success",
     });
     load();
@@ -604,7 +606,7 @@ function WorkingHoursSection() {
     });
     setEditingId(null);
     setStatusMsg({
-      text: t("booking.workingHoursUpdated"),
+      key: "booking.workingHoursUpdated",
       type: "success",
     });
     load();
@@ -614,7 +616,7 @@ function WorkingHoursSection() {
     if (!window.confirm(t("booking.confirmRemoveWorkingHours"))) return;
     await api.delete(`/working-hours/${hoursId}/`);
     setStatusMsg({
-      text: t("booking.workingHoursRemoved"),
+      key: "booking.workingHoursRemoved",
       type: "error",
     });
     load();
@@ -646,7 +648,7 @@ function WorkingHoursSection() {
               : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
           }
         >
-          {statusMsg.text}
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
         </div>
       )}
 
@@ -854,7 +856,7 @@ function BookingsSection() {
       status: "cancelled",
     });
     setStatusMsg({
-      text: t("booking.bookingCancelledMsg"),
+      key: "booking.bookingCancelledMsg",
       type: "error",
     });
     load();
@@ -881,16 +883,18 @@ function BookingsSection() {
       });
       setEditingId(null);
       setStatusMsg({
-        text: t("booking.bookingRescheduled"),
+        key: "booking.bookingRescheduled",
         type: "success",
       });
       load();
     } catch (err) {
       const data = err.response?.data;
-      const message = data
-        ? Object.values(data).flat().join(" ")
-        : t("booking.couldNotReschedule");
-      setStatusMsg({ text: message, type: "error" });
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "booking.couldNotReschedule", type: "error" },
+      );
     }
   }
 
@@ -908,7 +912,7 @@ function BookingsSection() {
               : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
           }
         >
-          {statusMsg.text}
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
         </div>
       )}
       <ul className="divide-y divide-gray-100">
@@ -1013,6 +1017,206 @@ function BookingsSection() {
           ))}
         {bookings.filter((b) => b.status === "confirmed").length === 0 && (
           <p className="text-gray-500 text-sm">{t("booking.noBookings")}</p>
+        )}
+      </ul>
+    </section>
+  );
+}
+
+function WaitlistSection() {
+  const { t } = useTranslation();
+  const [entries, setEntries] = useState([]);
+  const [services, setServices] = useState([]);
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editService, setEditService] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+
+  async function load() {
+    const res = await api.get("/waitlist/");
+    setEntries(res.data);
+  }
+  async function loadServices() {
+    const res = await api.get("/services/");
+    setServices(res.data);
+  }
+  useEffect(() => {
+    load();
+    loadServices();
+  }, []);
+
+  async function remove(entryId) {
+    if (!window.confirm(t("booking.confirmRemoveWaitlistEntry"))) return;
+    await api.delete(`/waitlist/${entryId}/`);
+    setStatusMsg({
+      key: "booking.waitlistEntryRemoved",
+      type: "error",
+    });
+    load();
+  }
+
+  function startEdit(entry) {
+    const start = new Date(entry.start_time);
+    setEditingId(entry.id);
+    setEditService(String(entry.service));
+    setEditDate(start.toISOString().slice(0, 10));
+    setEditTime(start.toTimeString().slice(0, 5));
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(entryId) {
+    try {
+      const startTime = new Date(`${editDate}T${editTime}:00`).toISOString();
+      await api.patch(`/waitlist/${entryId}/`, {
+        service: editService,
+        start_time: startTime,
+      });
+      setEditingId(null);
+      setStatusMsg({
+        key: "booking.waitlistEntryUpdated",
+        type: "success",
+      });
+      load();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "booking.couldNotUpdateWaitlist", type: "error" },
+      );
+    }
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  return (
+    <section className="bg-white border border-brand-100 rounded-xl p-6">
+      <h2 className="font-medium mb-3">{t("booking.waitlistTitle")}</h2>
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
+        </div>
+      )}
+      <ul className="divide-y divide-gray-100">
+        {entries.map((entry) => (
+          <li key={entry.id} className="py-2 text-sm">
+            {editingId === entry.id ? (
+              <div className="border border-brand-200 rounded-lg p-3 flex flex-wrap gap-2 items-end">
+                <div>
+                  <label
+                    htmlFor={`edit-waitlist-owner-service-${entry.id}`}
+                    className="block text-xs text-gray-500 mb-1"
+                  >
+                    {t("booking.selectService")}
+                  </label>
+                  <select
+                    id={`edit-waitlist-owner-service-${entry.id}`}
+                    value={editService}
+                    onChange={(e) => setEditService(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  >
+                    {services.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor={`edit-waitlist-owner-date-${entry.id}`}
+                    className="block text-xs text-gray-500 mb-1"
+                  >
+                    {t("booking.selectDate")}
+                  </label>
+                  <input
+                    id={`edit-waitlist-owner-date-${entry.id}`}
+                    type="date"
+                    min={today}
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor={`edit-waitlist-owner-time-${entry.id}`}
+                    className="block text-xs text-gray-500 mb-1"
+                  >
+                    {t("booking.startTime")}
+                  </label>
+                  <input
+                    id={`edit-waitlist-owner-time-${entry.id}`}
+                    type="time"
+                    value={editTime}
+                    onChange={(e) => setEditTime(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+                <button
+                  onClick={() => saveEdit(entry.id)}
+                  aria-label={t("booking.save")}
+                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("booking.save")}
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  aria-label={t("booking.cancel")}
+                  className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("booking.cancel")}
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center">
+                <span>
+                  {entry.service_name} {"\u00b7"} {entry.client_name}
+                  {" \u00b7 "}
+                  {new Date(entry.start_time).toLocaleString()}
+                  {" \u00b7 "}
+                  <span className="text-xs text-gray-400">
+                    {entry.notified
+                      ? t("booking.notified")
+                      : t("booking.waiting")}
+                  </span>
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startEdit(entry)}
+                    aria-label={`${t("booking.edit")} waitlist entry for ${entry.client_name}`}
+                    className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("booking.edit")}
+                  </button>
+                  <button
+                    onClick={() => remove(entry.id)}
+                    aria-label={`Remove waitlist entry for ${entry.client_name}`}
+                    className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  >
+                    {t("booking.leaveWaitlist")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+        {entries.length === 0 && (
+          <p className="text-gray-500 text-sm">
+            {t("booking.noWaitlistEntries")}
+          </p>
         )}
       </ul>
     </section>
