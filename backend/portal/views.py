@@ -479,7 +479,10 @@ class BookingViewSet(viewsets.ModelViewSet):
     request body). Sends a confirmation email on create and a
     cancellation email whenever a booking's status changes to
     cancelled, and notifies anyone on the waitlist for that exact
-    service+time that a spot has opened up.
+    service+time that a spot has opened up. If a client's new
+    booking matches a slot they were on the waitlist for, that
+    entry is cleaned up automatically since they no longer need
+    to wait for it.
     """
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
@@ -512,6 +515,14 @@ class BookingViewSet(viewsets.ModelViewSet):
             recipient_list=[booking.client.contact_email],
             fail_silently=True,
         )
+        # If this booking fills a slot the client was waiting on,
+        # they no longer need to be on that waitlist.
+        WaitlistEntry.objects.filter(
+            workspace=booking.workspace,
+            service=booking.service,
+            client=booking.client,
+            start_time=booking.start_time,
+        ).delete()
 
     def perform_update(self, serializer):
         booking = serializer.save()
@@ -633,15 +644,26 @@ class WaitlistEntryViewSet(viewsets.ModelViewSet):
     """Full CRUD for waitlist entries. Owners see/manage every
     entry in their workspace; clients see only their own and can
     only ever create entries for themselves (client is forced
-    here, never trusted from the request body).
+    here, never trusted from the request body). Any entry whose
+    time has already passed is pruned before results are
+    returned, so no one sees or gets notified about a slot
+    that's already gone.
     """
     serializer_class = WaitlistEntrySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
+        workspace = (
+            user.workspace
+            if user.role == "owner"
+            else user.client_profile.workspace
+        )
+        WaitlistEntry.objects.filter(
+            workspace=workspace, start_time__lt=timezone.now()
+        ).delete()
         if user.role == "owner":
-            return WaitlistEntry.objects.filter(workspace=user.workspace)
+            return WaitlistEntry.objects.filter(workspace=workspace)
         return WaitlistEntry.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
