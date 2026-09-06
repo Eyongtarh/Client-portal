@@ -87,6 +87,7 @@ export default function ClientPortal() {
       </header>
       <main className="max-w-2xl mx-auto px-8 py-8 space-y-6">
         <BookingSection />
+        <ReviewsSection />
         {!project && (
           <p className="text-gray-500">{t("clientPortal.noProjectYet")}</p>
         )}
@@ -971,6 +972,261 @@ function BookingSection() {
         {confirmedBookings.length === 0 && (
           <p className="text-gray-500 text-sm">{t("booking.noBookings")}</p>
         )}
+      </ul>
+    </section>
+  );
+}
+
+function ReviewsSection() {
+  const { t } = useTranslation();
+  const [completedBookings, setCompletedBookings] = useState([]);
+  const [myReviews, setMyReviews] = useState([]);
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [draftRating, setDraftRating] = useState({});
+  const [draftComment, setDraftComment] = useState({});
+  const [editingId, setEditingId] = useState(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editComment, setEditComment] = useState("");
+
+  async function loadBookings() {
+    const res = await api.get("/bookings/");
+    setCompletedBookings(res.data.filter((b) => b.status === "completed"));
+  }
+  async function loadReviews() {
+    const res = await api.get("/reviews/");
+    setMyReviews(res.data);
+  }
+  useEffect(() => {
+    loadBookings();
+    loadReviews();
+  }, []);
+
+  function reviewFor(bookingId) {
+    return myReviews.find((r) => r.booking === bookingId);
+  }
+
+  async function submitReview(bookingId) {
+    try {
+      await api.post("/reviews/", {
+        booking: bookingId,
+        rating: draftRating[bookingId] || 5,
+        comment: draftComment[bookingId] || "",
+      });
+      setStatusMsg({ key: "booking.reviewSubmitted", type: "success" });
+      loadReviews();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "booking.couldNotSubmitReview", type: "error" },
+      );
+    }
+  }
+
+  function startEdit(review) {
+    setEditingId(review.id);
+    setEditRating(review.rating);
+    setEditComment(review.comment);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(reviewId) {
+    try {
+      await api.patch(`/reviews/${reviewId}/`, {
+        rating: editRating,
+        comment: editComment,
+      });
+      setEditingId(null);
+      setStatusMsg({ key: "booking.reviewUpdated", type: "success" });
+      loadReviews();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "booking.couldNotUpdateReview", type: "error" },
+      );
+    }
+  }
+
+  async function deleteReview(reviewId) {
+    if (!window.confirm(t("booking.confirmDeleteReview"))) return;
+    await api.delete(`/reviews/${reviewId}/`);
+    setStatusMsg({ key: "booking.reviewDeleted", type: "error" });
+    loadReviews();
+  }
+
+  function StarPicker({ value, onChange }) {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(n)}
+            aria-label={`${n} star${n > 1 ? "s" : ""}`}
+            className={
+              n <= value
+                ? "text-xl text-yellow-500 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                : "text-xl text-gray-300 transition-colors hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            }
+          >
+            {"\u2605"}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (completedBookings.length === 0) return null;
+
+  return (
+    <section className="bg-white border border-brand-100 rounded-xl p-6">
+      <h3 className="font-medium mb-3">{t("booking.reviewsTitle")}</h3>
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
+        </div>
+      )}
+      <ul className="divide-y divide-gray-100">
+        {completedBookings.map((booking) => {
+          const review = reviewFor(booking.id);
+          return (
+            <li key={booking.id} className="py-3 text-sm">
+              <p className="font-medium mb-1">
+                {booking.service_name}
+                {" \u00b7 "}
+                {new Date(booking.start_time).toLocaleDateString()}
+              </p>
+              {!review && (
+                <div className="border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">
+                    {t("booking.yourRating")}
+                  </p>
+                  <StarPicker
+                    value={draftRating[booking.id] || 0}
+                    onChange={(n) =>
+                      setDraftRating({ ...draftRating, [booking.id]: n })
+                    }
+                  />
+                  <label
+                    htmlFor={`review-comment-${booking.id}`}
+                    className="sr-only"
+                  >
+                    {t("booking.commentOptional")}
+                  </label>
+                  <textarea
+                    id={`review-comment-${booking.id}`}
+                    placeholder={t("booking.commentOptional")}
+                    value={draftComment[booking.id] || ""}
+                    onChange={(e) =>
+                      setDraftComment({
+                        ...draftComment,
+                        [booking.id]: e.target.value,
+                      })
+                    }
+                    rows={2}
+                    className="w-full mt-2 mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                  <button
+                    onClick={() => submitReview(booking.id)}
+                    aria-label={t("booking.leaveReview")}
+                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("booking.leaveReview")}
+                  </button>
+                </div>
+              )}
+              {review && editingId !== review.id && (
+                <div className="border border-gray-200 rounded-lg p-3">
+                  <div className="flex text-yellow-500 mb-1">
+                    {"\u2605".repeat(review.rating)}
+                    <span className="text-gray-300">
+                      {"\u2605".repeat(5 - review.rating)}
+                    </span>
+                  </div>
+                  {review.comment && (
+                    <p className="text-gray-600 mb-2">{review.comment}</p>
+                  )}
+                  {review.owner_response && (
+                    <p className="text-xs bg-brand-50 rounded p-2 mb-2">
+                      <span className="font-medium">
+                        {t("booking.ownerResponse")}:
+                      </span>{" "}
+                      {review.owner_response}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => startEdit(review)}
+                      aria-label={t("booking.editReview")}
+                      className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      {t("booking.editReview")}
+                    </button>
+                    <button
+                      onClick={() => deleteReview(review.id)}
+                      aria-label={t("booking.deleteReview")}
+                      className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    >
+                      {t("booking.deleteReview")}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {review && editingId === review.id && (
+                <div className="border border-brand-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">
+                    {t("booking.yourRating")}
+                  </p>
+                  <StarPicker value={editRating} onChange={setEditRating} />
+                  <label
+                    htmlFor={`edit-review-comment-${review.id}`}
+                    className="sr-only"
+                  >
+                    {t("booking.commentOptional")}
+                  </label>
+                  <textarea
+                    id={`edit-review-comment-${review.id}`}
+                    value={editComment}
+                    onChange={(e) => setEditComment(e.target.value)}
+                    rows={2}
+                    className="w-full mt-2 mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => saveEdit(review.id)}
+                      aria-label={t("booking.save")}
+                      className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      {t("booking.save")}
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      aria-label={t("booking.cancel")}
+                      className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      {t("booking.cancel")}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
