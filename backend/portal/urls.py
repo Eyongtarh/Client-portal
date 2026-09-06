@@ -37,6 +37,9 @@ router.register(
 router.register(
     "reviews", views.ReviewViewSet, basename="review"
 )
+router.register(
+    "team", views.TeamViewSet, basename="team"
+)
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),
@@ -59,6 +62,11 @@ urlpatterns = [
     path(
         "approvals/<int:pk>/decide/",
         views.ApprovalDecisionView.as_view(),
+    ),
+    path("team-invites/", views.TeamInviteView.as_view()),
+    path(
+        "auth/accept-team-invite/",
+        views.AcceptTeamInviteView.as_view(),
     ),
     path(
         "invoices/<int:pk>/pdf/", views.InvoicePDFView.as_view()

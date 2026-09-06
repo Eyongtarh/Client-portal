@@ -1,7 +1,8 @@
 from .models import (
     Approval, Client, ClientInvite, Document, Invoice, InvoiceItem,
     Message, Milestone, Project, RecurringSeries, Review, Service,
-    Task, User, WaitlistEntry, WorkingHours, Booking, Workspace,
+    Task, TeamInvite, User, WaitlistEntry, WorkingHours, Booking,
+    Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -122,6 +123,68 @@ class AcceptInviteSerializer(serializers.Serializer):
         invite.accepted = True
         invite.save(update_fields=["accepted"])
         return client
+
+
+class TeamInviteCreateSerializer(serializers.ModelSerializer):
+    """Owner invites a team member by email. Used by
+    POST /api/team-invites/.
+    """
+
+    class Meta:
+        model = TeamInvite
+        fields = ["id", "email", "created_at", "accepted", "expires_at"]
+        read_only_fields = ["id", "created_at", "accepted", "expires_at"]
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError(
+                "An account with this email already exists."
+            )
+        return value
+
+
+class AcceptTeamInviteSerializer(serializers.Serializer):
+    """Invited team member uses their token + sets a password to
+    create their staff account. Used by
+    POST /api/auth/accept-team-invite/.
+    """
+    token = serializers.UUIDField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    full_name = serializers.CharField(max_length=150)
+
+    def validate_token(self, value):
+        try:
+            invite = TeamInvite.objects.get(token=value)
+        except TeamInvite.DoesNotExist:
+            raise serializers.ValidationError("Invalid invite link.")
+        if not invite.is_valid():
+            raise serializers.ValidationError(
+                "This invite has expired or was already used."
+            )
+        self.invite = invite
+        return value
+
+    def create(self, validated_data):
+        invite = self.invite
+        user = User.objects.create_user(
+            username=invite.email,
+            email=invite.email,
+            password=validated_data["password"],
+            first_name=validated_data["full_name"],
+            role=User.Role.STAFF,
+            staff_workspace=invite.workspace,
+        )
+        invite.accepted = True
+        invite.save(update_fields=["accepted"])
+        return user
+
+
+class TeamMemberSerializer(serializers.ModelSerializer):
+    """Read-only view of a team member for the owner's team list."""
+
+    class Meta:
+        model = User
+        fields = ["id", "email", "first_name"]
 
 
 class MilestoneSerializer(serializers.ModelSerializer):

@@ -15,14 +15,14 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 from .models import (
     Approval, Booking, Client, Document, Invoice, Message, Milestone,
-    Project, RecurringSeries, Review, Service, Task, WaitlistEntry,
-    WorkingHours,
+    Project, RecurringSeries, Review, Service, Task,
+    User, WaitlistEntry, WorkingHours,
 )
 from .serializers import (
     AcceptInviteSerializer,
+    AcceptTeamInviteSerializer,
     ApprovalDecisionSerializer,
     ApprovalSerializer,
     BookingSerializer,
@@ -42,6 +42,8 @@ from .serializers import (
     ReviewSerializer,
     ServiceSerializer,
     TaskSerializer,
+    TeamInviteCreateSerializer,
+    TeamMemberSerializer,
     WaitlistEntrySerializer,
     WorkingHoursSerializer,
     WorkspaceSerializer,
@@ -67,25 +69,28 @@ class MeView(APIView):
 
     def get(self, request):
         data = MeSerializer(request.user).data
-        if request.user.role == "owner":
-            data["workspace_id"] = request.user.workspace.id
-            data["workspace_name"] = request.user.workspace.name
+        user = request.user
+        if user.role in ("owner", "staff"):
+            workspace = user.get_workspace()
+            data["workspace_id"] = workspace.id
+            data["workspace_name"] = workspace.name
         else:
-            client = request.user.client_profile
+            client = user.client_profile
             data["client_id"] = client.id
             data["company_name"] = client.company_name
         return Response(data)
 
 
 class InviteClientView(generics.CreateAPIView):
-    """POST /api/invites/ - owner invites a client by email, then
-    sends them a link to accept it and set up their account.
+    """POST /api/invites/ - owner or staff invites a client by
+    email, then sends them a link to accept it and set up their
+    account.
     """
     serializer_class = ClientInviteCreateSerializer
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        workspace = self.request.user.workspace
+        workspace = self.request.user.get_workspace()
         invite = serializer.save(workspace=workspace)
         link = f"{settings.FRONTEND_URL}/accept-invite/{invite.token}"
         send_mail(
@@ -122,19 +127,92 @@ class AcceptInviteView(generics.CreateAPIView):
         )
 
 
+class TeamInviteView(generics.CreateAPIView):
+    """POST /api/team-invites/ - owner invites a team member by
+    email, then sends them a link to accept it and set up their
+    staff account. Owner-only (staff can't invite more staff).
+    """
+    serializer_class = TeamInviteCreateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        if self.request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the workspace owner can invite team members."
+            )
+        workspace = self.request.user.workspace
+        invite = serializer.save(workspace=workspace)
+        link = f"{settings.FRONTEND_URL}/accept-team-invite/{invite.token}"
+        send_mail(
+            subject=(
+                f"{workspace.name} invited you to join their team"
+            ),
+            message=(
+                f"You've been invited to join {workspace.name}'s "
+                f"team.\n\nSet up your account here: "
+                f"{link}\n\nThis link expires in 7 days."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[invite.email],
+            fail_silently=True,
+        )
+
+
+class AcceptTeamInviteView(generics.CreateAPIView):
+    """POST /api/auth/accept-team-invite/ - invited team member
+    sets a password using their invite token and gets a staff
+    account.
+    """
+    serializer_class = AcceptTeamInviteSerializer
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {"workspace_name": user.staff_workspace.name},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class TeamViewSet(viewsets.ModelViewSet):
+    """List and remove team members. Owner-only: staff can see
+    who else is on the team but can't add or remove anyone.
+    """
+    serializer_class = TeamMemberSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "delete"]
+
+    def get_queryset(self):
+        workspace = self.request.user.get_workspace()
+        return User.objects.filter(
+            role="staff", staff_workspace=workspace
+        )
+
+    def perform_destroy(self, instance):
+        if self.request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the workspace owner can remove team members."
+            )
+        instance.delete()
+
+
 class WorkspaceUpdateView(generics.RetrieveUpdateAPIView):
-    """GET /api/workspace/ - owner or client views their
+    """GET /api/workspace/ - owner, staff, or client views their
     workspace (clients need this for currency/logo when
     booking). PATCH /api/workspace/ - owner-only update,
-    including uploading a logo.
+    including uploading a logo (staff can operate day-to-day
+    but not change workspace settings).
     """
     serializer_class = WorkspaceSerializer
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
         user = self.request.user
-        if user.role == "owner":
-            return user.workspace
+        if user.role in ("owner", "staff"):
+            return user.get_workspace()
         return user.client_profile.workspace
 
     def update(self, request, *args, **kwargs):
@@ -176,20 +254,20 @@ class PasswordResetConfirmView(generics.CreateAPIView):
 
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    """Owners manage their workspace's projects; clients see only
-    their own project(s).
+    """Owners and staff manage their workspace's projects; clients
+    see only their own project(s).
     """
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
-            return Project.objects.filter(workspace=user.workspace)
+        if user.role in ("owner", "staff"):
+            return Project.objects.filter(workspace=user.get_workspace())
         return Project.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
-        serializer.save(workspace=self.request.user.workspace)
+        serializer.save(workspace=self.request.user.get_workspace())
 
 
 class MilestoneViewSet(viewsets.ModelViewSet):
@@ -201,9 +279,9 @@ class MilestoneViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
+        if user.role in ("owner", "staff"):
             return Milestone.objects.filter(
-                project__workspace=user.workspace
+                project__workspace=user.get_workspace()
             )
         return Milestone.objects.filter(
             project__client=user.client_profile
@@ -217,9 +295,9 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
+        if user.role in ("owner", "staff"):
             return Task.objects.filter(
-                project__workspace=user.workspace
+                project__workspace=user.get_workspace()
             )
         return Task.objects.filter(
             project__client=user.client_profile
@@ -227,18 +305,19 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 
 class ApprovalViewSet(viewsets.ModelViewSet):
-    """Same tenant-scoping pattern as TaskViewSet. Owners can
-    create/edit; clients get read-only access here and record
-    their decision through the separate 'decide' action below.
+    """Same tenant-scoping pattern as TaskViewSet. Owners and
+    staff can create/edit; clients get read-only access here and
+    record their decision through the separate 'decide' action
+    below.
     """
     serializer_class = ApprovalSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
+        if user.role in ("owner", "staff"):
             return Approval.objects.filter(
-                project__workspace=user.workspace
+                project__workspace=user.get_workspace()
             )
         return Approval.objects.filter(
             project__client=user.client_profile
@@ -250,18 +329,18 @@ class ApprovalViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def perform_update(self, serializer):
-        # Owners edit title/description only; status/comment come
-        # through the decide action, never a plain PATCH here.
-        if self.request.user.role != "owner":
+        # Owners/staff edit title/description only; status/comment
+        # come through the decide action, never a plain PATCH here.
+        if self.request.user.role not in ("owner", "staff"):
             raise PermissionDenied(
-                "Only the owner can edit an approval request."
+                "Only the owner or team can edit an approval request."
             )
         serializer.save()
 
     def perform_create(self, serializer):
-        if self.request.user.role != "owner":
+        if self.request.user.role not in ("owner", "staff"):
             raise PermissionDenied(
-                "Only the owner can request an approval."
+                "Only the owner or team can request an approval."
             )
         serializer.save()
 
@@ -306,9 +385,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
+        if user.role in ("owner", "staff"):
             return Document.objects.filter(
-                project__workspace=user.workspace
+                project__workspace=user.get_workspace()
             )
         return Document.objects.filter(
             project__client=user.client_profile
@@ -333,9 +412,9 @@ class MessageViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
+        if user.role in ("owner", "staff"):
             return Message.objects.filter(
-                project__workspace=user.workspace
+                project__workspace=user.get_workspace()
             )
         return Message.objects.filter(
             project__client=user.client_profile
@@ -354,12 +433,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
-            return Invoice.objects.filter(workspace=user.workspace)
+        if user.role in ("owner", "staff"):
+            return Invoice.objects.filter(workspace=user.get_workspace())
         return Invoice.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
-        serializer.save(workspace=self.request.user.workspace)
+        serializer.save(workspace=self.request.user.get_workspace())
 
 
 class InvoicePDFView(APIView):
@@ -370,8 +449,8 @@ class InvoicePDFView(APIView):
 
     def get(self, request, pk):
         user = request.user
-        if user.role == "owner":
-            qs = Invoice.objects.filter(workspace=user.workspace)
+        if user.role in ("owner", "staff"):
+            qs = Invoice.objects.filter(workspace=user.get_workspace())
         else:
             qs = Invoice.objects.filter(client=user.client_profile)
         invoice = generics.get_object_or_404(qs, pk=pk)
@@ -430,64 +509,66 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
-            return Client.objects.filter(workspace=user.workspace)
+        if user.role in ("owner", "staff"):
+            return Client.objects.filter(workspace=user.get_workspace())
         return Client.objects.filter(id=user.client_profile.id)
 
 
 class ServiceViewSet(viewsets.ModelViewSet):
-    """Owners manage services; clients get read-only access so
-    they can see what's bookable.
+    """Owners and staff manage services; clients get read-only
+    access so they can see what's bookable.
     """
     serializer_class = ServiceSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
-            return Service.objects.filter(workspace=user.workspace)
+        if user.role in ("owner", "staff"):
+            return Service.objects.filter(workspace=user.get_workspace())
         return Service.objects.filter(
             workspace=user.client_profile.workspace, is_active=True
         )
 
     def perform_create(self, serializer):
-        serializer.save(workspace=self.request.user.workspace)
+        serializer.save(workspace=self.request.user.get_workspace())
 
 
 class WorkingHoursViewSet(viewsets.ModelViewSet):
-    """Owners manage their weekly hours; clients get read-only
-    access (used to render available days before picking a slot).
+    """Owners and staff manage their weekly hours; clients get
+    read-only access (used to render available days before
+    picking a slot).
     """
     serializer_class = WorkingHoursSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
+        if user.role in ("owner", "staff"):
             return WorkingHours.objects.filter(
-                workspace=user.workspace
+                workspace=user.get_workspace()
             )
         return WorkingHours.objects.filter(
             workspace=user.client_profile.workspace
         )
 
     def perform_create(self, serializer):
-        serializer.save(workspace=self.request.user.workspace)
+        serializer.save(workspace=self.request.user.get_workspace())
 
 
 class BookingViewSet(viewsets.ModelViewSet):
-    """Owners see/manage every booking in their workspace; clients
-    see only their own and can only ever create bookings for
-    themselves (client is forced here, never trusted from the
-    request body). Sends a confirmation email on create and a
-    cancellation email whenever a booking's status changes to
-    cancelled, and notifies anyone on the waitlist for that exact
-    service+time that a spot has opened up. If a client's new
-    booking matches a slot they were on the waitlist for, that
-    entry is cleaned up automatically since they no longer need
-    to wait for it. Any confirmed booking whose end time has
-    passed is automatically flipped to completed, so it stops
-    showing as upcoming and becomes reviewable.
+    """Owners and staff see/manage every booking in their
+    workspace; clients see only their own and can only ever
+    create bookings for themselves (client is forced here, never
+    trusted from the request body). Sends a confirmation email
+    on create and a cancellation email whenever a booking's
+    status changes to cancelled, and notifies anyone on the
+    waitlist for that exact service+time that a spot has opened
+    up. If a client's new booking matches a slot they were on
+    the waitlist for, that entry is cleaned up automatically
+    since they no longer need to wait for it. Any confirmed
+    booking whose end time has passed is automatically flipped
+    to completed, so it stops showing as upcoming and becomes
+    reviewable.
     """
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
@@ -495,8 +576,8 @@ class BookingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         workspace = (
-            user.workspace
-            if user.role == "owner"
+            user.get_workspace()
+            if user.role in ("owner", "staff")
             else user.client_profile.workspace
         )
         Booking.objects.filter(
@@ -504,14 +585,14 @@ class BookingViewSet(viewsets.ModelViewSet):
             status="confirmed",
             end_time__lt=timezone.now(),
         ).update(status="completed")
-        if user.role == "owner":
+        if user.role in ("owner", "staff"):
             return Booking.objects.filter(workspace=workspace)
         return Booking.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
         user = self.request.user
-        if user.role == "owner":
-            booking = serializer.save(workspace=user.workspace)
+        if user.role in ("owner", "staff"):
+            booking = serializer.save(workspace=user.get_workspace())
         else:
             booking = serializer.save(
                 workspace=user.client_profile.workspace,
@@ -579,8 +660,8 @@ class BookingViewSet(viewsets.ModelViewSet):
 
 class RecurringSeriesCreateView(APIView):
     """POST /api/recurring-series/ - creates a weekly-repeating
-    set of bookings. Owners can book for any client; clients
-    book only for themselves (client is forced here, same
+    set of bookings. Owners and staff can book for any client;
+    clients book only for themselves (client is forced here, same
     pattern as BookingViewSet).
     """
     permission_classes = [IsAuthenticated]
@@ -588,7 +669,7 @@ class RecurringSeriesCreateView(APIView):
     def post(self, request):
         user = request.user
         data = request.data.copy()
-        if user.role == "owner":
+        if user.role in ("owner", "staff"):
             pass
         else:
             data["client"] = user.client_profile.id
@@ -627,8 +708,10 @@ class RecurringSeriesCancelView(APIView):
 
     def post(self, request, pk):
         user = request.user
-        if user.role == "owner":
-            qs = RecurringSeries.objects.filter(workspace=user.workspace)
+        if user.role in ("owner", "staff"):
+            qs = RecurringSeries.objects.filter(
+                workspace=user.get_workspace()
+            )
         else:
             qs = RecurringSeries.objects.filter(
                 client=user.client_profile
@@ -656,9 +739,9 @@ class RecurringSeriesCancelView(APIView):
 
 
 class WaitlistEntryViewSet(viewsets.ModelViewSet):
-    """Full CRUD for waitlist entries. Owners see/manage every
-    entry in their workspace; clients see only their own and can
-    only ever create entries for themselves (client is forced
+    """Full CRUD for waitlist entries. Owners and staff see/manage
+    every entry in their workspace; clients see only their own and
+    can only ever create entries for themselves (client is forced
     here, never trusted from the request body). Any entry whose
     time has already passed is pruned before results are
     returned, so no one sees or gets notified about a slot
@@ -670,21 +753,21 @@ class WaitlistEntryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         workspace = (
-            user.workspace
-            if user.role == "owner"
+            user.get_workspace()
+            if user.role in ("owner", "staff")
             else user.client_profile.workspace
         )
         WaitlistEntry.objects.filter(
             workspace=workspace, start_time__lt=timezone.now()
         ).delete()
-        if user.role == "owner":
+        if user.role in ("owner", "staff"):
             return WaitlistEntry.objects.filter(workspace=workspace)
         return WaitlistEntry.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
         user = self.request.user
-        if user.role == "owner":
-            entry = serializer.save(workspace=user.workspace)
+        if user.role in ("owner", "staff"):
+            entry = serializer.save(workspace=user.get_workspace())
         else:
             entry = serializer.save(
                 workspace=user.client_profile.workspace,
@@ -707,9 +790,9 @@ class WaitlistEntryViewSet(viewsets.ModelViewSet):
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    """Owners see/manage every review in their workspace (read,
-    respond, delete for moderation); clients see only their own
-    and can only ever create/edit/delete their own review, tied
+    """Owners and staff see/manage every review in their workspace
+    (read, respond, delete for moderation); clients see only their
+    own and can only ever create/edit/delete their own review, tied
     to one of their own completed bookings. service/client/
     workspace are always derived from the booking - never
     trusted from the request body.
@@ -719,8 +802,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "owner":
-            return Review.objects.filter(workspace=user.workspace)
+        if user.role in ("owner", "staff"):
+            return Review.objects.filter(workspace=user.get_workspace())
         return Review.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
@@ -742,7 +825,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         # Only the client who wrote it can edit rating/comment;
-        # the owner uses the separate 'respond' action instead.
+        # the owner/staff use the separate 'respond' action instead.
         if self.request.user.role != "client":
             raise PermissionDenied(
                 "Only the client who wrote a review can edit it."
@@ -759,15 +842,15 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def respond(self, request, pk=None):
-        """POST /api/reviews/<id>/respond/ - owner's public
-        response to a review.
+        """POST /api/reviews/<id>/respond/ - owner or staff's
+        public response to a review.
         """
-        if request.user.role != "owner":
+        if request.user.role not in ("owner", "staff"):
             raise PermissionDenied(
-                "Only the owner can respond to a review."
+                "Only the owner or team can respond to a review."
             )
         review = generics.get_object_or_404(
-            Review.objects.filter(workspace=request.user.workspace),
+            Review.objects.filter(workspace=request.user.get_workspace()),
             pk=pk,
         )
         serializer = ReviewResponseSerializer(data=request.data)
@@ -797,8 +880,8 @@ class AvailabilityView(APIView):
             )
         user = request.user
         workspace = (
-            user.workspace
-            if user.role == "owner"
+            user.get_workspace()
+            if user.role in ("owner", "staff")
             else user.client_profile.workspace
         )
         service = generics.get_object_or_404(
@@ -809,15 +892,9 @@ class AvailabilityView(APIView):
             date_str, "%Y-%m-%d"
         ).date()
         weekday = target_date.weekday()
-
         windows = WorkingHours.objects.filter(
             workspace=workspace, weekday=weekday
         )
-
-        # Query a full local day's worth of UTC range, using the
-        # workspace's own timezone - not the server's - so
-        # bookings near local midnight aren't missed or double-
-        # counted.
         day_start_local = datetime.combine(
             target_date, datetime.min.time(), tzinfo=tz
         )

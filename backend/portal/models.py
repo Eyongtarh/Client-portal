@@ -6,16 +6,38 @@ from django.utils.text import slugify
 
 
 class User(AbstractUser):
-    """Everyone who logs in — freelancers/business owners AND their
-    clients — is a User, distinguished by role."""
+    """Everyone who logs in — freelancers/business owners, their
+    staff, AND their clients — is a User, distinguished by role.
+    staff_workspace is only set for role=STAFF (a team member
+    invited into someone else's workspace); the owner still owns
+    their workspace via the Workspace.owner OneToOne below.
+    """
 
     class Role(models.TextChoices):
         OWNER = "owner", "Workspace Owner"
+        STAFF = "staff", "Team Member"
         CLIENT = "client", "Client"
     role = models.CharField(max_length=20, choices=Role.choices)
     email = models.EmailField(unique=True)
+    staff_workspace = models.ForeignKey(
+        "Workspace",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="team_members",
+    )
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
+
+    def get_workspace(self):
+        """Returns the single workspace this user acts within,
+        regardless of whether they're the owner or invited staff.
+        """
+        if self.role == self.Role.OWNER:
+            return self.workspace
+        if self.role == self.Role.STAFF:
+            return self.staff_workspace
+        return None
 
     def __str__(self):
         return f"{self.email} ({self.role})"
@@ -117,6 +139,33 @@ class ClientInvite(models.Model):
 
     def __str__(self):
         return f"Invite for {self.email} ({self.workspace.name})"
+
+
+class TeamInvite(models.Model):
+    """A pending invitation for a team member to join a workspace
+    with staff access. Same pattern as ClientInvite: the invitee
+    clicks the emailed link, sets a password, and becomes a
+    role=STAFF User tied to this workspace.
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="team_invites"
+    )
+    email = models.EmailField()
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timezone.timedelta(days=7)
+        super().save(*args, **kwargs)
+
+    def is_valid(self):
+        return not self.accepted and timezone.now() < self.expires_at
+
+    def __str__(self):
+        return f"Team invite for {self.email} ({self.workspace.name})"
 
 
 class Project(models.Model):
