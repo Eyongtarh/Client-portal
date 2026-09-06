@@ -403,6 +403,40 @@ class Booking(models.Model):
         return f"{self.service.name} - {self.client.company_name}"
 
 
+class Review(models.Model):
+    """A client's rating + comment on a service, tied to the
+    specific booking that prompted it (so a client can only
+    review something they actually attended). The owner can
+    post one public response per review but never edits the
+    client's rating or comment.
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="reviews"
+    )
+    service = models.ForeignKey(
+        Service, on_delete=models.CASCADE, related_name="reviews"
+    )
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name="reviews"
+    )
+    booking = models.OneToOneField(
+        Booking, on_delete=models.CASCADE, related_name="review"
+    )
+    rating = models.PositiveSmallIntegerField()
+    comment = models.TextField(blank=True)
+    owner_response = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return (
+            f"{self.client.company_name} rated {self.service.name} "
+            f"{self.rating}/5"
+        )
+
+
 def document_upload_path(instance, filename):
     """Files land under a workspace/project-scoped folder, so uploads
     from different tenants never collide or overwrite each other.

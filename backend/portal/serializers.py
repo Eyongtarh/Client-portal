@@ -1,7 +1,7 @@
 from .models import (
     Approval, Client, ClientInvite, Document, Invoice, InvoiceItem,
-    Message, Milestone, Project, RecurringSeries, Service, Task, User,
-    WaitlistEntry, WorkingHours, Booking, Workspace,
+    Message, Milestone, Project, RecurringSeries, Review, Service,
+    Task, User, WaitlistEntry, WorkingHours, Booking, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -477,6 +477,59 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
 
     def get_client_name(self, obj):
         return obj.client.company_name
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    """Client creates a review tied to one of their own completed
+    bookings; the booking, service, and client are all forced
+    server-side (client never picks the booking arbitrarily - the
+    view scopes it to their own completed, not-yet-reviewed
+    bookings). Owner responds via a separate action, never by
+    editing rating/comment directly.
+    """
+    service_name = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Review
+        fields = [
+            "id", "workspace", "service", "service_name", "client",
+            "client_name", "booking", "rating", "comment",
+            "owner_response", "created_at",
+        ]
+        read_only_fields = [
+            "workspace", "service", "client", "owner_response",
+            "created_at",
+        ]
+
+    def get_service_name(self, obj):
+        return obj.service.name
+
+    def get_client_name(self, obj):
+        return obj.client.company_name
+
+    def validate_rating(self, value):
+        if value < 1 or value > 5:
+            raise serializers.ValidationError(
+                "Rating must be between 1 and 5."
+            )
+        return value
+
+    def validate_booking(self, value):
+        if value.status != "completed":
+            raise serializers.ValidationError(
+                "You can only review a completed booking."
+            )
+        if hasattr(value, "review"):
+            raise serializers.ValidationError(
+                "This booking has already been reviewed."
+            )
+        return value
+
+
+class ReviewResponseSerializer(serializers.Serializer):
+    """Owner's public response to a review."""
+    owner_response = serializers.CharField(allow_blank=True)
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):

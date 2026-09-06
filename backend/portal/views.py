@@ -10,6 +10,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from rest_framework import generics, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -17,7 +18,7 @@ from rest_framework.views import APIView
 
 from .models import (
     Approval, Booking, Client, Document, Invoice, Message, Milestone,
-    Project, RecurringSeries, Service, Task, WaitlistEntry,
+    Project, RecurringSeries, Review, Service, Task, WaitlistEntry,
     WorkingHours,
 )
 from .serializers import (
@@ -37,6 +38,8 @@ from .serializers import (
     ProjectSerializer,
     RecurringSeriesCreateSerializer,
     RegisterSerializer,
+    ReviewResponseSerializer,
+    ReviewSerializer,
     ServiceSerializer,
     TaskSerializer,
     WaitlistEntrySerializer,
@@ -689,6 +692,79 @@ class WaitlistEntryViewSet(viewsets.ModelViewSet):
             recipient_list=[entry.client.contact_email],
             fail_silently=True,
         )
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """Owners see/manage every review in their workspace (read,
+    respond, delete for moderation); clients see only their own
+    and can only ever create/edit/delete their own review, tied
+    to one of their own completed bookings. service/client/
+    workspace are always derived from the booking - never
+    trusted from the request body.
+    """
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == "owner":
+            return Review.objects.filter(workspace=user.workspace)
+        return Review.objects.filter(client=user.client_profile)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role != "client":
+            raise PermissionDenied(
+                "Only a client can leave a review."
+            )
+        booking = serializer.validated_data["booking"]
+        if booking.client != user.client_profile:
+            raise PermissionDenied(
+                "You can only review your own bookings."
+            )
+        serializer.save(
+            workspace=booking.workspace,
+            service=booking.service,
+            client=user.client_profile,
+        )
+
+    def perform_update(self, serializer):
+        # Only the client who wrote it can edit rating/comment;
+        # the owner uses the separate 'respond' action instead.
+        if self.request.user.role != "client":
+            raise PermissionDenied(
+                "Only the client who wrote a review can edit it."
+            )
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        if user.role == "client" and instance.client != user.client_profile:
+            raise PermissionDenied(
+                "You can only delete your own review."
+            )
+        instance.delete()
+
+    @action(detail=True, methods=["post"])
+    def respond(self, request, pk=None):
+        """POST /api/reviews/<id>/respond/ - owner's public
+        response to a review.
+        """
+        if request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the owner can respond to a review."
+            )
+        review = generics.get_object_or_404(
+            Review.objects.filter(workspace=request.user.workspace),
+            pk=pk,
+        )
+        serializer = ReviewResponseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        review.owner_response = serializer.validated_data[
+            "owner_response"
+        ]
+        review.save(update_fields=["owner_response"])
+        return Response(ReviewSerializer(review).data)
 
 
 class AvailabilityView(APIView):

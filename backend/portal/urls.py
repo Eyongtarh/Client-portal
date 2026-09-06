@@ -34,6 +34,9 @@ router.register(
 router.register(
     "waitlist", views.WaitlistEntryViewSet, basename="waitlist"
 )
+router.register(
+    "reviews", views.ReviewViewSet, basename="review"
+)
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),
