@@ -485,15 +485,27 @@ class BookingViewSet(viewsets.ModelViewSet):
     service+time that a spot has opened up. If a client's new
     booking matches a slot they were on the waitlist for, that
     entry is cleaned up automatically since they no longer need
-    to wait for it.
+    to wait for it. Any confirmed booking whose end time has
+    passed is automatically flipped to completed, so it stops
+    showing as upcoming and becomes reviewable.
     """
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
+        workspace = (
+            user.workspace
+            if user.role == "owner"
+            else user.client_profile.workspace
+        )
+        Booking.objects.filter(
+            workspace=workspace,
+            status="confirmed",
+            end_time__lt=timezone.now(),
+        ).update(status="completed")
         if user.role == "owner":
-            return Booking.objects.filter(workspace=user.workspace)
+            return Booking.objects.filter(workspace=workspace)
         return Booking.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
