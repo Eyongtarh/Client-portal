@@ -1,5 +1,6 @@
-// Owner's home page: lists clients in the workspace and lets the
-// owner invite new ones, plus upload a workspace logo.
+// Owner's (and staff's) home page: lists clients in the
+// workspace and lets the owner invite new ones, upload a
+// workspace logo, and manage the team.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -19,6 +20,7 @@ export default function OwnerDashboard() {
   const [inviteError, setInviteError] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+  const isOwner = user.role === "owner";
 
   async function loadClients() {
     const res = await api.get("/clients/");
@@ -73,33 +75,43 @@ export default function OwnerDashboard() {
     <div className="min-h-screen bg-brand-50">
       <header className="bg-white border-b border-brand-100 px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <label
-            className="cursor-pointer rounded-lg focus-within:ring-2 focus-within:ring-brand-400"
-            title="Upload or change workspace logo"
-          >
-            {workspace?.logo ? (
+          {isOwner ? (
+            <label
+              className="cursor-pointer rounded-lg focus-within:ring-2 focus-within:ring-brand-400"
+              title="Upload or change workspace logo"
+            >
+              {workspace?.logo ? (
+                <img
+                  src={workspace.logo}
+                  alt={`${workspace.name} logo`}
+                  className="w-10 h-10 rounded-lg object-cover border border-brand-100 transition-opacity hover:opacity-80"
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="w-10 h-10 rounded-lg bg-brand-50 border border-dashed border-brand-200 flex items-center justify-center text-xs text-brand-600 transition-colors hover:bg-brand-100"
+                >
+                  {logoUploading ? "..." : "+"}
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onLogoChange}
+                disabled={logoUploading}
+                aria-label="Upload workspace logo"
+              />
+            </label>
+          ) : (
+            workspace?.logo && (
               <img
                 src={workspace.logo}
                 alt={`${workspace.name} logo`}
-                className="w-10 h-10 rounded-lg object-cover border border-brand-100 transition-opacity hover:opacity-80"
+                className="w-10 h-10 rounded-lg object-cover border border-brand-100"
               />
-            ) : (
-              <div
-                aria-hidden="true"
-                className="w-10 h-10 rounded-lg bg-brand-50 border border-dashed border-brand-200 flex items-center justify-center text-xs text-brand-600 transition-colors hover:bg-brand-100"
-              >
-                {logoUploading ? "..." : "+"}
-              </div>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onLogoChange}
-              disabled={logoUploading}
-              aria-label="Upload workspace logo"
-            />
-          </label>
+            )
+          )}
           <h1 className="text-lg font-semibold text-brand-700">
             {user.workspace_name}
           </h1>
@@ -122,95 +134,237 @@ export default function OwnerDashboard() {
           </button>
         </div>
       </header>
-      <main className="max-w-3xl mx-auto px-8 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">{t("dashboard.clients")}</h2>
+      <main className="max-w-3xl mx-auto px-8 py-8 space-y-8">
+        <div>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">{t("dashboard.clients")}</h2>
+            <button
+              onClick={() => {
+                setShowInviteForm(!showInviteForm);
+                setInviteSuccess(false);
+              }}
+              aria-expanded={showInviteForm}
+              aria-label={t("dashboard.inviteClient")}
+              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              {t("dashboard.inviteClient")}
+            </button>
+          </div>
+          {inviteSuccess && (
+            <div
+              role="status"
+              className="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+            >
+              Invite sent successfully.
+            </div>
+          )}
+          {showInviteForm && (
+            <form
+              onSubmit={onInviteSubmit}
+              className="bg-white border border-brand-100 rounded-xl p-6 mb-6"
+            >
+              {inviteError && (
+                <div
+                  role="alert"
+                  className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2"
+                >
+                  {inviteError}
+                </div>
+              )}
+              <label
+                htmlFor="invite-company"
+                className="block text-sm mb-1 text-gray-600"
+              >
+                {t("dashboard.companyName")}
+              </label>
+              <input
+                id="invite-company"
+                required
+                value={inviteCompany}
+                onChange={(e) => setInviteCompany(e.target.value)}
+                className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+              <label
+                htmlFor="invite-email"
+                className="block text-sm mb-1 text-gray-600"
+              >
+                {t("dashboard.clientEmail")}
+              </label>
+              <input
+                id="invite-email"
+                type="email"
+                required
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+              <button
+                disabled={inviteBusy}
+                aria-label={t("dashboard.sendInvite")}
+                className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                {inviteBusy
+                  ? t("dashboard.sending")
+                  : t("dashboard.sendInvite")}
+              </button>
+            </form>
+          )}
+          <div className="space-y-3">
+            {clients.map((client) => (
+              <Link
+                key={client.id}
+                to={`/clients/${client.id}`}
+                aria-label={`View ${client.company_name}`}
+                className="block bg-white border border-brand-100 rounded-xl p-4 transition-all hover:shadow-md hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                <p className="font-medium">{client.company_name}</p>
+                <p className="text-sm text-gray-500">{client.contact_email}</p>
+              </Link>
+            ))}
+            {clients.length === 0 && (
+              <p className="text-gray-500 text-sm">
+                {t("dashboard.noClients")}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <TeamSection isOwner={isOwner} />
+      </main>
+    </div>
+  );
+}
+
+function TeamSection({ isOwner }) {
+  const { t } = useTranslation();
+  const [members, setMembers] = useState([]);
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    const res = await api.get("/team/");
+    setMembers(res.data);
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function onInviteSubmit(e) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.post("/team-invites/", { email: inviteEmail });
+      setInviteEmail("");
+      setShowInviteForm(false);
+      setStatusMsg({ key: "team.inviteSent", type: "success" });
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "team.couldNotSendInvite", type: "error" },
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeMember(memberId) {
+    if (!window.confirm(t("team.confirmRemoveMember"))) return;
+    await api.delete(`/team/${memberId}/`);
+    setStatusMsg({ key: "team.memberRemoved", type: "error" });
+    load();
+  }
+
+  return (
+    <section>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">{t("team.teamTitle")}</h2>
+        {isOwner && (
           <button
             onClick={() => {
               setShowInviteForm(!showInviteForm);
-              setInviteSuccess(false);
+              setStatusMsg(null);
             }}
             aria-expanded={showInviteForm}
-            aria-label={t("dashboard.inviteClient")}
+            aria-label={t("team.inviteTeamMember")}
             className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
-            {t("dashboard.inviteClient")}
+            {t("team.inviteTeamMember")}
           </button>
+        )}
+      </div>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
         </div>
-        {inviteSuccess && (
+      )}
+
+      {isOwner && showInviteForm && (
+        <form
+          onSubmit={onInviteSubmit}
+          className="bg-white border border-brand-100 rounded-xl p-6 mb-6"
+        >
+          <label
+            htmlFor="team-invite-email"
+            className="block text-sm mb-1 text-gray-600"
+          >
+            {t("team.emailAddress")}
+          </label>
+          <input
+            id="team-invite-email"
+            type="email"
+            required
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+          <button
+            disabled={busy}
+            aria-label={t("team.sendInvite")}
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            {t("team.sendInvite")}
+          </button>
+        </form>
+      )}
+
+      <div className="space-y-3">
+        {members.map((member) => (
           <div
-            role="status"
-            className="mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+            key={member.id}
+            className="bg-white border border-brand-100 rounded-xl p-4 flex justify-between items-center"
           >
-            Invite sent successfully.
-          </div>
-        )}
-        {showInviteForm && (
-          <form
-            onSubmit={onInviteSubmit}
-            className="bg-white border border-brand-100 rounded-xl p-6 mb-6"
-          >
-            {inviteError && (
-              <div
-                role="alert"
-                className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2"
+            <div>
+              <p className="font-medium">{member.first_name}</p>
+              <p className="text-sm text-gray-500">{member.email}</p>
+            </div>
+            {isOwner && (
+              <button
+                onClick={() => removeMember(member.id)}
+                aria-label={`${t("team.removeMember")} ${member.first_name}`}
+                className="bg-red-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
               >
-                {inviteError}
-              </div>
+                {t("team.removeMember")}
+              </button>
             )}
-            <label
-              htmlFor="invite-company"
-              className="block text-sm mb-1 text-gray-600"
-            >
-              {t("dashboard.companyName")}
-            </label>
-            <input
-              id="invite-company"
-              required
-              value={inviteCompany}
-              onChange={(e) => setInviteCompany(e.target.value)}
-              className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
-            />
-            <label
-              htmlFor="invite-email"
-              className="block text-sm mb-1 text-gray-600"
-            >
-              {t("dashboard.clientEmail")}
-            </label>
-            <input
-              id="invite-email"
-              type="email"
-              required
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
-            />
-            <button
-              disabled={inviteBusy}
-              aria-label={t("dashboard.sendInvite")}
-              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
-            >
-              {inviteBusy ? t("dashboard.sending") : t("dashboard.sendInvite")}
-            </button>
-          </form>
+          </div>
+        ))}
+        {members.length === 0 && (
+          <p className="text-gray-500 text-sm">{t("team.noTeamMembers")}</p>
         )}
-        <div className="space-y-3">
-          {clients.map((client) => (
-            <Link
-              key={client.id}
-              to={`/clients/${client.id}`}
-              aria-label={`View ${client.company_name}`}
-              className="block bg-white border border-brand-100 rounded-xl p-4 transition-all hover:shadow-md hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
-            >
-              <p className="font-medium">{client.company_name}</p>
-              <p className="text-sm text-gray-500">{client.contact_email}</p>
-            </Link>
-          ))}
-          {clients.length === 0 && (
-            <p className="text-gray-500 text-sm">{t("dashboard.noClients")}</p>
-          )}
-        </div>
-      </main>
-    </div>
+      </div>
+    </section>
   );
 }

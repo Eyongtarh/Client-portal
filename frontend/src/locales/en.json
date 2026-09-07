@@ -97,6 +97,19 @@
     "ownerResponse": "Owner's response",
     "averageRating": "Average rating"
   },
+  "team": {
+    "teamTitle": "Team",
+    "inviteTeamMember": "Invite team member",
+    "emailAddress": "Email address",
+    "sendInvite": "Send invite",
+    "inviteSent": "Invite sent.",
+    "couldNotSendInvite": "Could not send this invite.",
+    "removeMember": "Remove",
+    "confirmRemoveMember": "Remove this team member?",
+    "memberRemoved": "Team member removed.",
+    "noTeamMembers": "No team members yet.",
+    "welcomeBackStaff": "Welcome back"
+  },
   "landing": {
     "signIn": "Sign in",
     "getStarted": "Get started",

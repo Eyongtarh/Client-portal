@@ -97,6 +97,19 @@
     "ownerResponse": "R\u00e9ponse du propri\u00e9taire",
     "averageRating": "Note moyenne"
   },
+  "team": {
+    "teamTitle": "\u00c9quipe",
+    "inviteTeamMember": "Inviter un membre",
+    "emailAddress": "Adresse e-mail",
+    "sendInvite": "Envoyer l'invitation",
+    "inviteSent": "Invitation envoy\u00e9e.",
+    "couldNotSendInvite": "Impossible d'envoyer cette invitation.",
+    "removeMember": "Retirer",
+    "confirmRemoveMember": "Retirer ce membre de l'\u00e9quipe\u00a0?",
+    "memberRemoved": "Membre retir\u00e9 de l'\u00e9quipe.",
+    "noTeamMembers": "Aucun membre pour le moment.",
+    "welcomeBackStaff": "Bon retour"
+  },
   "landing": {
     "signIn": "Se connecter",
     "getStarted": "Commencer",
