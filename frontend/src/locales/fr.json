@@ -237,7 +237,21 @@
     "invoiceUpdated": "Facture mise \u00e0 jour.",
     "invoiceDeleted": "Facture supprim\u00e9e.",
     "couldNotUpdateInvoice": "Impossible de mettre \u00e0 jour la facture.",
-    "couldNotDeleteInvoice": "Impossible de supprimer la facture."
+    "couldNotDeleteInvoice": "Impossible de supprimer la facture.",
+    "editMilestone": "Modifier",
+    "deleteMilestone": "Supprimer",
+    "confirmDeleteMilestone": "Supprimer cette \u00e9tape\u00a0?",
+    "milestoneUpdated": "\u00c9tape mise \u00e0 jour.",
+    "milestoneDeleted": "\u00c9tape supprim\u00e9e.",
+    "couldNotUpdateMilestone": "Impossible de mettre \u00e0 jour l'\u00e9tape.",
+    "couldNotDeleteMilestone": "Impossible de supprimer l'\u00e9tape.",
+    "editTask": "Modifier",
+    "deleteTask": "Supprimer",
+    "confirmDeleteTask": "Supprimer cette t\u00e2che\u00a0?",
+    "taskUpdated": "T\u00e2che mise \u00e0 jour.",
+    "taskDeleted": "T\u00e2che supprim\u00e9e.",
+    "couldNotUpdateTask": "Impossible de mettre \u00e0 jour la t\u00e2che.",
+    "couldNotDeleteTask": "Impossible de supprimer la t\u00e2che."
   },
   "clientPortal": {
     "welcomeBack": "Bon retour,",

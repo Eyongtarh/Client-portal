@@ -111,6 +111,11 @@ function ProjectOverview({ project, onChange }) {
   const [newMilestone, setNewMilestone] = useState("");
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [editingMilestoneId, setEditingMilestoneId] = useState(null);
+  const [editMilestoneTitle, setEditMilestoneTitle] = useState("");
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editTaskTitle, setEditTaskTitle] = useState("");
 
   async function toggleMilestone(milestone) {
     await api.patch(`/milestones/${milestone.id}/`, {
@@ -128,6 +133,45 @@ function ProjectOverview({ project, onChange }) {
     });
     setNewMilestone("");
     onChange();
+  }
+
+  function startEditMilestone(milestone) {
+    setEditingMilestoneId(milestone.id);
+    setEditMilestoneTitle(milestone.title);
+  }
+  function cancelEditMilestone() {
+    setEditingMilestoneId(null);
+  }
+  async function saveEditMilestone(milestoneId) {
+    try {
+      await api.patch(`/milestones/${milestoneId}/`, {
+        title: editMilestoneTitle,
+      });
+      setEditingMilestoneId(null);
+      setStatusMsg({
+        key: "clientDetail.milestoneUpdated",
+        type: "success",
+      });
+      onChange();
+    } catch (err) {
+      setStatusMsg({
+        key: "clientDetail.couldNotUpdateMilestone",
+        type: "error",
+      });
+    }
+  }
+  async function deleteMilestone(milestoneId) {
+    if (!window.confirm(t("clientDetail.confirmDeleteMilestone"))) return;
+    try {
+      await api.delete(`/milestones/${milestoneId}/`);
+      setStatusMsg({ key: "clientDetail.milestoneDeleted", type: "error" });
+      onChange();
+    } catch (err) {
+      setStatusMsg({
+        key: "clientDetail.couldNotDeleteMilestone",
+        type: "error",
+      });
+    }
   }
 
   async function loadTasks() {
@@ -155,6 +199,40 @@ function ProjectOverview({ project, onChange }) {
     loadTasks();
   }
 
+  function startEditTask(task) {
+    setEditingTaskId(task.id);
+    setEditTaskTitle(task.title);
+  }
+  function cancelEditTask() {
+    setEditingTaskId(null);
+  }
+  async function saveEditTask(taskId) {
+    try {
+      await api.patch(`/tasks/${taskId}/`, { title: editTaskTitle });
+      setEditingTaskId(null);
+      setStatusMsg({ key: "clientDetail.taskUpdated", type: "success" });
+      loadTasks();
+    } catch (err) {
+      setStatusMsg({
+        key: "clientDetail.couldNotUpdateTask",
+        type: "error",
+      });
+    }
+  }
+  async function deleteTask(taskId) {
+    if (!window.confirm(t("clientDetail.confirmDeleteTask"))) return;
+    try {
+      await api.delete(`/tasks/${taskId}/`);
+      setStatusMsg({ key: "clientDetail.taskDeleted", type: "error" });
+      loadTasks();
+    } catch (err) {
+      setStatusMsg({
+        key: "clientDetail.couldNotDeleteTask",
+        type: "error",
+      });
+    }
+  }
+
   return (
     <div>
       <h2 className="text-xl font-semibold">{project.name}</h2>
@@ -172,28 +250,89 @@ function ProjectOverview({ project, onChange }) {
         {project.progress_percent}
         {t("clientDetail.percentComplete")}
       </p>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {t(statusMsg.key)}
+        </div>
+      )}
+
       <h3 className="font-medium mb-2">{t("clientDetail.milestones")}</h3>
       <ul className="space-y-1 mb-4">
         {project.milestones.map((milestone) => (
-          <li key={milestone.id} className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              id={`milestone-${milestone.id}`}
-              checked={milestone.is_complete}
-              onChange={() => toggleMilestone(milestone)}
-              aria-label={`Mark milestone "${milestone.title}" as ${milestone.is_complete ? "incomplete" : "complete"}`}
-              className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
-            />
-            <label
-              htmlFor={`milestone-${milestone.id}`}
-              className={
-                milestone.is_complete
-                  ? "line-through text-gray-400 cursor-pointer"
-                  : "cursor-pointer"
-              }
-            >
-              {milestone.title}
-            </label>
+          <li key={milestone.id} className="text-sm">
+            {editingMilestoneId === milestone.id ? (
+              <div className="flex gap-2 items-center py-1">
+                <label
+                  htmlFor={`edit-milestone-${milestone.id}`}
+                  className="sr-only"
+                >
+                  {t("clientDetail.editMilestone")}
+                </label>
+                <input
+                  id={`edit-milestone-${milestone.id}`}
+                  value={editMilestoneTitle}
+                  onChange={(e) => setEditMilestoneTitle(e.target.value)}
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <button
+                  onClick={() => saveEditMilestone(milestone.id)}
+                  aria-label={t("clientDetail.save")}
+                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("clientDetail.save")}
+                </button>
+                <button
+                  onClick={cancelEditMilestone}
+                  aria-label={t("clientDetail.cancel")}
+                  className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("clientDetail.cancel")}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={`milestone-${milestone.id}`}
+                  checked={milestone.is_complete}
+                  onChange={() => toggleMilestone(milestone)}
+                  aria-label={`Mark milestone "${milestone.title}" as ${milestone.is_complete ? "incomplete" : "complete"}`}
+                  className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                />
+                <label
+                  htmlFor={`milestone-${milestone.id}`}
+                  className={
+                    milestone.is_complete
+                      ? "line-through text-gray-400 cursor-pointer flex-1"
+                      : "cursor-pointer flex-1"
+                  }
+                >
+                  {milestone.title}
+                </label>
+                <button
+                  onClick={() => startEditMilestone(milestone)}
+                  aria-label={`${t("clientDetail.editMilestone")} ${milestone.title}`}
+                  className="bg-brand-50 text-brand-700 text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("clientDetail.editMilestone")}
+                </button>
+                <button
+                  onClick={() => deleteMilestone(milestone.id)}
+                  aria-label={`${t("clientDetail.deleteMilestone")} ${milestone.title}`}
+                  className="bg-red-600 text-white text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                >
+                  {t("clientDetail.deleteMilestone")}
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>
@@ -218,25 +357,69 @@ function ProjectOverview({ project, onChange }) {
       <h3 className="font-medium mb-2 mt-6">{t("clientDetail.tasks")}</h3>
       <ul className="space-y-1 mb-4">
         {tasks.map((task) => (
-          <li key={task.id} className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              id={`task-${task.id}`}
-              checked={task.is_complete}
-              onChange={() => toggleTask(task)}
-              aria-label={`Mark task "${task.title}" as ${task.is_complete ? "incomplete" : "complete"}`}
-              className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
-            />
-            <label
-              htmlFor={`task-${task.id}`}
-              className={
-                task.is_complete
-                  ? "line-through text-gray-400 cursor-pointer"
-                  : "cursor-pointer"
-              }
-            >
-              {task.title}
-            </label>
+          <li key={task.id} className="text-sm">
+            {editingTaskId === task.id ? (
+              <div className="flex gap-2 items-center py-1">
+                <label htmlFor={`edit-task-${task.id}`} className="sr-only">
+                  {t("clientDetail.editTask")}
+                </label>
+                <input
+                  id={`edit-task-${task.id}`}
+                  value={editTaskTitle}
+                  onChange={(e) => setEditTaskTitle(e.target.value)}
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <button
+                  onClick={() => saveEditTask(task.id)}
+                  aria-label={t("clientDetail.save")}
+                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("clientDetail.save")}
+                </button>
+                <button
+                  onClick={cancelEditTask}
+                  aria-label={t("clientDetail.cancel")}
+                  className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("clientDetail.cancel")}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={`task-${task.id}`}
+                  checked={task.is_complete}
+                  onChange={() => toggleTask(task)}
+                  aria-label={`Mark task "${task.title}" as ${task.is_complete ? "incomplete" : "complete"}`}
+                  className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                />
+                <label
+                  htmlFor={`task-${task.id}`}
+                  className={
+                    task.is_complete
+                      ? "line-through text-gray-400 cursor-pointer flex-1"
+                      : "cursor-pointer flex-1"
+                  }
+                >
+                  {task.title}
+                </label>
+                <button
+                  onClick={() => startEditTask(task)}
+                  aria-label={`${t("clientDetail.editTask")} ${task.title}`}
+                  className="bg-brand-50 text-brand-700 text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("clientDetail.editTask")}
+                </button>
+                <button
+                  onClick={() => deleteTask(task.id)}
+                  aria-label={`${t("clientDetail.deleteTask")} ${task.title}`}
+                  className="bg-red-600 text-white text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                >
+                  {t("clientDetail.deleteTask")}
+                </button>
+              </div>
+            )}
           </li>
         ))}
         {tasks.length === 0 && (

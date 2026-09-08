@@ -237,7 +237,21 @@
     "invoiceUpdated": "Invoice updated.",
     "invoiceDeleted": "Invoice deleted.",
     "couldNotUpdateInvoice": "Could not update invoice.",
-    "couldNotDeleteInvoice": "Could not delete invoice."
+    "couldNotDeleteInvoice": "Could not delete invoice.",
+    "editMilestone": "Edit",
+    "deleteMilestone": "Delete",
+    "confirmDeleteMilestone": "Delete this milestone?",
+    "milestoneUpdated": "Milestone updated.",
+    "milestoneDeleted": "Milestone deleted.",
+    "couldNotUpdateMilestone": "Could not update milestone.",
+    "couldNotDeleteMilestone": "Could not delete milestone.",
+    "editTask": "Edit",
+    "deleteTask": "Delete",
+    "confirmDeleteTask": "Delete this task?",
+    "taskUpdated": "Task updated.",
+    "taskDeleted": "Task deleted.",
+    "couldNotUpdateTask": "Could not update task.",
+    "couldNotDeleteTask": "Could not delete task."
   },
   "clientPortal": {
     "welcomeBack": "Welcome back,",
