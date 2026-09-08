@@ -288,5 +288,29 @@
     "brandColor": "Couleur de marque",
     "colorUpdated": "Couleur de marque mise \u00e0 jour.",
     "couldNotUpdateColor": "Impossible de mettre \u00e0 jour la couleur de marque."
+  },
+  "resources": {
+    "resourcesTitle": "Ressources",
+    "addResource": "Ajouter une ressource",
+    "resourceName": "Nom de la ressource",
+    "descriptionOptional": "Description (optionnel)",
+    "quantity": "Quantit\u00e9",
+    "assignServices": "Services qui utilisent cette ressource",
+    "createResource": "Cr\u00e9er la ressource",
+    "resourceCreated": "Ressource cr\u00e9\u00e9e.",
+    "resourceUpdated": "Ressource mise \u00e0 jour.",
+    "resourceDeleted": "Ressource supprim\u00e9e.",
+    "couldNotCreateResource": "Impossible de cr\u00e9er la ressource.",
+    "couldNotUpdateResource": "Impossible de mettre \u00e0 jour la ressource.",
+    "couldNotDeleteResource": "Impossible de supprimer la ressource.",
+    "confirmDeleteResource": "Supprimer cette ressource\u00a0?",
+    "noResources": "Aucune ressource pour le moment.",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "remainingCapacity": "places restantes",
+    "addPhotoOptional": "Ajouter une photo (optionnel)",
+    "changePhoto": "Changer la photo"
   }
 }

@@ -479,8 +479,8 @@ class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
         fields = [
-            "id", "workspace", "name", "description", "quantity",
-            "services", "created_at",
+            "id", "workspace", "name", "description", "photo",
+            "quantity", "services", "created_at",
         ]
         read_only_fields = ["workspace", "created_at"]
 

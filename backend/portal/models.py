@@ -354,6 +354,14 @@ class Service(models.Model):
         return self.name
 
 
+def resource_photo_upload_path(instance, filename):
+    """Resource photos live under a per-workspace folder."""
+    return (
+        f"workspaces/{instance.workspace_id}/"
+        f"resources/{filename}"
+    )
+
+
 class Resource(models.Model):
     """A shared, bookable thing - a room, a piece of equipment, a
     chair, a vehicle - that only one booking can hold at a time
@@ -367,6 +375,9 @@ class Resource(models.Model):
     )
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    photo = models.ImageField(
+        upload_to=resource_photo_upload_path, null=True, blank=True
+    )
     quantity = models.PositiveIntegerField(
         default=1,
         help_text="How many identical units exist, e.g. 3 chairs.",

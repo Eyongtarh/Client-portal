@@ -288,5 +288,29 @@
     "brandColor": "Brand color",
     "colorUpdated": "Brand color updated.",
     "couldNotUpdateColor": "Could not update brand color."
+  },
+  "resources": {
+    "resourcesTitle": "Resources",
+    "addResource": "Add resource",
+    "resourceName": "Resource name",
+    "descriptionOptional": "Description (optional)",
+    "quantity": "Quantity",
+    "assignServices": "Services that use this resource",
+    "createResource": "Create resource",
+    "resourceCreated": "Resource created.",
+    "resourceUpdated": "Resource updated.",
+    "resourceDeleted": "Resource deleted.",
+    "couldNotCreateResource": "Could not create resource.",
+    "couldNotUpdateResource": "Could not update resource.",
+    "couldNotDeleteResource": "Could not delete resource.",
+    "confirmDeleteResource": "Delete this resource?",
+    "noResources": "No resources yet.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "remainingCapacity": "spots left",
+    "addPhotoOptional": "Add photo (optional)",
+    "changePhoto": "Change photo"
   }
 }

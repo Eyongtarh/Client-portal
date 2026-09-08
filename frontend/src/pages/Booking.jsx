@@ -2,8 +2,10 @@
 // services (with a photo, description, free-text workspace
 // currency, timezone, max per slot capacity, and duration in
 // minutes or hours), set weekly working hours (with edit and
-// remove), see upcoming bookings (with cancel confirmation and
-// a status message), and manage the waitlist.
+// remove), see upcoming bookings (with cancel confirmation,
+// remaining capacity, and a status message), manage the
+// waitlist, respond to reviews, and manage bookable resources
+// (rooms, equipment, chairs, etc.) tied to services.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -53,6 +55,7 @@ export default function Booking() {
       </header>
       <main className="max-w-2xl mx-auto px-8 py-8 space-y-6">
         <ServicesSection />
+        <ResourcesSection />
         <WorkingHoursSection />
         <BookingsSection />
         <WaitlistSection />
@@ -518,6 +521,9 @@ function ServicesSection() {
                   {service.price && ` \u00b7 ${service.price} ${currency}`}
                   {service.capacity > 1 &&
                     ` \u00b7 up to ${service.capacity} per slot`}
+                  {service.resource_names &&
+                    service.resource_names.length > 0 &&
+                    ` \u00b7 ${service.resource_names.join(", ")}`}
                   {service.description && (
                     <p className="text-gray-500 mt-0.5">
                       {service.description}
@@ -546,6 +552,442 @@ function ServicesSection() {
         ))}
         {services.length === 0 && (
           <p className="text-gray-500 text-sm">{t("booking.noServices")}</p>
+        )}
+      </ul>
+    </section>
+  );
+}
+
+function ResourcesSection() {
+  const { t } = useTranslation();
+  const [resources, setResources] = useState([]);
+  const [services, setServices] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [selectedServices, setSelectedServices] = useState([]);
+  const [newPhoto, setNewPhoto] = useState(null);
+  const [newPhotoPreview, setNewPhotoPreview] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editQuantity, setEditQuantity] = useState("1");
+  const [editServices, setEditServices] = useState([]);
+  const [statusMsg, setStatusMsg] = useState(null);
+
+  async function load() {
+    const res = await api.get("/resources/");
+    setResources(res.data);
+  }
+  async function loadServices() {
+    const res = await api.get("/services/");
+    setServices(res.data);
+  }
+  useEffect(() => {
+    load();
+    loadServices();
+  }, []);
+
+  function toggleSelected(list, setList, serviceId) {
+    if (list.includes(serviceId)) {
+      setList(list.filter((id) => id !== serviceId));
+    } else {
+      setList([...list, serviceId]);
+    }
+  }
+
+  async function onCreate(e) {
+    e.preventDefault();
+    try {
+      const res = await api.post("/resources/", {
+        name,
+        description,
+        quantity,
+        services: selectedServices,
+      });
+      if (newPhoto) {
+        const formData = new FormData();
+        formData.append("photo", newPhoto);
+        await api.patch(`/resources/${res.data.id}/`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+      setName("");
+      setDescription("");
+      setQuantity("1");
+      setSelectedServices([]);
+      setNewPhoto(null);
+      setNewPhotoPreview(null);
+      setShowForm(false);
+      setStatusMsg({ key: "resources.resourceCreated", type: "success" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "resources.couldNotCreateResource",
+        type: "error",
+      });
+    }
+  }
+
+  async function onPhotoChange(resourceId, file) {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("photo", file);
+    await api.patch(`/resources/${resourceId}/`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    load();
+  }
+
+  function startEdit(resource) {
+    setEditingId(resource.id);
+    setEditName(resource.name);
+    setEditDescription(resource.description || "");
+    setEditQuantity(String(resource.quantity));
+    setEditServices(resource.services);
+  }
+  function cancelEdit() {
+    setEditingId(null);
+  }
+  async function saveEdit(resourceId) {
+    try {
+      await api.patch(`/resources/${resourceId}/`, {
+        name: editName,
+        description: editDescription,
+        quantity: editQuantity,
+        services: editServices,
+      });
+      setEditingId(null);
+      setStatusMsg({ key: "resources.resourceUpdated", type: "success" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "resources.couldNotUpdateResource",
+        type: "error",
+      });
+    }
+  }
+
+  async function deleteResource(resourceId) {
+    if (!window.confirm(t("resources.confirmDeleteResource"))) return;
+    try {
+      await api.delete(`/resources/${resourceId}/`);
+      setStatusMsg({ key: "resources.resourceDeleted", type: "error" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "resources.couldNotDeleteResource",
+        type: "error",
+      });
+    }
+  }
+
+  function serviceNames(ids) {
+    return services
+      .filter((s) => ids.includes(s.id))
+      .map((s) => s.name)
+      .join(", ");
+  }
+
+  return (
+    <section className="bg-white border border-brand-100 rounded-xl p-6">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="font-medium">{t("resources.resourcesTitle")}</h2>
+        <button
+          onClick={() => {
+            setShowForm(!showForm);
+            setStatusMsg(null);
+          }}
+          aria-expanded={showForm}
+          aria-label={t("resources.addResource")}
+          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+        >
+          + {t("resources.addResource")}
+        </button>
+      </div>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {t(statusMsg.key)}
+        </div>
+      )}
+
+      {showForm && (
+        <form
+          onSubmit={onCreate}
+          className="border border-gray-200 rounded-lg p-4 mb-4"
+        >
+          <label htmlFor="resource-name" className="sr-only">
+            {t("resources.resourceName")}
+          </label>
+          <input
+            id="resource-name"
+            required
+            placeholder={t("resources.resourceName")}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+          <label htmlFor="resource-description" className="sr-only">
+            {t("resources.descriptionOptional")}
+          </label>
+          <textarea
+            id="resource-description"
+            placeholder={t("resources.descriptionOptional")}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+
+          <label
+            className="flex items-center gap-2 mb-2 cursor-pointer w-fit"
+            title={t("resources.addPhotoOptional")}
+          >
+            {newPhotoPreview ? (
+              <img
+                src={newPhotoPreview}
+                alt="Resource photo preview"
+                className="w-12 h-12 rounded-lg object-cover border border-gray-200"
+              />
+            ) : (
+              <div
+                aria-hidden="true"
+                className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400 transition-colors hover:bg-gray-100"
+              >
+                +
+              </div>
+            )}
+            <span className="text-xs text-gray-500">
+              {newPhotoPreview
+                ? t("resources.changePhoto")
+                : t("resources.addPhotoOptional")}
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setNewPhoto(file);
+                setNewPhotoPreview(URL.createObjectURL(file));
+              }}
+              aria-label={t("resources.addPhotoOptional")}
+            />
+          </label>
+
+          <label htmlFor="resource-quantity" className="sr-only">
+            {t("resources.quantity")}
+          </label>
+          <input
+            id="resource-quantity"
+            type="number"
+            min="1"
+            title={t("resources.quantity")}
+            placeholder={t("resources.quantity")}
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            className="w-28 mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+          <p className="text-xs text-gray-500 mb-1">
+            {t("resources.assignServices")}
+          </p>
+          <div className="flex flex-wrap gap-3 mb-3">
+            {services.map((service) => (
+              <label
+                key={service.id}
+                className="flex items-center gap-1.5 text-sm cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedServices.includes(service.id)}
+                  onChange={() =>
+                    toggleSelected(
+                      selectedServices,
+                      setSelectedServices,
+                      service.id,
+                    )
+                  }
+                  className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                />
+                {service.name}
+              </label>
+            ))}
+          </div>
+          <button
+            aria-label={t("resources.createResource")}
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            {t("resources.createResource")}
+          </button>
+        </form>
+      )}
+
+      <ul className="divide-y divide-gray-100">
+        {resources.map((resource) => (
+          <li key={resource.id} className="py-3 text-sm">
+            {editingId === resource.id ? (
+              <div className="border border-brand-200 rounded-lg p-3">
+                <label
+                  htmlFor={`edit-resource-name-${resource.id}`}
+                  className="sr-only"
+                >
+                  {t("resources.resourceName")}
+                </label>
+                <input
+                  id={`edit-resource-name-${resource.id}`}
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <label
+                  htmlFor={`edit-resource-desc-${resource.id}`}
+                  className="sr-only"
+                >
+                  {t("resources.descriptionOptional")}
+                </label>
+                <textarea
+                  id={`edit-resource-desc-${resource.id}`}
+                  placeholder={t("resources.descriptionOptional")}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={2}
+                  className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <label
+                  htmlFor={`edit-resource-qty-${resource.id}`}
+                  className="sr-only"
+                >
+                  {t("resources.quantity")}
+                </label>
+                <input
+                  id={`edit-resource-qty-${resource.id}`}
+                  type="number"
+                  min="1"
+                  value={editQuantity}
+                  onChange={(e) => setEditQuantity(e.target.value)}
+                  className="w-28 mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <p className="text-xs text-gray-500 mb-1">
+                  {t("resources.assignServices")}
+                </p>
+                <div className="flex flex-wrap gap-3 mb-3">
+                  {services.map((service) => (
+                    <label
+                      key={service.id}
+                      className="flex items-center gap-1.5 text-sm cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={editServices.includes(service.id)}
+                        onChange={() =>
+                          toggleSelected(
+                            editServices,
+                            setEditServices,
+                            service.id,
+                          )
+                        }
+                        className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                      />
+                      {service.name}
+                    </label>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => saveEdit(resource.id)}
+                    aria-label={t("resources.save")}
+                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("resources.save")}
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    aria-label={t("resources.cancel")}
+                    className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("resources.cancel")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3">
+                <label
+                  className="shrink-0 cursor-pointer rounded-lg focus-within:ring-2 focus-within:ring-brand-400"
+                  title="Upload or change resource photo"
+                >
+                  {resource.photo ? (
+                    <img
+                      src={resource.photo}
+                      alt={`${resource.name} photo`}
+                      className="w-12 h-12 rounded-lg object-cover border border-gray-200 transition-opacity hover:opacity-80"
+                    />
+                  ) : (
+                    <div
+                      aria-hidden="true"
+                      className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400 transition-colors hover:bg-gray-100"
+                    >
+                      +
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      onPhotoChange(resource.id, e.target.files[0])
+                    }
+                    aria-label={`Upload photo for ${resource.name}`}
+                  />
+                </label>
+                <div className="flex-1 flex justify-between items-start">
+                  <div>
+                    <span className="font-medium">{resource.name}</span>
+                    {" \u00b7 "}
+                    {t("resources.quantity")}: {resource.quantity}
+                    {resource.services.length > 0 && (
+                      <p className="text-gray-500 mt-0.5">
+                        {serviceNames(resource.services)}
+                      </p>
+                    )}
+                    {resource.description && (
+                      <p className="text-gray-500 mt-0.5">
+                        {resource.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => startEdit(resource)}
+                      aria-label={`${t("resources.edit")} ${resource.name}`}
+                      className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      {t("resources.edit")}
+                    </button>
+                    <button
+                      onClick={() => deleteResource(resource.id)}
+                      aria-label={`${t("resources.delete")} ${resource.name}`}
+                      className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                    >
+                      {t("resources.delete")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+        {resources.length === 0 && (
+          <p className="text-gray-500 text-sm">{t("resources.noResources")}</p>
         )}
       </ul>
     </section>
@@ -995,6 +1437,11 @@ function BookingsSection() {
                     {booking.service_name} {"\u00b7"} {booking.client_name}
                     {" \u00b7 "}
                     {new Date(booking.start_time).toLocaleString()}
+                    {" \u00b7 "}
+                    <span className="text-xs text-gray-400">
+                      {booking.remaining_capacity}{" "}
+                      {t("resources.remainingCapacity")}
+                    </span>
                   </span>
                   <div className="flex gap-2">
                     <button
