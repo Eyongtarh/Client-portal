@@ -579,6 +579,13 @@ function BookingSection() {
                   {service.description}
                 </p>
               )}
+              {service.resource_names && service.resource_names.length > 0 && (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {t("booking.usesResources")}
+                  {": "}
+                  {service.resource_names.join(", ")}
+                </p>
+              )}
             </div>
           </button>
         ))}

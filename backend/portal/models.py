@@ -368,7 +368,12 @@ class Resource(models.Model):
     (or up to `quantity` bookings at once, e.g. 3 identical
     chairs). Resources are associated with one or more Services;
     a booking for that service reserves one unit of each
-    associated resource for its time slot.
+    associated resource for its time slot. A resource can also
+    be booked directly (independent of any service) for
+    duration_minutes at a time - e.g. reserving a chair for an
+    hour, or a room for a full 24-hour day - with slots offered
+    across the full day rather than the workspace's working
+    hours, since a resource booking isn't tied to staff time.
     """
     workspace = models.ForeignKey(
         Workspace, on_delete=models.CASCADE, related_name="resources"
@@ -381,6 +386,12 @@ class Resource(models.Model):
     quantity = models.PositiveIntegerField(
         default=1,
         help_text="How many identical units exist, e.g. 3 chairs.",
+    )
+    duration_minutes = models.PositiveIntegerField(
+        default=60,
+        help_text="Default booking length when this resource is "
+        "booked directly, without a service. Up to 1440 for a "
+        "full 24-hour slot.",
     )
     services = models.ManyToManyField(
         Service, blank=True, related_name="resources"
@@ -483,7 +494,12 @@ class Booking(models.Model):
     """A confirmed appointment. Multiple bookings can share the
     same slot up to the service's capacity (see BookingSerializer
     for the capacity check). series is set only for bookings
-    created as part of a weekly-recurring set.
+    created as part of a weekly-recurring set. Exactly one of
+    service or resource is set: service bookings work as before
+    (and implicitly reserve any resources tied to that service);
+    resource bookings are a direct reservation of a resource on
+    its own (e.g. booking a chair for an hour, or a room for a
+    full day), with no service involved.
     """
 
     class Status(models.TextChoices):
@@ -495,7 +511,18 @@ class Booking(models.Model):
         Workspace, on_delete=models.CASCADE, related_name="bookings"
     )
     service = models.ForeignKey(
-        Service, on_delete=models.CASCADE, related_name="bookings"
+        Service,
+        on_delete=models.CASCADE,
+        related_name="bookings",
+        null=True,
+        blank=True,
+    )
+    resource = models.ForeignKey(
+        Resource,
+        on_delete=models.CASCADE,
+        related_name="direct_bookings",
+        null=True,
+        blank=True,
     )
     client = models.ForeignKey(
         Client, on_delete=models.CASCADE, related_name="bookings"
@@ -519,7 +546,8 @@ class Booking(models.Model):
         ordering = ["start_time"]
 
     def __str__(self):
-        return f"{self.service.name} - {self.client.company_name}"
+        target = self.service.name if self.service else self.resource.name
+        return f"{target} - {self.client.company_name}"
 
 
 class Review(models.Model):

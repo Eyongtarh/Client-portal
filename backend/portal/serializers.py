@@ -473,16 +473,25 @@ class ResourceSerializer(serializers.ModelSerializer):
     """Full CRUD for a bookable resource. `services` is a list of
     service IDs this resource is tied to - a booking for any of
     those services reserves one unit of this resource for its
-    time slot.
+    time slot. `duration_minutes` is the slot length used when
+    this resource is booked directly, without a service.
     """
 
     class Meta:
         model = Resource
         fields = [
             "id", "workspace", "name", "description", "photo",
-            "quantity", "services", "created_at",
+            "quantity", "duration_minutes", "services", "created_at",
         ]
         read_only_fields = ["workspace", "created_at"]
+
+    def validate_duration_minutes(self, value):
+        if value < 1 or value > 1440:
+            raise serializers.ValidationError(
+                "Duration must be between 1 minute and 1440 minutes "
+                "(24 hours)."
+            )
+        return value
 
 
 class WorkingHoursSerializer(serializers.ModelSerializer):
@@ -499,88 +508,159 @@ class BookingSerializer(serializers.ModelSerializer):
     create bookings for themselves only (client is forced server
     -side in the view, never trusted from the request body).
     client is required=False here because clients booking for
-    themselves never send it - the view fills it in. Checks the
-    service's capacity AND every associated resource's quantity
-    for the same time slot, so a booking can never be confirmed
-    if either is exhausted.
+    themselves never send it - the view fills it in. Exactly one
+    of service or resource must be provided: a service booking
+    checks the service's own capacity AND every resource tied to
+    it; a resource booking (no service) checks that resource's
+    own quantity directly, using the resource's own
+    duration_minutes for the slot length. Either way the booking
+    can never be confirmed if the relevant capacity is exhausted.
     """
     service_name = serializers.SerializerMethodField()
+    resource_name = serializers.SerializerMethodField()
     client_name = serializers.SerializerMethodField()
     remaining_capacity = serializers.SerializerMethodField()
     client = serializers.PrimaryKeyRelatedField(
         queryset=Client.objects.all(), required=False
     )
+    service = serializers.PrimaryKeyRelatedField(
+        queryset=Service.objects.all(), required=False, allow_null=True
+    )
+    resource = serializers.PrimaryKeyRelatedField(
+        queryset=Resource.objects.all(), required=False, allow_null=True
+    )
 
     class Meta:
         model = Booking
         fields = [
-            "id", "workspace", "service", "service_name", "client",
-            "client_name", "series", "start_time", "end_time",
-            "status", "notes", "created_at", "remaining_capacity",
+            "id", "workspace", "service", "service_name", "resource",
+            "resource_name", "client", "client_name", "series",
+            "start_time", "end_time", "status", "notes", "created_at",
+            "remaining_capacity",
         ]
         read_only_fields = ["workspace", "end_time"]
 
     def get_service_name(self, obj):
-        return obj.service.name
+        return obj.service.name if obj.service else None
+
+    def get_resource_name(self, obj):
+        return obj.resource.name if obj.resource else None
 
     def get_client_name(self, obj):
         return obj.client.company_name
 
     def get_remaining_capacity(self, obj):
+        if obj.service:
+            taken = Booking.objects.filter(
+                workspace=obj.workspace,
+                service=obj.service,
+                status="confirmed",
+                start_time=obj.start_time,
+            ).count()
+            return max(obj.service.capacity - taken, 0)
         taken = Booking.objects.filter(
             workspace=obj.workspace,
-            service=obj.service,
+            resource=obj.resource,
             status="confirmed",
             start_time=obj.start_time,
         ).count()
-        return max(obj.service.capacity - taken, 0)
+        return max(obj.resource.quantity - taken, 0)
 
     def validate(self, attrs):
-        service = attrs.get("service") or self.instance.service
-        start = attrs.get("start_time") or self.instance.start_time
         from datetime import timedelta
+
+        service = attrs.get(
+            "service", self.instance.service if self.instance else None
+        )
+        resource = attrs.get(
+            "resource", self.instance.resource if self.instance else None
+        )
+        start = attrs.get("start_time") or self.instance.start_time
+
+        if not service and not resource:
+            raise serializers.ValidationError(
+                "Either a service or a resource must be selected."
+            )
+        if service and resource:
+            raise serializers.ValidationError(
+                "Choose either a service or a resource, not both."
+            )
 
         if not self.instance and start < timezone.now():
             raise serializers.ValidationError(
                 "You cannot book a time in the past."
             )
 
-        attrs["end_time"] = start + timedelta(
-            minutes=service.duration_minutes
-        )
-        overlapping = Booking.objects.filter(
-            workspace=service.workspace,
-            service=service,
-            status="confirmed",
-            start_time__lt=attrs["end_time"],
-            end_time__gt=start,
-        )
-        if self.instance:
-            overlapping = overlapping.exclude(pk=self.instance.pk)
-        if overlapping.count() >= service.capacity:
-            raise serializers.ValidationError(
-                "This time slot is fully booked."
+        if service:
+            attrs["end_time"] = start + timedelta(
+                minutes=service.duration_minutes
             )
-
-        # A booking for this service also reserves one unit of
-        # every resource tied to it - if any resource is already
-        # at capacity for this overlapping window, the booking
-        # can't be confirmed either.
-        for resource in service.resources.all():
-            resource_overlap = Booking.objects.filter(
+            overlapping = Booking.objects.filter(
                 workspace=service.workspace,
+                service=service,
+                status="confirmed",
+                start_time__lt=attrs["end_time"],
+                end_time__gt=start,
+            )
+            if self.instance:
+                overlapping = overlapping.exclude(pk=self.instance.pk)
+            if overlapping.count() >= service.capacity:
+                raise serializers.ValidationError(
+                    "This time slot is fully booked."
+                )
+
+            # A booking for this service also reserves one unit of
+            # every resource tied to it - if any resource is already
+            # at capacity for this overlapping window, the booking
+            # can't be confirmed either.
+            for res in service.resources.all():
+                resource_overlap = Booking.objects.filter(
+                    workspace=service.workspace,
+                    service__resources=res,
+                    status="confirmed",
+                    start_time__lt=attrs["end_time"],
+                    end_time__gt=start,
+                )
+                if self.instance:
+                    resource_overlap = resource_overlap.exclude(
+                        pk=self.instance.pk
+                    )
+                if resource_overlap.count() >= res.quantity:
+                    raise serializers.ValidationError(
+                        f'"{res.name}" is fully booked for this time.'
+                    )
+        else:
+            attrs["end_time"] = start + timedelta(
+                minutes=resource.duration_minutes
+            )
+            # A direct resource booking competes with both other
+            # direct bookings of this resource AND any service
+            # booking that uses this resource, for the same window.
+            direct_overlap = Booking.objects.filter(
+                workspace=resource.workspace,
+                resource=resource,
+                status="confirmed",
+                start_time__lt=attrs["end_time"],
+                end_time__gt=start,
+            )
+            via_service_overlap = Booking.objects.filter(
+                workspace=resource.workspace,
                 service__resources=resource,
                 status="confirmed",
                 start_time__lt=attrs["end_time"],
                 end_time__gt=start,
             )
             if self.instance:
-                resource_overlap = resource_overlap.exclude(
+                direct_overlap = direct_overlap.exclude(pk=self.instance.pk)
+                via_service_overlap = via_service_overlap.exclude(
                     pk=self.instance.pk
                 )
-            if resource_overlap.count() >= resource.quantity:
+            total_overlap = (
+                direct_overlap.count() + via_service_overlap.count()
+            )
+            if total_overlap >= resource.quantity:
                 raise serializers.ValidationError(
-                    f'"{resource.name}" is fully booked for this time.'
+                    "This resource is fully booked for this time."
                 )
         return attrs
 

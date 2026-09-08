@@ -613,19 +613,22 @@ class ServiceViewSet(viewsets.ModelViewSet):
 
 class ResourceViewSet(viewsets.ModelViewSet):
     """Full CRUD for bookable resources (rooms, equipment,
-    chairs, vehicles, etc.). Owners and staff manage resources;
-    clients have no direct access - resource availability is
-    enforced transparently through booking creation and the
-    availability endpoint instead.
+    chairs, vehicles, etc.) for owners/staff. Clients get
+    read-only access so they can browse resources for direct
+    booking (independent of any service) - resource availability
+    itself is still enforced through booking creation and the
+    availability endpoint.
     """
     serializer_class = ResourceSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role not in ("owner", "staff"):
-            return Resource.objects.none()
-        return Resource.objects.filter(workspace=user.get_workspace())
+        if user.role in ("owner", "staff"):
+            return Resource.objects.filter(workspace=user.get_workspace())
+        return Resource.objects.filter(
+            workspace=user.client_profile.workspace
+        )
 
     def perform_create(self, serializer):
         serializer.save(workspace=self.request.user.get_workspace())
@@ -657,16 +660,17 @@ class BookingViewSet(viewsets.ModelViewSet):
     """Owners and staff see/manage every booking in their
     workspace; clients see only their own and can only ever
     create bookings for themselves (client is forced here, never
-    trusted from the request body). Sends a confirmation email
+    trusted from the request body). A booking is for either a
+    service or a resource directly. Sends a confirmation email
     on create and a cancellation email whenever a booking's
     status changes to cancelled, and notifies anyone on the
     waitlist for that exact service+time that a spot has opened
-    up. If a client's new booking matches a slot they were on
-    the waitlist for, that entry is cleaned up automatically
-    since they no longer need to wait for it. Any confirmed
-    booking whose end time has passed is automatically flipped
-    to completed, so it stops showing as upcoming and becomes
-    reviewable.
+    up (waitlists only apply to services). If a client's new
+    booking matches a slot they were on the waitlist for, that
+    entry is cleaned up automatically since they no longer need
+    to wait for it. Any confirmed booking whose end time has
+    passed is automatically flipped to completed, so it stops
+    showing as upcoming and becomes reviewable.
     """
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
@@ -696,10 +700,13 @@ class BookingViewSet(viewsets.ModelViewSet):
                 workspace=user.client_profile.workspace,
                 client=user.client_profile,
             )
+        booked_name = (
+            booking.service.name if booking.service else booking.resource.name
+        )
         send_mail(
-            subject=f"Booking confirmed: {booking.service.name}",
+            subject=f"Booking confirmed: {booked_name}",
             message=(
-                f"Your booking for {booking.service.name} is "
+                f"Your booking for {booked_name} is "
                 f"confirmed for "
                 f"{booking.start_time.strftime('%A %d %B %Y at %H:%M')}."
                 f"\n\nIf you need to cancel or reschedule, do so "
@@ -710,21 +717,27 @@ class BookingViewSet(viewsets.ModelViewSet):
             fail_silently=True,
         )
         # If this booking fills a slot the client was waiting on,
-        # they no longer need to be on that waitlist.
-        WaitlistEntry.objects.filter(
-            workspace=booking.workspace,
-            service=booking.service,
-            client=booking.client,
-            start_time=booking.start_time,
-        ).delete()
+        # they no longer need to be on that waitlist. Waitlists
+        # only apply to services, so this is a no-op for resource
+        # bookings.
+        if booking.service:
+            WaitlistEntry.objects.filter(
+                workspace=booking.workspace,
+                service=booking.service,
+                client=booking.client,
+                start_time=booking.start_time,
+            ).delete()
 
     def perform_update(self, serializer):
         booking = serializer.save()
+        booked_name = (
+            booking.service.name if booking.service else booking.resource.name
+        )
         if booking.status == "cancelled":
             send_mail(
-                subject=f"Booking cancelled: {booking.service.name}",
+                subject=f"Booking cancelled: {booked_name}",
                 message=(
-                    f"Your booking for {booking.service.name} on "
+                    f"Your booking for {booked_name} on "
                     f"{booking.start_time.strftime('%A %d %B %Y at %H:%M')}"
                     f" has been cancelled."
                 ),
@@ -732,35 +745,38 @@ class BookingViewSet(viewsets.ModelViewSet):
                 recipient_list=[booking.client.contact_email],
                 fail_silently=True,
             )
-            waiting = WaitlistEntry.objects.filter(
-                workspace=booking.workspace,
-                service=booking.service,
-                start_time=booking.start_time,
-                notified=False,
-            ).order_by("created_at")
-            for entry in waiting:
-                send_mail(
-                    subject=f"A spot opened up: {entry.service.name}",
-                    message=(
-                        f"Good news - a spot just opened up for "
-                        f"{entry.service.name} at "
-                        f"{entry.start_time.strftime('%A %d %B %Y at %H:%M')}."
-                        f"\n\nBook it now from your client portal "
-                        f"before someone else does."
-                    ),
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[entry.client.contact_email],
-                    fail_silently=True,
-                )
-                entry.notified = True
-                entry.save(update_fields=["notified"])
+            if booking.service:
+                waiting = WaitlistEntry.objects.filter(
+                    workspace=booking.workspace,
+                    service=booking.service,
+                    start_time=booking.start_time,
+                    notified=False,
+                ).order_by("created_at")
+                for entry in waiting:
+                    send_mail(
+                        subject=f"A spot opened up: {entry.service.name}",
+                        message=(
+                            f"Good news - a spot just opened up for "
+                            f"{entry.service.name} at "
+                            f"{entry.start_time.strftime(
+                                '%A %d %B %Y at %H:%M'
+                            )}."
+                            f"\n\nBook it now from your client portal "
+                            f"before someone else does."
+                        ),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[entry.client.contact_email],
+                        fail_silently=True,
+                    )
+                    entry.notified = True
+                    entry.save(update_fields=["notified"])
 
 
 class RecurringSeriesCreateView(APIView):
     """POST /api/recurring-series/ - creates a weekly-repeating
     set of bookings. Owners and staff can book for any client;
     clients book only for themselves (client is forced here, same
-    pattern as BookingViewSet).
+    pattern as BookingViewSet). Recurring series are service-only.
     """
     permission_classes = [IsAuthenticated]
 
@@ -961,25 +977,36 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 class AvailabilityView(APIView):
-    """GET /api/availability/?service=<id>&date=YYYY-MM-DD
-    Returns open time slots for that service on that date, using
-    the workspace's own timezone (not the server's) for working
-    hours, capacity checks, and excluding past times. Also
-    excludes any slot where a resource tied to this service is
-    already fully booked by ANY service sharing that resource
-    during the overlapping window, so staff and resource
-    availability are checked together (a slot is only offered
-    when both the service itself and every resource it needs are
-    free).
+    """GET /api/availability/?service=<id>&date=YYYY-MM-DD or
+    GET /api/availability/?resource=<id>&date=YYYY-MM-DD
+    Returns open time slots for that service or resource on that
+    date, in the workspace's own timezone (not the server's).
+
+    Service mode: slots are drawn from the workspace's working
+    hours, checking the service's own capacity AND every resource
+    tied to it, so a slot is only offered when both the service
+    and every resource it needs are free.
+
+    Resource mode: a resource booking is direct and not tied to
+    staff time, so slots cover the FULL 24-hour day (not limited
+    to working hours) at the resource's own duration_minutes,
+    checking the resource's own quantity against both direct
+    resource bookings and any service bookings that use it.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         service_id = request.query_params.get("service")
+        resource_id = request.query_params.get("resource")
         date_str = request.query_params.get("date")
-        if not service_id or not date_str:
+        if (not service_id and not resource_id) or not date_str:
             return Response(
-                {"detail": "service and date are required."},
+                {
+                    "detail": (
+                        "date and either service or resource are "
+                        "required."
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         user = request.user
@@ -988,13 +1015,64 @@ class AvailabilityView(APIView):
             if user.role in ("owner", "staff")
             else user.client_profile.workspace
         )
-        service = generics.get_object_or_404(
-            Service, pk=service_id, workspace=workspace
-        )
         tz = ZoneInfo(workspace.timezone)
         target_date = datetime.strptime(
             date_str, "%Y-%m-%d"
         ).date()
+        now_local = timezone.now().astimezone(tz).replace(tzinfo=None)
+
+        if resource_id:
+            resource = generics.get_object_or_404(
+                Resource, pk=resource_id, workspace=workspace
+            )
+            slot_length = timedelta(minutes=resource.duration_minutes)
+            day_start_local = datetime.combine(
+                target_date, datetime.min.time(), tzinfo=tz
+            )
+            day_end_local = day_start_local + timedelta(days=1)
+            direct_bookings = list(
+                Booking.objects.filter(
+                    workspace=workspace,
+                    resource=resource,
+                    status="confirmed",
+                    start_time__gte=day_start_local - timedelta(hours=24),
+                    start_time__lt=day_end_local + timedelta(hours=24),
+                )
+            )
+            via_service_bookings = list(
+                Booking.objects.filter(
+                    workspace=workspace,
+                    service__resources=resource,
+                    status="confirmed",
+                    start_time__gte=day_start_local - timedelta(hours=24),
+                    start_time__lt=day_end_local + timedelta(hours=24),
+                )
+            )
+            all_bookings = direct_bookings + via_service_bookings
+
+            slots = []
+            cursor = day_start_local.replace(tzinfo=None)
+            day_end_naive = day_end_local.replace(tzinfo=None)
+            while cursor + slot_length <= day_end_naive:
+                slot_end = cursor + slot_length
+                overlap_count = sum(
+                    1
+                    for b in all_bookings
+                    if cursor
+                    < b.end_time.astimezone(tz).replace(tzinfo=None)
+                    and slot_end
+                    > b.start_time.astimezone(tz).replace(tzinfo=None)
+                )
+                in_the_past = cursor < now_local
+                if overlap_count < resource.quantity and not in_the_past:
+                    slots.append(cursor.strftime("%H:%M"))
+                cursor += slot_length
+
+            return Response({"date": date_str, "slots": slots})
+
+        service = generics.get_object_or_404(
+            Service, pk=service_id, workspace=workspace
+        )
         weekday = target_date.weekday()
         windows = WorkingHours.objects.filter(
             workspace=workspace, weekday=weekday
@@ -1027,9 +1105,6 @@ class AvailabilityView(APIView):
             )
 
         slot_length = timedelta(minutes=service.duration_minutes)
-        now_local = timezone.now().astimezone(tz).replace(
-            tzinfo=None
-        )
         slots = []
         for window in windows:
             cursor = datetime.combine(

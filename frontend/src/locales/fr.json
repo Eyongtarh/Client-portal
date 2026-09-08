@@ -95,7 +95,8 @@
     "respondToReview": "R\u00e9pondre \u00e0 cet avis",
     "responseSubmitted": "R\u00e9ponse soumise.",
     "ownerResponse": "R\u00e9ponse du propri\u00e9taire",
-    "averageRating": "Note moyenne"
+    "averageRating": "Note moyenne",
+    "usesResources": "Utilise"
   },
   "team": {
     "teamTitle": "\u00c9quipe",

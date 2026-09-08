@@ -95,7 +95,8 @@
     "respondToReview": "Respond to this review",
     "responseSubmitted": "Response submitted.",
     "ownerResponse": "Owner's response",
-    "averageRating": "Average rating"
+    "averageRating": "Average rating",
+    "usesResources": "Uses"
   },
   "team": {
     "teamTitle": "Team",
