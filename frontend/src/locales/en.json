@@ -230,5 +230,18 @@
     "approve": "Approve",
     "requestChanges": "Request changes",
     "commentPlaceholder": "Add a comment (optional)..."
+  },
+  "subscription": {
+    "planTitle": "Plan & Usage",
+    "currentPlan": "Current plan",
+    "perMonth": "/month",
+    "clientsUsed": "Clients",
+    "teamMembersUsed": "Team members",
+    "unlimited": "Unlimited",
+    "changePlan": "Change plan",
+    "switchTo": "Switch to",
+    "planChanged": "Plan updated.",
+    "couldNotChangePlan": "Could not change plan.",
+    "cancel": "Cancel"
   }
 }

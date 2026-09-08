@@ -230,5 +230,18 @@
     "approve": "Approuver",
     "requestChanges": "Demander des modifications",
     "commentPlaceholder": "Ajouter un commentaire (facultatif)..."
+  },
+  "subscription": {
+    "planTitle": "Forfait et utilisation",
+    "currentPlan": "Forfait actuel",
+    "perMonth": "/mois",
+    "clientsUsed": "Clients",
+    "teamMembersUsed": "Membres de l'\u00e9quipe",
+    "unlimited": "Illimit\u00e9",
+    "changePlan": "Changer de forfait",
+    "switchTo": "Passer \u00e0",
+    "planChanged": "Forfait mis \u00e0 jour.",
+    "couldNotChangePlan": "Impossible de changer de forfait.",
+    "cancel": "Annuler"
   }
 }

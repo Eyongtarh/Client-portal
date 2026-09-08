@@ -1,6 +1,7 @@
 // Owner's (and staff's) home page: lists clients in the
 // workspace and lets the owner invite new ones, upload a
-// workspace logo, and manage the team.
+// workspace logo, manage the team, and view/change the
+// subscription plan.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -230,6 +231,12 @@ export default function OwnerDashboard() {
         </div>
 
         <TeamSection isOwner={isOwner} />
+
+        <PlanSection
+          isOwner={isOwner}
+          workspace={workspace}
+          onPlanChanged={loadWorkspace}
+        />
       </main>
     </div>
   );
@@ -373,6 +380,157 @@ function TeamSection({ isOwner }) {
           <p className="text-gray-500 text-sm">{t("team.noTeamMembers")}</p>
         )}
       </div>
+    </section>
+  );
+}
+
+function PlanSection({ isOwner, workspace, onPlanChanged }) {
+  const { t } = useTranslation();
+  const [plans, setPlans] = useState([]);
+  const [showPlans, setShowPlans] = useState(false);
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  async function loadPlans() {
+    const res = await api.get("/plans/");
+    setPlans(res.data);
+  }
+  useEffect(() => {
+    loadPlans();
+  }, []);
+
+  async function switchPlan(planId) {
+    setBusy(true);
+    try {
+      await api.post("/workspace/change-plan/", { plan_id: planId });
+      setShowPlans(false);
+      setStatusMsg({ key: "subscription.planChanged", type: "success" });
+      onPlanChanged();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "subscription.couldNotChangePlan", type: "error" },
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!workspace) return null;
+
+  const plan = workspace.plan;
+  const clientLimit =
+    plan?.max_clients === null || plan?.max_clients === undefined
+      ? null
+      : plan.max_clients;
+  const teamLimit =
+    plan?.max_team_members === null || plan?.max_team_members === undefined
+      ? null
+      : plan.max_team_members;
+
+  return (
+    <section>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">{t("subscription.planTitle")}</h2>
+        {isOwner && (
+          <button
+            onClick={() => {
+              setShowPlans(!showPlans);
+              setStatusMsg(null);
+            }}
+            aria-expanded={showPlans}
+            aria-label={t("subscription.changePlan")}
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            {t("subscription.changePlan")}
+          </button>
+        )}
+      </div>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
+        </div>
+      )}
+
+      <div className="bg-white border border-brand-100 rounded-xl p-6 mb-4">
+        <p className="text-xs text-gray-500 mb-1">
+          {t("subscription.currentPlan")}
+        </p>
+        <p className="text-lg font-semibold mb-4">
+          {plan?.name || "\u2014"}
+          {plan && (
+            <span className="text-sm font-normal text-gray-500">
+              {" "}
+              {"\u00b7"} {plan.price_per_month} {t("subscription.perMonth")}
+            </span>
+          )}
+        </p>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">
+              {t("subscription.clientsUsed")}
+            </span>
+            <span className="font-medium">
+              {workspace.client_count}
+              {clientLimit !== null
+                ? ` / ${clientLimit}`
+                : ` (${t("subscription.unlimited")})`}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">
+              {t("subscription.teamMembersUsed")}
+            </span>
+            <span className="font-medium">
+              {workspace.team_member_count}
+              {teamLimit !== null
+                ? ` / ${teamLimit}`
+                : ` (${t("subscription.unlimited")})`}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {isOwner && showPlans && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          {plans.map((p) => (
+            <div
+              key={p.id}
+              className={
+                p.id === plan?.id
+                  ? "border-2 border-brand-600 bg-brand-50 rounded-xl p-4"
+                  : "border border-gray-200 rounded-xl p-4"
+              }
+            >
+              <p className="font-medium">{p.name}</p>
+              <p className="text-sm text-gray-500 mb-3">
+                {p.price_per_month} {t("subscription.perMonth")}
+              </p>
+              <button
+                onClick={() => switchPlan(p.id)}
+                disabled={busy || p.id === plan?.id}
+                aria-label={`${t("subscription.switchTo")} ${p.name}`}
+                className="w-full bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                {p.id === plan?.id
+                  ? t("subscription.currentPlan")
+                  : `${t("subscription.switchTo")} ${p.name}`}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
