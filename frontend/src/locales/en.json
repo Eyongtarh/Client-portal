@@ -169,7 +169,10 @@
     "sendInvite": "Send invite",
     "sending": "Sending...",
     "noClients": "No clients yet.",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "editWorkspaceName": "Edit workspace name",
+    "workspaceNameUpdated": "Workspace name updated.",
+    "couldNotUpdateWorkspaceName": "Could not update workspace name."
   },
   "clientDetail": {
     "allClients": "All clients",
@@ -211,7 +214,30 @@
     "noApprovals": "No approval requests yet.",
     "statusPending": "Pending",
     "statusApproved": "Approved",
-    "statusChangesRequested": "Changes requested"
+    "statusChangesRequested": "Changes requested",
+    "renameDocument": "Rename",
+    "deleteDocument": "Delete",
+    "confirmDeleteDocument": "Delete this document?",
+    "documentRenamed": "Document renamed.",
+    "documentDeleted": "Document deleted.",
+    "couldNotRenameDocument": "Could not rename document.",
+    "couldNotDeleteDocument": "Could not delete document.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "editMessage": "Edit",
+    "deleteMessage": "Delete",
+    "confirmDeleteMessage": "Delete this message?",
+    "messageUpdated": "Message updated.",
+    "messageDeleted": "Message deleted.",
+    "couldNotUpdateMessage": "Could not update message.",
+    "couldNotDeleteMessage": "Could not delete message.",
+    "editInvoice": "Edit",
+    "deleteInvoice": "Delete",
+    "confirmDeleteInvoice": "Delete this invoice?",
+    "invoiceUpdated": "Invoice updated.",
+    "invoiceDeleted": "Invoice deleted.",
+    "couldNotUpdateInvoice": "Could not update invoice.",
+    "couldNotDeleteInvoice": "Could not delete invoice."
   },
   "clientPortal": {
     "welcomeBack": "Welcome back,",

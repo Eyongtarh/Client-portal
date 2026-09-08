@@ -23,6 +23,9 @@ export default function OwnerDashboard() {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [colorMsg, setColorMsg] = useState(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState("");
+  const [nameMsg, setNameMsg] = useState(null);
   const isOwner = user.role === "owner";
 
   async function loadClients() {
@@ -64,6 +67,30 @@ export default function OwnerDashboard() {
     } catch (err) {
       applyBrandColor(workspace?.brand_color);
       setColorMsg({ key: "branding.couldNotUpdateColor", type: "error" });
+    }
+  }
+
+  function startEditName() {
+    setNameValue(workspace?.name || "");
+    setEditingName(true);
+    setNameMsg(null);
+  }
+
+  function cancelEditName() {
+    setEditingName(false);
+  }
+
+  async function saveName() {
+    try {
+      const res = await api.patch("/workspace/", { name: nameValue });
+      setWorkspace(res.data);
+      setEditingName(false);
+      setNameMsg({ key: "dashboard.workspaceNameUpdated", type: "success" });
+    } catch (err) {
+      setNameMsg({
+        key: "dashboard.couldNotUpdateWorkspaceName",
+        type: "error",
+      });
     }
   }
 
@@ -128,9 +155,46 @@ export default function OwnerDashboard() {
               />
             )
           )}
-          <h1 className="text-lg font-semibold text-brand-700">
-            {user.workspace_name}
-          </h1>
+          {isOwner && editingName ? (
+            <div className="flex items-center gap-2">
+              <label htmlFor="workspace-name-edit" className="sr-only">
+                {t("dashboard.editWorkspaceName")}
+              </label>
+              <input
+                id="workspace-name-edit"
+                value={nameValue}
+                onChange={(e) => setNameValue(e.target.value)}
+                autoFocus
+                className="px-2 py-1 border border-gray-300 rounded-lg text-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+              <button
+                onClick={saveName}
+                aria-label={t("clientDetail.save")}
+                className="bg-brand-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                {t("clientDetail.save")}
+              </button>
+              <button
+                onClick={cancelEditName}
+                aria-label={t("clientDetail.cancel")}
+                className="bg-gray-100 text-gray-700 px-3 py-1 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                {t("clientDetail.cancel")}
+              </button>
+            </div>
+          ) : (
+            <h1
+              onClick={isOwner ? startEditName : undefined}
+              className={
+                isOwner
+                  ? "text-lg font-semibold text-brand-700 cursor-pointer hover:underline"
+                  : "text-lg font-semibold text-brand-700"
+              }
+              title={isOwner ? t("dashboard.editWorkspaceName") : undefined}
+            >
+              {workspace?.name || user.workspace_name}
+            </h1>
+          )}
           {isOwner && (
             <label
               className="flex items-center gap-1.5 cursor-pointer ml-2"
@@ -164,6 +228,20 @@ export default function OwnerDashboard() {
           </button>
         </div>
       </header>
+      {nameMsg && (
+        <div className="max-w-3xl mx-auto px-8 pt-4">
+          <div
+            role="status"
+            className={
+              nameMsg.type === "success"
+                ? "text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+                : "text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+            }
+          >
+            {t(nameMsg.key)}
+          </div>
+        </div>
+      )}
       {colorMsg && (
         <div className="max-w-3xl mx-auto px-8 pt-4">
           <div

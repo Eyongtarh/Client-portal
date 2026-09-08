@@ -1,9 +1,11 @@
 // Owner's view of a single client: tabbed access to the
 // project overview, documents, messages, invoices, and
-// approvals.
+// approvals. Documents, messages, and invoices each support
+// full CRUD (create already existed; edit/delete added here).
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../lib/AuthContext.jsx";
 import api from "../lib/api";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 
@@ -331,6 +333,9 @@ function DocumentsTab({ project }) {
   const { t } = useTranslation();
   const [documents, setDocuments] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
 
   async function load() {
     const res = await api.get(`/documents/?project=${project.id}`);
@@ -357,6 +362,43 @@ function DocumentsTab({ project }) {
     }
   }
 
+  function startEdit(doc) {
+    setEditingId(doc.id);
+    setEditName(doc.original_name);
+  }
+  function cancelEdit() {
+    setEditingId(null);
+  }
+  async function saveEdit(docId) {
+    try {
+      await api.patch(`/documents/${docId}/`, {
+        original_name: editName,
+      });
+      setEditingId(null);
+      setStatusMsg({ key: "clientDetail.documentRenamed", type: "success" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "clientDetail.couldNotRenameDocument",
+        type: "error",
+      });
+    }
+  }
+
+  async function deleteDocument(docId) {
+    if (!window.confirm(t("clientDetail.confirmDeleteDocument"))) return;
+    try {
+      await api.delete(`/documents/${docId}/`);
+      setStatusMsg({ key: "clientDetail.documentDeleted", type: "error" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "clientDetail.couldNotDeleteDocument",
+        type: "error",
+      });
+    }
+  }
+
   return (
     <div>
       <label
@@ -374,21 +416,81 @@ function DocumentsTab({ project }) {
           aria-label={t("clientDetail.uploadDocument")}
         />
       </label>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {t(statusMsg.key)}
+        </div>
+      )}
+
       <ul className="divide-y divide-gray-100">
         {documents.map((doc) => (
-          <li key={doc.id} className="py-2 flex justify-between text-sm">
-            <a
-              href={doc.file}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`Open ${doc.original_name} in a new tab`}
-              className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
-            >
-              {doc.original_name}
-            </a>
-            <span className="text-gray-400">
-              {(doc.size_bytes / 1024).toFixed(0)} KB
-            </span>
+          <li key={doc.id} className="py-2 text-sm">
+            {editingId === doc.id ? (
+              <div className="flex gap-2 items-center">
+                <label htmlFor={`edit-doc-${doc.id}`} className="sr-only">
+                  {t("clientDetail.renameDocument")}
+                </label>
+                <input
+                  id={`edit-doc-${doc.id}`}
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <button
+                  onClick={() => saveEdit(doc.id)}
+                  aria-label={t("clientDetail.save")}
+                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("clientDetail.save")}
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  aria-label={t("clientDetail.cancel")}
+                  className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("clientDetail.cancel")}
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center gap-3">
+                <a
+                  href={doc.file}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Open ${doc.original_name} in a new tab`}
+                  className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded truncate"
+                >
+                  {doc.original_name}
+                </a>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-gray-400">
+                    {(doc.size_bytes / 1024).toFixed(0)} KB
+                  </span>
+                  <button
+                    onClick={() => startEdit(doc)}
+                    aria-label={`${t("clientDetail.renameDocument")} ${doc.original_name}`}
+                    className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("clientDetail.renameDocument")}
+                  </button>
+                  <button
+                    onClick={() => deleteDocument(doc.id)}
+                    aria-label={`${t("clientDetail.deleteDocument")} ${doc.original_name}`}
+                    className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  >
+                    {t("clientDetail.deleteDocument")}
+                  </button>
+                </div>
+              </div>
+            )}
           </li>
         ))}
         {documents.length === 0 && (
@@ -403,8 +505,12 @@ function DocumentsTab({ project }) {
 
 function MessagesTab({ project }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [body, setBody] = useState("");
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editBody, setEditBody] = useState("");
 
   async function load() {
     const res = await api.get(`/messages/?project=${project.id}`);
@@ -425,17 +531,117 @@ function MessagesTab({ project }) {
     load();
   }
 
+  function startEdit(message) {
+    setEditingId(message.id);
+    setEditBody(message.body);
+  }
+  function cancelEdit() {
+    setEditingId(null);
+  }
+  async function saveEdit(messageId) {
+    try {
+      await api.patch(`/messages/${messageId}/`, { body: editBody });
+      setEditingId(null);
+      setStatusMsg({ key: "clientDetail.messageUpdated", type: "success" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "clientDetail.couldNotUpdateMessage",
+        type: "error",
+      });
+    }
+  }
+
+  async function deleteMessage(messageId) {
+    if (!window.confirm(t("clientDetail.confirmDeleteMessage"))) return;
+    try {
+      await api.delete(`/messages/${messageId}/`);
+      setStatusMsg({ key: "clientDetail.messageDeleted", type: "error" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "clientDetail.couldNotDeleteMessage",
+        type: "error",
+      });
+    }
+  }
+
   return (
     <div>
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {t(statusMsg.key)}
+        </div>
+      )}
       <div className="space-y-3 mb-4 max-h-72 overflow-y-auto">
-        {messages.map((message) => (
-          <div key={message.id} className="text-sm">
-            <p className="text-xs text-gray-400">{message.sender_name}</p>
-            <p className="inline-block px-3 py-2 rounded-lg bg-brand-50">
-              {message.body}
-            </p>
-          </div>
-        ))}
+        {messages.map((message) => {
+          const isOwnMessage =
+            message.sender_role === "owner" || message.sender_role === "staff";
+          return (
+            <div key={message.id} className="text-sm">
+              <p className="text-xs text-gray-400">{message.sender_name}</p>
+              {editingId === message.id ? (
+                <div className="flex gap-2 items-center">
+                  <label
+                    htmlFor={`edit-message-${message.id}`}
+                    className="sr-only"
+                  >
+                    {t("clientDetail.editMessage")}
+                  </label>
+                  <input
+                    id={`edit-message-${message.id}`}
+                    value={editBody}
+                    onChange={(e) => setEditBody(e.target.value)}
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                  <button
+                    onClick={() => saveEdit(message.id)}
+                    aria-label={t("clientDetail.save")}
+                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("clientDetail.save")}
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    aria-label={t("clientDetail.cancel")}
+                    className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("clientDetail.cancel")}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="inline-block px-3 py-2 rounded-lg bg-brand-50">
+                    {message.body}
+                  </p>
+                  {isOwnMessage && (
+                    <button
+                      onClick={() => startEdit(message)}
+                      aria-label={t("clientDetail.editMessage")}
+                      className="bg-brand-50 text-brand-700 text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      {t("clientDetail.editMessage")}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => deleteMessage(message.id)}
+                    aria-label={t("clientDetail.deleteMessage")}
+                    className="bg-red-600 text-white text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  >
+                    {t("clientDetail.deleteMessage")}
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
         {messages.length === 0 && (
           <p className="text-gray-500 text-sm">
             {t("clientDetail.noMessages")}
@@ -469,6 +675,10 @@ function InvoicesTab({ client, project }) {
   const [invoices, setInvoices] = useState([]);
   const [number, setNumber] = useState("");
   const [items, setItems] = useState([{ description: "", amount: "" }]);
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editNumber, setEditNumber] = useState("");
+  const [editItems, setEditItems] = useState([]);
 
   async function load() {
     const res = await api.get(`/invoices/?client=${client.id}`);
@@ -503,6 +713,58 @@ function InvoicesTab({ client, project }) {
     });
     const url = URL.createObjectURL(res.data);
     window.open(url, "_blank");
+  }
+
+  function startEdit(invoice) {
+    setEditingId(invoice.id);
+    setEditNumber(invoice.number);
+    setEditItems(
+      invoice.items.map((item) => ({
+        description: item.description,
+        amount: item.amount,
+      })),
+    );
+  }
+  function cancelEdit() {
+    setEditingId(null);
+  }
+  function updateEditItem(index, field, value) {
+    const next = [...editItems];
+    next[index][field] = value;
+    setEditItems(next);
+  }
+  async function saveEdit(invoiceId) {
+    const validItems = editItems.filter(
+      (item) => item.description && item.amount,
+    );
+    try {
+      await api.patch(`/invoices/${invoiceId}/`, {
+        number: editNumber,
+        items: validItems,
+      });
+      setEditingId(null);
+      setStatusMsg({ key: "clientDetail.invoiceUpdated", type: "success" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "clientDetail.couldNotUpdateInvoice",
+        type: "error",
+      });
+    }
+  }
+
+  async function deleteInvoice(invoiceId) {
+    if (!window.confirm(t("clientDetail.confirmDeleteInvoice"))) return;
+    try {
+      await api.delete(`/invoices/${invoiceId}/`);
+      setStatusMsg({ key: "clientDetail.invoiceDeleted", type: "error" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "clientDetail.couldNotDeleteInvoice",
+        type: "error",
+      });
+    }
   }
 
   return (
@@ -565,25 +827,133 @@ function InvoicesTab({ client, project }) {
           </button>
         </div>
       </form>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {t(statusMsg.key)}
+        </div>
+      )}
+
       <ul className="divide-y divide-gray-100">
         {invoices.map((invoice) => (
-          <li
-            key={invoice.id}
-            className="py-3 flex justify-between items-center text-sm"
-          >
-            <div>
-              <p className="font-medium">Invoice #{invoice.number}</p>
-              <p className="text-gray-500">
-                {`\u20ac${invoice.total} \u00b7 ${invoice.status}`}
-              </p>
-            </div>
-            <button
-              onClick={() => downloadPdf(invoice.id)}
-              aria-label={`Download invoice ${invoice.number} as PDF`}
-              className="text-brand-700 underline transition-colors hover:text-brand-900 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
-            >
-              {t("clientDetail.downloadPdf")}
-            </button>
+          <li key={invoice.id} className="py-3 text-sm">
+            {editingId === invoice.id ? (
+              <div className="border border-brand-200 rounded-lg p-3">
+                <label
+                  htmlFor={`edit-invoice-number-${invoice.id}`}
+                  className="sr-only"
+                >
+                  {t("clientDetail.invoiceNumber")}
+                </label>
+                <input
+                  id={`edit-invoice-number-${invoice.id}`}
+                  value={editNumber}
+                  onChange={(e) => setEditNumber(e.target.value)}
+                  className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                {editItems.map((item, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <label
+                      htmlFor={`edit-item-desc-${invoice.id}-${index}`}
+                      className="sr-only"
+                    >
+                      {t("clientDetail.description")}
+                    </label>
+                    <input
+                      id={`edit-item-desc-${invoice.id}-${index}`}
+                      value={item.description}
+                      onChange={(e) =>
+                        updateEditItem(index, "description", e.target.value)
+                      }
+                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                    <label
+                      htmlFor={`edit-item-amount-${invoice.id}-${index}`}
+                      className="sr-only"
+                    >
+                      {t("clientDetail.amount")}
+                    </label>
+                    <input
+                      id={`edit-item-amount-${invoice.id}-${index}`}
+                      type="number"
+                      value={item.amount}
+                      onChange={(e) =>
+                        updateEditItem(index, "amount", e.target.value)
+                      }
+                      className="w-24 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditItems([
+                      ...editItems,
+                      { description: "", amount: "" },
+                    ])
+                  }
+                  aria-label={t("clientDetail.addLineItem")}
+                  className="text-sm text-brand-600 mb-2 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                >
+                  {t("clientDetail.addLineItem")}
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => saveEdit(invoice.id)}
+                    aria-label={t("clientDetail.save")}
+                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("clientDetail.save")}
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    aria-label={t("clientDetail.cancel")}
+                    className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("clientDetail.cancel")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-medium">Invoice #{invoice.number}</p>
+                  <p className="text-gray-500">
+                    {`\u20ac${invoice.total} \u00b7 ${invoice.status}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => downloadPdf(invoice.id)}
+                    aria-label={`Download invoice ${invoice.number} as PDF`}
+                    className="text-brand-700 underline transition-colors hover:text-brand-900 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                  >
+                    {t("clientDetail.downloadPdf")}
+                  </button>
+                  <button
+                    onClick={() => startEdit(invoice)}
+                    aria-label={`${t("clientDetail.editInvoice")} ${invoice.number}`}
+                    className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("clientDetail.editInvoice")}
+                  </button>
+                  <button
+                    onClick={() => deleteInvoice(invoice.id)}
+                    aria-label={`${t("clientDetail.deleteInvoice")} ${invoice.number}`}
+                    className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  >
+                    {t("clientDetail.deleteInvoice")}
+                  </button>
+                </div>
+              </div>
+            )}
           </li>
         ))}
         {invoices.length === 0 && (

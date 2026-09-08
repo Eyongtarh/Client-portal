@@ -169,7 +169,10 @@
     "sendInvite": "Envoyer l'invitation",
     "sending": "Envoi...",
     "noClients": "Aucun client pour le moment.",
-    "signOut": "D\u00e9connexion"
+    "signOut": "D\u00e9connexion",
+    "editWorkspaceName": "Modifier le nom de l'espace de travail",
+    "workspaceNameUpdated": "Nom de l'espace de travail mis \u00e0 jour.",
+    "couldNotUpdateWorkspaceName": "Impossible de mettre \u00e0 jour le nom de l'espace de travail."
   },
   "clientDetail": {
     "allClients": "Tous les clients",
@@ -211,7 +214,30 @@
     "noApprovals": "Aucune demande d'approbation pour le moment.",
     "statusPending": "En attente",
     "statusApproved": "Approuvé",
-    "statusChangesRequested": "Modifications demandées"
+    "statusChangesRequested": "Modifications demandées",
+    "renameDocument": "Renommer",
+    "deleteDocument": "Supprimer",
+    "confirmDeleteDocument": "Supprimer ce document\u00a0?",
+    "documentRenamed": "Document renomm\u00e9.",
+    "documentDeleted": "Document supprim\u00e9.",
+    "couldNotRenameDocument": "Impossible de renommer le document.",
+    "couldNotDeleteDocument": "Impossible de supprimer le document.",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "editMessage": "Modifier",
+    "deleteMessage": "Supprimer",
+    "confirmDeleteMessage": "Supprimer ce message\u00a0?",
+    "messageUpdated": "Message mis \u00e0 jour.",
+    "messageDeleted": "Message supprim\u00e9.",
+    "couldNotUpdateMessage": "Impossible de mettre \u00e0 jour le message.",
+    "couldNotDeleteMessage": "Impossible de supprimer le message.",
+    "editInvoice": "Modifier",
+    "deleteInvoice": "Supprimer",
+    "confirmDeleteInvoice": "Supprimer cette facture\u00a0?",
+    "invoiceUpdated": "Facture mise \u00e0 jour.",
+    "invoiceDeleted": "Facture supprim\u00e9e.",
+    "couldNotUpdateInvoice": "Impossible de mettre \u00e0 jour la facture.",
+    "couldNotDeleteInvoice": "Impossible de supprimer la facture."
   },
   "clientPortal": {
     "welcomeBack": "Bon retour,",
