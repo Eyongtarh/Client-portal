@@ -503,7 +503,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
 class InvoicePDFView(APIView):
     """GET /api/invoices/<id>/pdf/ - renders the invoice as a
-    downloadable PDF using reportlab.
+    downloadable PDF using reportlab, styled with the workspace's
+    brand color on the title and total.
     """
     permission_classes = [IsAuthenticated]
 
@@ -514,12 +515,22 @@ class InvoicePDFView(APIView):
         else:
             qs = Invoice.objects.filter(client=user.client_profile)
         invoice = generics.get_object_or_404(qs, pk=pk)
+
+        hex_color = invoice.workspace.brand_color or "#2563eb"
+        r = int(hex_color[1:3], 16) / 255
+        g = int(hex_color[3:5], 16) / 255
+        b = int(hex_color[5:7], 16) / 255
+        from reportlab.lib.colors import Color, black
+        brand = Color(r, g, b)
+
         buf = io.BytesIO()
         pdf = canvas.Canvas(buf, pagesize=A4)
         width, height = A4
         y = height - 30 * mm
+        pdf.setFillColor(brand)
         pdf.setFont("Helvetica-Bold", 18)
         pdf.drawString(20 * mm, y, f"Invoice #{invoice.number}")
+        pdf.setFillColor(black)
         y -= 10 * mm
         pdf.setFont("Helvetica", 11)
         pdf.drawString(20 * mm, y, invoice.client.company_name)
@@ -533,7 +544,9 @@ class InvoicePDFView(APIView):
         pdf.drawString(20 * mm, y, "Description")
         pdf.drawString(150 * mm, y, "Amount")
         y -= 4 * mm
+        pdf.setStrokeColor(brand)
         pdf.line(20 * mm, y, 190 * mm, y)
+        pdf.setStrokeColor(black)
         y -= 8 * mm
         pdf.setFont("Helvetica", 11)
         for item in invoice.items.all():
@@ -544,12 +557,16 @@ class InvoicePDFView(APIView):
             y -= 7 * mm
 
         y -= 4 * mm
+        pdf.setStrokeColor(brand)
         pdf.line(20 * mm, y, 190 * mm, y)
+        pdf.setStrokeColor(black)
         y -= 8 * mm
+        pdf.setFillColor(brand)
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawRightString(
             190 * mm, y, f"Total: \u20ac{invoice.total:,.2f}"
         )
+        pdf.setFillColor(black)
 
         pdf.showPage()
         pdf.save()

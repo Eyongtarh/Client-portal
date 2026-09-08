@@ -1,13 +1,14 @@
 // Owner's (and staff's) home page: lists clients in the
 // workspace and lets the owner invite new ones, upload a
-// workspace logo, manage the team, and view/change the
-// subscription plan.
+// workspace logo, pick a brand color, manage the team, and
+// view/change the subscription plan.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import api from "../lib/api";
+import applyBrandColor from "../lib/applyBrandColor";
 
 export default function OwnerDashboard() {
   const { t } = useTranslation();
@@ -21,6 +22,7 @@ export default function OwnerDashboard() {
   const [inviteError, setInviteError] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [colorMsg, setColorMsg] = useState(null);
   const isOwner = user.role === "owner";
 
   async function loadClients() {
@@ -49,6 +51,19 @@ export default function OwnerDashboard() {
       setWorkspace(res.data);
     } finally {
       setLogoUploading(false);
+    }
+  }
+
+  async function onColorChange(e) {
+    const hex = e.target.value;
+    applyBrandColor(hex);
+    try {
+      const res = await api.patch("/workspace/", { brand_color: hex });
+      setWorkspace(res.data);
+      setColorMsg({ key: "branding.colorUpdated", type: "success" });
+    } catch (err) {
+      applyBrandColor(workspace?.brand_color);
+      setColorMsg({ key: "branding.couldNotUpdateColor", type: "error" });
     }
   }
 
@@ -116,6 +131,20 @@ export default function OwnerDashboard() {
           <h1 className="text-lg font-semibold text-brand-700">
             {user.workspace_name}
           </h1>
+          {isOwner && (
+            <label
+              className="flex items-center gap-1.5 cursor-pointer ml-2"
+              title={t("branding.brandColor")}
+            >
+              <input
+                type="color"
+                value={workspace?.brand_color || "#3b7fc4"}
+                onChange={onColorChange}
+                className="w-7 h-7 rounded cursor-pointer border border-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                aria-label={t("branding.brandColor")}
+              />
+            </label>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <Link
@@ -135,6 +164,20 @@ export default function OwnerDashboard() {
           </button>
         </div>
       </header>
+      {colorMsg && (
+        <div className="max-w-3xl mx-auto px-8 pt-4">
+          <div
+            role="status"
+            className={
+              colorMsg.type === "success"
+                ? "text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+                : "text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+            }
+          >
+            {t(colorMsg.key)}
+          </div>
+        </div>
+      )}
       <main className="max-w-3xl mx-auto px-8 py-8 space-y-8">
         <div>
           <div className="flex justify-between items-center mb-6">

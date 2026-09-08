@@ -2,16 +2,26 @@
 
 /* Light-blue brand palette used across the whole app instead of
    Tailwind's generic "blue" - keeps every screen visually
-   consistent and easy to re-theme later from one place. */
+   consistent and easy to re-theme later from one place.
+   Each shade is expressed relative to --brand-rgb (set at
+   runtime from the workspace's brand_color) so the whole
+   palette can be re-tinted per-workspace without touching any
+   of the brand color classes used throughout the app. Falls
+   back to the original light-blue values until JS sets
+   --brand-rgb. */
+
+:root {
+  --brand-rgb: 59, 127, 196;
+}
 
 @theme {
-  --color-brand-50: #eef6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-500: #4a90d9;
-  --color-brand-600: #3b7fc4;
-  --color-brand-700: #2f66a0;
-  --color-brand-800: #234c7a;
+  --color-brand-50: color-mix(in srgb, rgb(var(--brand-rgb)) 6%, white);
+  --color-brand-100: color-mix(in srgb, rgb(var(--brand-rgb)) 15%, white);
+  --color-brand-200: color-mix(in srgb, rgb(var(--brand-rgb)) 30%, white);
+  --color-brand-500: color-mix(in srgb, rgb(var(--brand-rgb)) 80%, white);
+  --color-brand-600: rgb(var(--brand-rgb));
+  --color-brand-700: color-mix(in srgb, rgb(var(--brand-rgb)) 85%, black);
+  --color-brand-800: color-mix(in srgb, rgb(var(--brand-rgb)) 70%, black);
 }
 
 body {

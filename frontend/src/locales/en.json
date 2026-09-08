@@ -243,5 +243,10 @@
     "planChanged": "Plan updated.",
     "couldNotChangePlan": "Could not change plan.",
     "cancel": "Cancel"
+  },
+  "branding": {
+    "brandColor": "Brand color",
+    "colorUpdated": "Brand color updated.",
+    "couldNotUpdateColor": "Could not update brand color."
   }
 }

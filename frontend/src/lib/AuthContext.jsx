@@ -1,8 +1,11 @@
 // Provides the logged-in user (or null) to the whole app via
 // React context, and exposes login/logout actions that components
-// can call directly.
+// can call directly. Also applies the workspace's brand color to
+// the whole app as soon as a user is known, so every screen
+// re-tints without each page having to do it individually.
 import { createContext, useContext, useEffect, useState } from "react";
 import api, { setTokens, clearTokens, getTokens } from "./api";
+import applyBrandColor from "./applyBrandColor";
 
 const AuthContext = createContext(null);
 
@@ -22,6 +25,14 @@ export function AuthProvider({ children }) {
       .catch(() => clearTokens())
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    api
+      .get("/workspace/")
+      .then((res) => applyBrandColor(res.data.brand_color))
+      .catch(() => {});
+  }, [user]);
 
   async function login(email, password) {
     const { data } = await api.post("/auth/login/", {
