@@ -46,7 +46,7 @@ class WorkspaceSerializer(serializers.ModelSerializer):
         model = Workspace
         fields = [
             "id", "name", "slug", "logo", "currency", "timezone",
-            "plan", "client_count", "team_member_count",
+            "brand_color", "plan", "client_count", "team_member_count",
         ]
         read_only_fields = ["id", "slug"]
 
@@ -55,6 +55,14 @@ class WorkspaceSerializer(serializers.ModelSerializer):
 
     def get_team_member_count(self, obj):
         return obj.team_members.count()
+
+    def validate_brand_color(self, value):
+        import re
+        if not re.match(r"^#[0-9A-Fa-f]{6}$", value):
+            raise serializers.ValidationError(
+                "Must be a hex color like #2563eb."
+            )
+        return value
 
 
 class ChangePlanSerializer(serializers.Serializer):

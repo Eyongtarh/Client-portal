@@ -67,6 +67,11 @@ class Workspace(models.Model):
     )
     currency = models.CharField(max_length=5, default="EUR")
     timezone = models.CharField(max_length=50, default="UTC")
+    brand_color = models.CharField(
+        max_length=7,
+        default="#2563eb",
+        help_text="Hex color, e.g. #2563eb",
+    )
     plan = models.ForeignKey(
         "SubscriptionPlan",
         on_delete=models.SET_NULL,
