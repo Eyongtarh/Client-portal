@@ -17,8 +17,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import (
     Approval, Booking, Client, Document, Invoice, Message, Milestone,
-    Project, RecurringSeries, Review, Service, SubscriptionPlan, Task,
-    User, WaitlistEntry, WorkingHours,
+    Project, RecurringSeries, Resource, Review, Service,
+    SubscriptionPlan, Task, User, WaitlistEntry, WorkingHours,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -39,6 +39,7 @@ from .serializers import (
     ProjectSerializer,
     RecurringSeriesCreateSerializer,
     RegisterSerializer,
+    ResourceSerializer,
     ReviewResponseSerializer,
     ReviewSerializer,
     ServiceSerializer,
@@ -610,6 +611,26 @@ class ServiceViewSet(viewsets.ModelViewSet):
         serializer.save(workspace=self.request.user.get_workspace())
 
 
+class ResourceViewSet(viewsets.ModelViewSet):
+    """Full CRUD for bookable resources (rooms, equipment,
+    chairs, vehicles, etc.). Owners and staff manage resources;
+    clients have no direct access - resource availability is
+    enforced transparently through booking creation and the
+    availability endpoint instead.
+    """
+    serializer_class = ResourceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role not in ("owner", "staff"):
+            return Resource.objects.none()
+        return Resource.objects.filter(workspace=user.get_workspace())
+
+    def perform_create(self, serializer):
+        serializer.save(workspace=self.request.user.get_workspace())
+
+
 class WorkingHoursViewSet(viewsets.ModelViewSet):
     """Owners and staff manage their weekly hours; clients get
     read-only access (used to render available days before
@@ -943,7 +964,13 @@ class AvailabilityView(APIView):
     """GET /api/availability/?service=<id>&date=YYYY-MM-DD
     Returns open time slots for that service on that date, using
     the workspace's own timezone (not the server's) for working
-    hours, capacity checks, and excluding past times.
+    hours, capacity checks, and excluding past times. Also
+    excludes any slot where a resource tied to this service is
+    already fully booked by ANY service sharing that resource
+    during the overlapping window, so staff and resource
+    availability are checked together (a slot is only offered
+    when both the service itself and every resource it needs are
+    free).
     """
     permission_classes = [IsAuthenticated]
 
@@ -984,6 +1011,21 @@ class AvailabilityView(APIView):
             start_time__lt=day_end_local,
         )
 
+        resources = list(service.resources.all())
+        resource_bookings = {}
+        for resource in resources:
+            resource_bookings[resource.id] = list(
+                Booking.objects.filter(
+                    workspace=workspace,
+                    service__resources=resource,
+                    status="confirmed",
+                    start_time__gte=day_start_local
+                    - timedelta(hours=24),
+                    start_time__lt=day_end_local
+                    + timedelta(hours=24),
+                )
+            )
+
         slot_length = timedelta(minutes=service.duration_minutes)
         now_local = timezone.now().astimezone(tz).replace(
             tzinfo=None
@@ -1010,7 +1052,26 @@ class AvailabilityView(APIView):
                 )
                 in_the_past = cursor < now_local
                 is_full = overlap_count >= service.capacity
-                if not is_full and not in_the_past:
+
+                resource_full = False
+                for resource in resources:
+                    resource_overlap = sum(
+                        1
+                        for b in resource_bookings[resource.id]
+                        if cursor
+                        < b.end_time.astimezone(tz).replace(
+                            tzinfo=None
+                        )
+                        and slot_end
+                        > b.start_time.astimezone(tz).replace(
+                            tzinfo=None
+                        )
+                    )
+                    if resource_overlap >= resource.quantity:
+                        resource_full = True
+                        break
+
+                if not is_full and not in_the_past and not resource_full:
                     slots.append(cursor.strftime("%H:%M"))
                 cursor += slot_length
 

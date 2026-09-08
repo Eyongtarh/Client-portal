@@ -354,6 +354,32 @@ class Service(models.Model):
         return self.name
 
 
+class Resource(models.Model):
+    """A shared, bookable thing - a room, a piece of equipment, a
+    chair, a vehicle - that only one booking can hold at a time
+    (or up to `quantity` bookings at once, e.g. 3 identical
+    chairs). Resources are associated with one or more Services;
+    a booking for that service reserves one unit of each
+    associated resource for its time slot.
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="resources"
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    quantity = models.PositiveIntegerField(
+        default=1,
+        help_text="How many identical units exist, e.g. 3 chairs.",
+    )
+    services = models.ManyToManyField(
+        Service, blank=True, related_name="resources"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
 class WorkingHours(models.Model):
     """One weekly recurring availability window per workspace.
     Multiple rows can exist for the same weekday (e.g. a lunch

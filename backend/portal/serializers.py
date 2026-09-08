@@ -1,7 +1,7 @@
 from .models import (
     Approval, Client, ClientInvite, Document, Invoice, InvoiceItem,
-    Message, Milestone, Project, RecurringSeries, Review, Service,
-    SubscriptionPlan, Task, TeamInvite, User, WaitlistEntry,
+    Message, Milestone, Project, RecurringSeries, Resource, Review,
+    Service, SubscriptionPlan, Task, TeamInvite, User, WaitlistEntry,
     WorkingHours, Booking, Workspace,
 )
 from rest_framework import serializers
@@ -454,13 +454,35 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 
 class ServiceSerializer(serializers.ModelSerializer):
+    resource_names = serializers.SerializerMethodField()
+
     class Meta:
         model = Service
         fields = [
             "id", "workspace", "name", "description", "photo",
             "duration_minutes", "price", "capacity", "is_active",
+            "resource_names",
         ]
         read_only_fields = ["workspace"]
+
+    def get_resource_names(self, obj):
+        return [r.name for r in obj.resources.all()]
+
+
+class ResourceSerializer(serializers.ModelSerializer):
+    """Full CRUD for a bookable resource. `services` is a list of
+    service IDs this resource is tied to - a booking for any of
+    those services reserves one unit of this resource for its
+    time slot.
+    """
+
+    class Meta:
+        model = Resource
+        fields = [
+            "id", "workspace", "name", "description", "quantity",
+            "services", "created_at",
+        ]
+        read_only_fields = ["workspace", "created_at"]
 
 
 class WorkingHoursSerializer(serializers.ModelSerializer):
@@ -477,10 +499,14 @@ class BookingSerializer(serializers.ModelSerializer):
     create bookings for themselves only (client is forced server
     -side in the view, never trusted from the request body).
     client is required=False here because clients booking for
-    themselves never send it - the view fills it in.
+    themselves never send it - the view fills it in. Checks the
+    service's capacity AND every associated resource's quantity
+    for the same time slot, so a booking can never be confirmed
+    if either is exhausted.
     """
     service_name = serializers.SerializerMethodField()
     client_name = serializers.SerializerMethodField()
+    remaining_capacity = serializers.SerializerMethodField()
     client = serializers.PrimaryKeyRelatedField(
         queryset=Client.objects.all(), required=False
     )
@@ -490,7 +516,7 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = [
             "id", "workspace", "service", "service_name", "client",
             "client_name", "series", "start_time", "end_time",
-            "status", "notes", "created_at",
+            "status", "notes", "created_at", "remaining_capacity",
         ]
         read_only_fields = ["workspace", "end_time"]
 
@@ -499,6 +525,15 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def get_client_name(self, obj):
         return obj.client.company_name
+
+    def get_remaining_capacity(self, obj):
+        taken = Booking.objects.filter(
+            workspace=obj.workspace,
+            service=obj.service,
+            status="confirmed",
+            start_time=obj.start_time,
+        ).count()
+        return max(obj.service.capacity - taken, 0)
 
     def validate(self, attrs):
         service = attrs.get("service") or self.instance.service
@@ -526,6 +561,27 @@ class BookingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "This time slot is fully booked."
             )
+
+        # A booking for this service also reserves one unit of
+        # every resource tied to it - if any resource is already
+        # at capacity for this overlapping window, the booking
+        # can't be confirmed either.
+        for resource in service.resources.all():
+            resource_overlap = Booking.objects.filter(
+                workspace=service.workspace,
+                service__resources=resource,
+                status="confirmed",
+                start_time__lt=attrs["end_time"],
+                end_time__gt=start,
+            )
+            if self.instance:
+                resource_overlap = resource_overlap.exclude(
+                    pk=self.instance.pk
+                )
+            if resource_overlap.count() >= resource.quantity:
+                raise serializers.ValidationError(
+                    f'"{resource.name}" is fully booked for this time.'
+                )
         return attrs
 
 

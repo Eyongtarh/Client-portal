@@ -43,6 +43,9 @@ router.register(
 router.register(
     "plans", views.SubscriptionPlanViewSet, basename="plan"
 )
+router.register(
+    "resources", views.ResourceViewSet, basename="resource"
+)
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),
