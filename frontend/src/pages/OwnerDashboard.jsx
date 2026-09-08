@@ -261,12 +261,20 @@ function TeamSection({ isOwner }) {
       setStatusMsg({ key: "team.inviteSent", type: "success" });
     } catch (err) {
       const data = err.response?.data;
-      const message = data ? Object.values(data).flat().join(" ") : null;
-      setStatusMsg(
-        message
-          ? { raw: message, type: "error" }
-          : { key: "team.couldNotSendInvite", type: "error" },
-      );
+      const emailErrors = data?.email;
+      if (
+        emailErrors &&
+        emailErrors.some((msg) => msg.includes("already exists"))
+      ) {
+        setStatusMsg({ key: "team.emailAlreadyExists", type: "error" });
+      } else {
+        const message = data ? Object.values(data).flat().join(" ") : null;
+        setStatusMsg(
+          message
+            ? { raw: message, type: "error" }
+            : { key: "team.couldNotSendInvite", type: "error" },
+        );
+      }
     } finally {
       setBusy(false);
     }

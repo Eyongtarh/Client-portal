@@ -67,6 +67,13 @@ class Workspace(models.Model):
     )
     currency = models.CharField(max_length=5, default="EUR")
     timezone = models.CharField(max_length=50, default="UTC")
+    plan = models.ForeignKey(
+        "SubscriptionPlan",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="workspaces",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -83,6 +90,27 @@ class Workspace(models.Model):
                 existing = existing.exclude(pk=self.pk)
             self.slug = slug
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class SubscriptionPlan(models.Model):
+    """A fixed pricing tier. Seeded via a data migration, not
+    created through the app - owners choose from these, they
+    don't define their own.
+    """
+    name = models.CharField(max_length=100, unique=True)
+    price_per_month = models.DecimalField(max_digits=10, decimal_places=2)
+    max_clients = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Blank = unlimited"
+    )
+    max_team_members = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Blank = unlimited"
+    )
+
+    class Meta:
+        ordering = ["price_per_month"]
 
     def __str__(self):
         return self.name

@@ -108,7 +108,8 @@
     "confirmRemoveMember": "Retirer ce membre de l'\u00e9quipe\u00a0?",
     "memberRemoved": "Membre retir\u00e9 de l'\u00e9quipe.",
     "noTeamMembers": "Aucun membre pour le moment.",
-    "welcomeBackStaff": "Bon retour"
+    "welcomeBackStaff": "Bon retour",
+    "emailAlreadyExists": "Un compte avec cet e-mail existe d\u00e9j\u00e0."
   },
   "landing": {
     "signIn": "Se connecter",

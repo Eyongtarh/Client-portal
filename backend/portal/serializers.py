@@ -1,8 +1,8 @@
 from .models import (
     Approval, Client, ClientInvite, Document, Invoice, InvoiceItem,
     Message, Milestone, Project, RecurringSeries, Review, Service,
-    Task, TeamInvite, User, WaitlistEntry, WorkingHours, Booking,
-    Workspace,
+    SubscriptionPlan, Task, TeamInvite, User, WaitlistEntry,
+    WorkingHours, Booking, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -23,13 +23,70 @@ class ClientSerializer(serializers.ModelSerializer):
         read_only_fields = ["workspace"]
 
 
+class SubscriptionPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionPlan
+        fields = [
+            "id", "name", "price_per_month", "max_clients",
+            "max_team_members",
+        ]
+
+
 class WorkspaceSerializer(serializers.ModelSerializer):
+    """plan is nested read-only so the frontend gets the plan's
+    name/limits in the same call; changing plans goes through a
+    separate action, never a plain PATCH here, so a plan switch
+    can be validated against current usage first.
+    """
+    plan = SubscriptionPlanSerializer(read_only=True)
+    client_count = serializers.SerializerMethodField()
+    team_member_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Workspace
         fields = [
             "id", "name", "slug", "logo", "currency", "timezone",
+            "plan", "client_count", "team_member_count",
         ]
         read_only_fields = ["id", "slug"]
+
+    def get_client_count(self, obj):
+        return obj.clients.count()
+
+    def get_team_member_count(self, obj):
+        return obj.team_members.count()
+
+
+class ChangePlanSerializer(serializers.Serializer):
+    """Owner switches plans. Downgrading is blocked if current
+    usage already exceeds the new plan's limits - the owner has
+    to reduce clients/team first, same as a real billing provider
+    would require before letting a downgrade go through.
+    """
+    plan_id = serializers.PrimaryKeyRelatedField(
+        queryset=SubscriptionPlan.objects.all()
+    )
+
+    def validate_plan_id(self, value):
+        workspace = self.context["workspace"]
+        if (
+            value.max_clients is not None
+            and workspace.clients.count() > value.max_clients
+        ):
+            raise serializers.ValidationError(
+                f"You have more clients than the {value.name} plan "
+                f"allows. Remove some clients before switching."
+            )
+        if (
+            value.max_team_members is not None
+            and workspace.team_members.count() > value.max_team_members
+        ):
+            raise serializers.ValidationError(
+                f"You have more team members than the {value.name} "
+                f"plan allows. Remove some team members before "
+                f"switching."
+            )
+        return value
 
 
 class RegisterSerializer(serializers.Serializer):

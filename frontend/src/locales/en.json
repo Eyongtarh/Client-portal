@@ -108,7 +108,8 @@
     "confirmRemoveMember": "Remove this team member?",
     "memberRemoved": "Team member removed.",
     "noTeamMembers": "No team members yet.",
-    "welcomeBackStaff": "Welcome back"
+    "welcomeBackStaff": "Welcome back",
+    "emailAlreadyExists": "An account with this email already exists."
   },
   "landing": {
     "signIn": "Sign in",

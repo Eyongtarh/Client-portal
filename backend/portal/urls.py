@@ -40,6 +40,9 @@ router.register(
 router.register(
     "team", views.TeamViewSet, basename="team"
 )
+router.register(
+    "plans", views.SubscriptionPlanViewSet, basename="plan"
+)
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),
@@ -57,6 +60,10 @@ urlpatterns = [
     ),
     path(
         "workspace/", views.WorkspaceUpdateView.as_view()
+    ),
+    path(
+        "workspace/change-plan/",
+        views.ChangePlanView.as_view(),
     ),
     path("invites/", views.InviteClientView.as_view()),
     path(

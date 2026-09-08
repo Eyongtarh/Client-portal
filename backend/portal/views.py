@@ -11,13 +11,13 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import (
     Approval, Booking, Client, Document, Invoice, Message, Milestone,
-    Project, RecurringSeries, Review, Service, Task,
+    Project, RecurringSeries, Review, Service, SubscriptionPlan, Task,
     User, WaitlistEntry, WorkingHours,
 )
 from .serializers import (
@@ -26,6 +26,7 @@ from .serializers import (
     ApprovalDecisionSerializer,
     ApprovalSerializer,
     BookingSerializer,
+    ChangePlanSerializer,
     ClientInviteCreateSerializer,
     ClientSerializer,
     DocumentSerializer,
@@ -41,6 +42,7 @@ from .serializers import (
     ReviewResponseSerializer,
     ReviewSerializer,
     ServiceSerializer,
+    SubscriptionPlanSerializer,
     TaskSerializer,
     TeamInviteCreateSerializer,
     TeamMemberSerializer,
@@ -84,13 +86,25 @@ class MeView(APIView):
 class InviteClientView(generics.CreateAPIView):
     """POST /api/invites/ - owner or staff invites a client by
     email, then sends them a link to accept it and set up their
-    account.
+    account. Blocked once the workspace's plan client limit is
+    reached.
     """
     serializer_class = ClientInviteCreateSerializer
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         workspace = self.request.user.get_workspace()
+        plan = workspace.plan
+        if (
+            plan
+            and plan.max_clients is not None
+            and workspace.clients.count() >= plan.max_clients
+        ):
+            raise ValidationError(
+                f"You've reached the {plan.name} plan's limit of "
+                f"{plan.max_clients} clients. Upgrade your plan to "
+                f"invite more."
+            )
         invite = serializer.save(workspace=workspace)
         link = f"{settings.FRONTEND_URL}/accept-invite/{invite.token}"
         send_mail(
@@ -131,6 +145,8 @@ class TeamInviteView(generics.CreateAPIView):
     """POST /api/team-invites/ - owner invites a team member by
     email, then sends them a link to accept it and set up their
     staff account. Owner-only (staff can't invite more staff).
+    Blocked once the workspace's plan team-member limit is
+    reached.
     """
     serializer_class = TeamInviteCreateSerializer
     permission_classes = [IsAuthenticated]
@@ -141,6 +157,17 @@ class TeamInviteView(generics.CreateAPIView):
                 "Only the workspace owner can invite team members."
             )
         workspace = self.request.user.workspace
+        plan = workspace.plan
+        if (
+            plan
+            and plan.max_team_members is not None
+            and workspace.team_members.count() >= plan.max_team_members
+        ):
+            raise ValidationError(
+                f"You've reached the {plan.name} plan's limit of "
+                f"{plan.max_team_members} team members. Upgrade "
+                f"your plan to invite more."
+            )
         invite = serializer.save(workspace=workspace)
         link = f"{settings.FRONTEND_URL}/accept-team-invite/{invite.token}"
         send_mail(
@@ -199,12 +226,23 @@ class TeamViewSet(viewsets.ModelViewSet):
         instance.delete()
 
 
+class SubscriptionPlanViewSet(viewsets.ReadOnlyModelViewSet):
+    """GET /api/plans/ - lists the fixed plans so the frontend can
+    render a pricing/upgrade page. Read-only: plans are seeded via
+    migration, never created through the app.
+    """
+    serializer_class = SubscriptionPlanSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = SubscriptionPlan.objects.all()
+
+
 class WorkspaceUpdateView(generics.RetrieveUpdateAPIView):
     """GET /api/workspace/ - owner, staff, or client views their
     workspace (clients need this for currency/logo when
-    booking). PATCH /api/workspace/ - owner-only update,
-    including uploading a logo (staff can operate day-to-day
-    but not change workspace settings).
+    booking; owner/staff also get the plan + usage counts).
+    PATCH /api/workspace/ - owner-only update, including
+    uploading a logo (staff can operate day-to-day but not
+    change workspace settings).
     """
     serializer_class = WorkspaceSerializer
     permission_classes = [IsAuthenticated]
@@ -221,6 +259,28 @@ class WorkspaceUpdateView(generics.RetrieveUpdateAPIView):
                 "Only the owner can update the workspace."
             )
         return super().update(request, *args, **kwargs)
+
+
+class ChangePlanView(APIView):
+    """POST /api/workspace/change-plan/ - owner switches their
+    workspace to a different plan. Blocked if current usage
+    exceeds the new plan's limits.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the owner can change the subscription plan."
+            )
+        workspace = request.user.workspace
+        serializer = ChangePlanSerializer(
+            data=request.data, context={"workspace": workspace}
+        )
+        serializer.is_valid(raise_exception=True)
+        workspace.plan = serializer.validated_data["plan_id"]
+        workspace.save(update_fields=["plan"])
+        return Response(WorkspaceSerializer(workspace).data)
 
 
 class PasswordResetRequestView(generics.CreateAPIView):
