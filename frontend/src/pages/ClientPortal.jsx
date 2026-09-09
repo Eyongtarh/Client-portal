@@ -303,6 +303,67 @@ export default function ClientPortal() {
   );
 }
 
+function ClientPaymentBadge({ status }) {
+  const { t } = useTranslation();
+  if (!status || status === "not_required") return null;
+  const styles = {
+    pending: "bg-amber-50 text-amber-700 border-amber-200",
+    paid: "bg-green-50 text-green-700 border-green-200",
+    refunded: "bg-gray-50 text-gray-600 border-gray-200",
+  };
+  return (
+    <span
+      className={`text-xs px-2 py-0.5 rounded-full border ${styles[status] || styles.pending}`}
+    >
+      {t(`booking.paymentStatus.${status}`)}
+    </span>
+  );
+}
+
+// Shown right before the client confirms a booking, so payment and
+// cancellation terms are always seen before the appointment is
+// created (BOOK-23, BOOK-43) rather than discovered afterward.
+function BookingPolicyNotice({ service, currency }) {
+  const { t } = useTranslation();
+  if (!service) return null;
+  const hasPaymentTerm = service.payment_requirement !== "none";
+  const hasCancellationTerm = !!service.late_cancellation_fee_percent;
+  if (!hasPaymentTerm && !hasCancellationTerm) return null;
+  const depositAmount =
+    service.payment_requirement === "deposit" && service.price
+      ? ((service.price * service.deposit_percent) / 100).toFixed(2)
+      : null;
+  return (
+    <div className="mb-3 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1">
+      {service.payment_requirement === "deposit" && (
+        <p>
+          {t("booking.policyDepositRequired", {
+            percent: service.deposit_percent,
+            amount: depositAmount,
+            currency,
+          })}
+        </p>
+      )}
+      {service.payment_requirement === "full" && (
+        <p>
+          {t("booking.policyFullPaymentRequired", {
+            amount: service.price,
+            currency,
+          })}
+        </p>
+      )}
+      {hasCancellationTerm && (
+        <p>
+          {t("booking.policyCancellationFee", {
+            hours: service.cancellation_notice_hours,
+            percent: service.late_cancellation_fee_percent,
+          })}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function BookingSection() {
   const { t } = useTranslation();
   const [bookingType, setBookingType] = useState("service");
@@ -809,6 +870,14 @@ function BookingSection() {
                     </button>
                   ))}
                 </div>
+                {selectedSlot && bookingType === "service" && (
+                  <BookingPolicyNotice
+                    service={services.find(
+                      (s) => String(s.id) === selectedService,
+                    )}
+                    currency={currency}
+                  />
+                )}
                 {selectedSlot && (
                   <button
                     onClick={confirmBooking}
@@ -1081,7 +1150,8 @@ function BookingSection() {
                   <span>
                     {booking.service_name || booking.resource_name}
                     {" \u00b7 "}
-                    {new Date(booking.start_time).toLocaleString()}
+                    {new Date(booking.start_time).toLocaleString()}{" "}
+                    <ClientPaymentBadge status={booking.payment_status} />
                   </span>
                   <div className="flex gap-2">
                     {booking.service && (

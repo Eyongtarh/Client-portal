@@ -102,7 +102,28 @@
     "bookingType": "Que souhaitez-vous r\u00e9server\u00a0?",
     "aService": "Un service",
     "aResource": "Une ressource",
-    "noResources": "Aucune ressource disponible."
+    "noResources": "Aucune ressource disponible.",
+    "paymentPolicyTitle": "Politique de paiement et d'annulation",
+    "paymentNone": "Aucun paiement \u00e0 la r\u00e9servation",
+    "paymentDeposit": "Acompte requis",
+    "paymentFull": "Paiement int\u00e9gral requis",
+    "depositPercent": "Acompte (%)",
+    "cancellationNoticeHours": "Pr\u00e9avis d'annulation (heures)",
+    "lateCancellationFeePercent": "Frais d'annulation tardive (%)",
+    "depositAtBooking": "acompte \u00e0 la r\u00e9servation",
+    "fullPaymentAtBooking": "paiement int\u00e9gral \u00e0 la r\u00e9servation",
+    "paymentStatus": {
+      "pending": "Paiement en attente",
+      "paid": "Pay\u00e9",
+      "refunded": "Rembours\u00e9"
+    },
+    "confirmMarkNoShow": "Marquer cette r\u00e9servation comme absence ?",
+    "markedNoShow": "R\u00e9servation marqu\u00e9e comme absence.",
+    "markNoShow": "Marquer absence",
+    "recentlyCompleted": "R\u00e9cemment termin\u00e9es",
+    "policyDepositRequired": "Un acompte de {{percent}}% ({{amount}} {{currency}}) est requis pour confirmer cette r\u00e9servation.",
+    "policyFullPaymentRequired": "Le paiement int\u00e9gral ({{amount}} {{currency}}) est requis pour confirmer cette r\u00e9servation.",
+    "policyCancellationFee": "Toute annulation dans les {{hours}} heures pr\u00e9c\u00e9dant le rendez-vous entra\u00eene des frais de {{percent}}%."
   },
   "team": {
     "teamTitle": "\u00c9quipe",

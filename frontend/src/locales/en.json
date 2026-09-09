@@ -102,7 +102,28 @@
     "bookingType": "What would you like to book?",
     "aService": "A service",
     "aResource": "A resource",
-    "noResources": "No resources available."
+    "noResources": "No resources available.",
+    "paymentPolicyTitle": "Payment & cancellation policy",
+    "paymentNone": "No payment at booking",
+    "paymentDeposit": "Deposit required",
+    "paymentFull": "Full payment required",
+    "depositPercent": "Deposit %",
+    "cancellationNoticeHours": "Cancellation notice (hours)",
+    "lateCancellationFeePercent": "Late cancellation fee %",
+    "depositAtBooking": "deposit at booking",
+    "fullPaymentAtBooking": "full payment at booking",
+    "paymentStatus": {
+      "pending": "Payment pending",
+      "paid": "Paid",
+      "refunded": "Refunded"
+    },
+    "confirmMarkNoShow": "Mark this booking as a no-show?",
+    "markedNoShow": "Booking marked as a no-show.",
+    "markNoShow": "Mark no-show",
+    "recentlyCompleted": "Recently completed",
+    "policyDepositRequired": "A {{percent}}% deposit ({{amount}} {{currency}}) is required to secure this booking.",
+    "policyFullPaymentRequired": "Full payment ({{amount}} {{currency}}) is required to secure this booking.",
+    "policyCancellationFee": "Cancelling within {{hours}} hours of the appointment incurs a {{percent}}% late-cancellation fee."
   },
   "team": {
     "teamTitle": "Team",

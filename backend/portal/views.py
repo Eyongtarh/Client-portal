@@ -856,19 +856,38 @@ class BookingViewSet(viewsets.ModelViewSet):
             booking.service.name if booking.service else booking.resource.name
         )
         if booking.status == "cancelled":
+            fee_percent = (
+                booking.service.late_cancellation_fee_percent
+                if booking.service
+                else None
+            )
+            charges_fee = booking.is_late_cancellation and fee_percent
             log_activity(
                 booking.workspace,
                 self.request.user,
-                "booking_cancelled",
+                (
+                    "booking_cancelled_late"
+                    if charges_fee
+                    else "booking_cancelled"
+                ),
                 booking,
                 client=booking.client,
+                metadata={"fee_percent": fee_percent} if charges_fee else {},
+            )
+            fee_note = (
+                f"\n\nThis was cancelled inside the "
+                f"{booking.service.cancellation_notice_hours}-hour notice "
+                f"window, so the {fee_percent}% late-cancellation fee "
+                f"applies."
+                if charges_fee
+                else ""
             )
             send_mail(
                 subject=f"Booking cancelled: {booked_name}",
                 message=(
                     f"Your booking for {booked_name} on "
                     f"{booking.start_time.strftime('%A %d %B %Y at %H:%M')}"
-                    f" has been cancelled."
+                    f" has been cancelled.{fee_note}"
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[booking.client.contact_email],
@@ -899,6 +918,39 @@ class BookingViewSet(viewsets.ModelViewSet):
                     )
                     entry.notified = True
                     entry.save(update_fields=["notified"])
+
+    @action(detail=True, methods=["post"], url_path="mark-no-show")
+    def mark_no_show(self, request, pk=None):
+        """POST /api/bookings/<id>/mark-no-show/ - owner/staff marks
+        a past confirmed booking as a no-show (distinct from a
+        client-initiated cancellation, so no-show rates can be
+        tracked separately - BOOK-38/41).
+        """
+        if request.user.role not in ("owner", "staff"):
+            raise PermissionDenied(
+                "Only the owner or team can mark a no-show."
+            )
+        booking = generics.get_object_or_404(
+            Booking.objects.filter(
+                workspace=request.user.get_workspace()
+            ),
+            pk=pk,
+        )
+        if booking.status not in ("confirmed", "completed"):
+            raise ValidationError(
+                "Only a confirmed or completed booking can be "
+                "marked as a no-show."
+            )
+        booking.status = "no_show"
+        booking.save(update_fields=["status"])
+        log_activity(
+            booking.workspace,
+            request.user,
+            "booking_no_show",
+            booking,
+            client=booking.client,
+        )
+        return Response(BookingSerializer(booking).data)
 
 
 class RecurringSeriesCreateView(APIView):

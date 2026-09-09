@@ -5,19 +5,11 @@ events, and workspace-internal events must never reach a client at
 all. Getting this wrong is a real cross-tenant data leak, so it's
 worth a real test rather than trusting the code by inspection.
 """
-from rest_framework.test import APIClient
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.test import TestCase
 
 from portal.activity import log as log_activity
 from portal.models import Client, User, Workspace
-
-
-def auth_client(user):
-    api = APIClient()
-    token = RefreshToken.for_user(user)
-    api.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
-    return api
+from portal.tests.helpers import auth_client
 
 
 class ActivityScopingTests(TestCase):

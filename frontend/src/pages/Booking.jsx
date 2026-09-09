@@ -82,6 +82,88 @@ export default function Booking() {
   );
 }
 
+// Payment-requirement + cancellation-policy fields, shared between
+// the create and edit service forms so the two never drift apart.
+function PolicyFields({
+  idPrefix,
+  paymentRequirement,
+  setPaymentRequirement,
+  depositPercent,
+  setDepositPercent,
+  noticeHours,
+  setNoticeHours,
+  feePercent,
+  setFeePercent,
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="border border-gray-200 rounded-lg p-3 mb-2 space-y-2">
+      <p className="text-xs font-medium text-gray-500">
+        {t("booking.paymentPolicyTitle")}
+      </p>
+      <div className="flex gap-2 flex-wrap">
+        <label htmlFor={`${idPrefix}-payment-req`} className="sr-only">
+          {t("booking.paymentPolicyTitle")}
+        </label>
+        <select
+          id={`${idPrefix}-payment-req`}
+          value={paymentRequirement}
+          onChange={(e) => setPaymentRequirement(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+        >
+          <option value="none">{t("booking.paymentNone")}</option>
+          <option value="deposit">{t("booking.paymentDeposit")}</option>
+          <option value="full">{t("booking.paymentFull")}</option>
+        </select>
+        {paymentRequirement === "deposit" && (
+          <>
+            <label htmlFor={`${idPrefix}-deposit-pct`} className="sr-only">
+              {t("booking.depositPercent")}
+            </label>
+            <input
+              id={`${idPrefix}-deposit-pct`}
+              type="number"
+              min="1"
+              max="100"
+              placeholder={t("booking.depositPercent")}
+              value={depositPercent}
+              onChange={(e) => setDepositPercent(e.target.value)}
+              className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+            />
+          </>
+        )}
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        <label htmlFor={`${idPrefix}-notice-hours`} className="sr-only">
+          {t("booking.cancellationNoticeHours")}
+        </label>
+        <input
+          id={`${idPrefix}-notice-hours`}
+          type="number"
+          min="0"
+          placeholder={t("booking.cancellationNoticeHours")}
+          value={noticeHours}
+          onChange={(e) => setNoticeHours(e.target.value)}
+          className="w-40 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <label htmlFor={`${idPrefix}-fee-pct`} className="sr-only">
+          {t("booking.lateCancellationFeePercent")}
+        </label>
+        <input
+          id={`${idPrefix}-fee-pct`}
+          type="number"
+          min="1"
+          max="100"
+          placeholder={t("booking.lateCancellationFeePercent")}
+          value={feePercent}
+          onChange={(e) => setFeePercent(e.target.value)}
+          className="w-44 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+      </div>
+    </div>
+  );
+}
+
 function ServicesSection() {
   const { t } = useTranslation();
   const [services, setServices] = useState([]);
@@ -95,6 +177,10 @@ function ServicesSection() {
   const [durationUnit, setDurationUnit] = useState("minutes");
   const [price, setPrice] = useState("");
   const [capacity, setCapacity] = useState("1");
+  const [paymentRequirement, setPaymentRequirement] = useState("none");
+  const [depositPercent, setDepositPercent] = useState("");
+  const [noticeHours, setNoticeHours] = useState("24");
+  const [feePercent, setFeePercent] = useState("");
   const [newPhoto, setNewPhoto] = useState(null);
   const [newPhotoPreview, setNewPhotoPreview] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -102,6 +188,10 @@ function ServicesSection() {
   const [editDescription, setEditDescription] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editCapacity, setEditCapacity] = useState("1");
+  const [editPaymentRequirement, setEditPaymentRequirement] = useState("none");
+  const [editDepositPercent, setEditDepositPercent] = useState("");
+  const [editNoticeHours, setEditNoticeHours] = useState("24");
+  const [editFeePercent, setEditFeePercent] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
 
   async function load() {
@@ -146,6 +236,11 @@ function ServicesSection() {
       duration_minutes: minutes,
       price: price || null,
       capacity,
+      payment_requirement: paymentRequirement,
+      deposit_percent:
+        paymentRequirement === "deposit" ? depositPercent || null : null,
+      cancellation_notice_hours: noticeHours || 0,
+      late_cancellation_fee_percent: feePercent || null,
     });
     if (newPhoto) {
       const formData = new FormData();
@@ -160,6 +255,10 @@ function ServicesSection() {
     setDurationUnit("minutes");
     setPrice("");
     setCapacity("1");
+    setPaymentRequirement("none");
+    setDepositPercent("");
+    setNoticeHours("24");
+    setFeePercent("");
     setNewPhoto(null);
     setNewPhotoPreview(null);
     setShowForm(false);
@@ -183,6 +282,10 @@ function ServicesSection() {
     setEditDescription(service.description || "");
     setEditPrice(service.price || "");
     setEditCapacity(String(service.capacity));
+    setEditPaymentRequirement(service.payment_requirement || "none");
+    setEditDepositPercent(service.deposit_percent || "");
+    setEditNoticeHours(String(service.cancellation_notice_hours ?? "24"));
+    setEditFeePercent(service.late_cancellation_fee_percent || "");
   }
 
   function cancelEdit() {
@@ -195,6 +298,13 @@ function ServicesSection() {
       description: editDescription,
       price: editPrice || null,
       capacity: editCapacity,
+      payment_requirement: editPaymentRequirement,
+      deposit_percent:
+        editPaymentRequirement === "deposit"
+          ? editDepositPercent || null
+          : null,
+      cancellation_notice_hours: editNoticeHours || 0,
+      late_cancellation_fee_percent: editFeePercent || null,
     });
     setEditingId(null);
     setStatusMsg({ key: "booking.serviceUpdated", type: "success" });
@@ -434,6 +544,17 @@ function ServicesSection() {
               className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
           </div>
+          <PolicyFields
+            idPrefix="new-service"
+            paymentRequirement={paymentRequirement}
+            setPaymentRequirement={setPaymentRequirement}
+            depositPercent={depositPercent}
+            setDepositPercent={setDepositPercent}
+            noticeHours={noticeHours}
+            setNoticeHours={setNoticeHours}
+            feePercent={feePercent}
+            setFeePercent={setFeePercent}
+          />
           <button
             aria-label={t("booking.createService")}
             className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
@@ -499,6 +620,17 @@ function ServicesSection() {
                     className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
                 </div>
+                <PolicyFields
+                  idPrefix={`edit-service-${service.id}`}
+                  paymentRequirement={editPaymentRequirement}
+                  setPaymentRequirement={setEditPaymentRequirement}
+                  depositPercent={editDepositPercent}
+                  setDepositPercent={setEditDepositPercent}
+                  noticeHours={editNoticeHours}
+                  setNoticeHours={setEditNoticeHours}
+                  feePercent={editFeePercent}
+                  setFeePercent={setEditFeePercent}
+                />
                 <div className="flex gap-2">
                   <button
                     onClick={() => saveEdit(service.id)}
@@ -556,6 +688,10 @@ function ServicesSection() {
                   {service.resource_names &&
                     service.resource_names.length > 0 &&
                     ` \u00b7 ${service.resource_names.join(", ")}`}
+                  {service.payment_requirement === "deposit" &&
+                    ` \u00b7 ${service.deposit_percent}% ${t("booking.depositAtBooking")}`}
+                  {service.payment_requirement === "full" &&
+                    ` \u00b7 ${t("booking.fullPaymentAtBooking")}`}
                   {service.description && (
                     <p className="text-gray-500 mt-0.5">
                       {service.description}
@@ -1390,6 +1526,26 @@ function WorkingHoursSection() {
   );
 }
 
+// Small colored label for a booking's payment_status - shared
+// between the owner's booking list and (later) any client-facing
+// booking summary.
+function PaymentBadge({ status }) {
+  const { t } = useTranslation();
+  if (!status || status === "not_required") return null;
+  const styles = {
+    pending: "bg-amber-50 text-amber-700 border-amber-200",
+    paid: "bg-green-50 text-green-700 border-green-200",
+    refunded: "bg-gray-50 text-gray-600 border-gray-200",
+  };
+  return (
+    <span
+      className={`text-xs px-2 py-0.5 rounded-full border ${styles[status] || styles.pending}`}
+    >
+      {t(`booking.paymentStatus.${status}`)}
+    </span>
+  );
+}
+
 function BookingsSection() {
   const { t } = useTranslation();
   const [bookings, setBookings] = useState([]);
@@ -1422,6 +1578,13 @@ function BookingsSection() {
       key: "booking.bookingCancelledMsg",
       type: "error",
     });
+    load();
+  }
+
+  async function markNoShow(bookingId) {
+    if (!window.confirm(t("booking.confirmMarkNoShow"))) return;
+    await api.post(`/bookings/${bookingId}/mark-no-show/`);
+    setStatusMsg({ key: "booking.markedNoShow", type: "error" });
     load();
   }
 
@@ -1563,7 +1726,8 @@ function BookingsSection() {
                     <span className="text-xs text-gray-400">
                       {booking.remaining_capacity}{" "}
                       {t("resources.remainingCapacity")}
-                    </span>
+                    </span>{" "}
+                    <PaymentBadge status={booking.payment_status} />
                   </span>
                   <div className="flex gap-2">
                     {booking.service && (
@@ -1591,6 +1755,40 @@ function BookingsSection() {
           <p className="text-gray-500 text-sm">{t("booking.noBookings")}</p>
         )}
       </ul>
+
+      {bookings.filter((b) => b.status === "completed").length > 0 && (
+        <div className="mt-6 pt-4 border-t border-gray-100">
+          <h3 className="text-xs font-medium text-gray-500 mb-2">
+            {t("booking.recentlyCompleted")}
+          </h3>
+          <ul className="divide-y divide-gray-100">
+            {bookings
+              .filter((b) => b.status === "completed")
+              .slice(0, 10)
+              .map((booking) => (
+                <li
+                  key={booking.id}
+                  className="py-2 text-sm flex justify-between items-center"
+                >
+                  <span>
+                    {booking.service_name || booking.resource_name} {"\u00b7"}{" "}
+                    {booking.client_name}
+                    {" \u00b7 "}
+                    {new Date(booking.start_time).toLocaleString()}{" "}
+                    <PaymentBadge status={booking.payment_status} />
+                  </span>
+                  <button
+                    onClick={() => markNoShow(booking.id)}
+                    aria-label={`${t("booking.markNoShow")} - ${booking.client_name}`}
+                    className="bg-gray-100 text-gray-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {t("booking.markNoShow")}
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

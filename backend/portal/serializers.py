@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from .models import (
     Activity, Approval, Client, ClientInvite, Document, Invoice,
     InvoiceItem, Message, Milestone, Project, RecurringSeries,
@@ -485,12 +487,44 @@ class ServiceSerializer(serializers.ModelSerializer):
         fields = [
             "id", "workspace", "name", "description", "photo",
             "duration_minutes", "price", "capacity", "is_active",
-            "resource_names",
+            "resource_names", "payment_requirement", "deposit_percent",
+            "cancellation_notice_hours", "late_cancellation_fee_percent",
         ]
         read_only_fields = ["workspace"]
 
     def get_resource_names(self, obj):
         return [r.name for r in obj.resources.all()]
+
+    def validate(self, attrs):
+        requirement = attrs.get(
+            "payment_requirement",
+            self.instance.payment_requirement if self.instance else "none",
+        )
+        deposit_percent = attrs.get(
+            "deposit_percent",
+            self.instance.deposit_percent if self.instance else None,
+        )
+        if requirement == "deposit" and not deposit_percent:
+            raise serializers.ValidationError(
+                "deposit_percent is required when payment_requirement "
+                "is 'deposit'."
+            )
+        if deposit_percent is not None and not (0 < deposit_percent <= 100):
+            raise serializers.ValidationError(
+                "deposit_percent must be between 1 and 100."
+            )
+        fee_percent = attrs.get(
+            "late_cancellation_fee_percent",
+            self.instance.late_cancellation_fee_percent
+            if self.instance
+            else None,
+        )
+        if fee_percent is not None and not (0 < fee_percent <= 100):
+            raise serializers.ValidationError(
+                "late_cancellation_fee_percent must be between 1 and "
+                "100."
+            )
+        return attrs
 
 
 class ResourceSerializer(serializers.ModelSerializer):
@@ -563,9 +597,13 @@ class BookingSerializer(serializers.ModelSerializer):
             "id", "workspace", "service", "service_name", "resource",
             "resource_name", "client", "client_name", "series",
             "start_time", "end_time", "status", "notes", "created_at",
-            "remaining_capacity",
+            "remaining_capacity", "payment_status", "payment_amount",
+            "is_late_cancellation",
         ]
-        read_only_fields = ["workspace", "end_time"]
+        read_only_fields = [
+            "workspace", "end_time", "payment_status", "payment_amount",
+            "is_late_cancellation",
+        ]
 
     def get_service_name(self, obj):
         return obj.service.name if obj.service else None
@@ -618,10 +656,38 @@ class BookingSerializer(serializers.ModelSerializer):
                 "You cannot book a time in the past."
             )
 
+        new_status = attrs.get("status")
+        if (
+            self.instance
+            and new_status == "cancelled"
+            and self.instance.status != "cancelled"
+            and self.instance.service
+            and self.instance.service.late_cancellation_fee_percent
+        ):
+            notice = timedelta(
+                hours=self.instance.service.cancellation_notice_hours
+            )
+            if timezone.now() > self.instance.start_time - notice:
+                attrs["is_late_cancellation"] = True
+
         if service:
             attrs["end_time"] = start + timedelta(
                 minutes=service.duration_minutes
             )
+            if (
+                not self.instance
+                and service.payment_requirement != "none"
+                and service.price
+            ):
+                percent = (
+                    service.deposit_percent
+                    if service.payment_requirement == "deposit"
+                    else 100
+                ) or 100
+                attrs["payment_amount"] = (
+                    service.price * percent / 100
+                ).quantize(Decimal("0.01"))
+                attrs["payment_status"] = "pending"
             overlapping = Booking.objects.filter(
                 workspace=service.workspace,
                 service=service,

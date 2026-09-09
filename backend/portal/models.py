@@ -350,6 +350,37 @@ class Service(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class PaymentRequirement(models.TextChoices):
+        NONE = "none", "No payment at booking"
+        DEPOSIT = "deposit", "Deposit required"
+        FULL = "full", "Full payment required"
+
+    payment_requirement = models.CharField(
+        max_length=10,
+        choices=PaymentRequirement.choices,
+        default=PaymentRequirement.NONE,
+    )
+    deposit_percent = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Percent of price required as a deposit at "
+        "booking time. Only used when payment_requirement is "
+        "'deposit'.",
+    )
+    cancellation_notice_hours = models.PositiveIntegerField(
+        default=24,
+        help_text="Minimum hours before the appointment a client "
+        "can cancel or reschedule without triggering the late "
+        "cancellation fee.",
+    )
+    late_cancellation_fee_percent = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Percent of price treated as a late-cancellation/"
+        "no-show fee when cancelled inside the notice window. "
+        "Blank = no fee - any deposit paid is simply refundable.",
+    )
+
     def __str__(self):
         return self.name
 
@@ -511,6 +542,13 @@ class Booking(models.Model):
         CONFIRMED = "confirmed", "Confirmed"
         CANCELLED = "cancelled", "Cancelled"
         COMPLETED = "completed", "Completed"
+        NO_SHOW = "no_show", "No-show"
+
+    class PaymentStatus(models.TextChoices):
+        NOT_REQUIRED = "not_required", "Not required"
+        PENDING = "pending", "Pending"
+        PAID = "paid", "Paid"
+        REFUNDED = "refunded", "Refunded"
 
     workspace = models.ForeignKey(
         Workspace, on_delete=models.CASCADE, related_name="bookings"
@@ -545,6 +583,32 @@ class Booking(models.Model):
         max_length=20, choices=Status.choices, default=Status.CONFIRMED
     )
     notes = models.TextField(blank=True)
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.NOT_REQUIRED,
+    )
+    payment_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Amount required at booking time (deposit or "
+        "full price), snapshotted from the service's policy so a "
+        "later price change never changes what was already owed.",
+    )
+    stripe_checkout_session_id = models.CharField(
+        max_length=255, blank=True
+    )
+    stripe_payment_intent_id = models.CharField(
+        max_length=255, blank=True
+    )
+    is_late_cancellation = models.BooleanField(
+        default=False,
+        help_text="Set when cancelled inside the service's "
+        "cancellation_notice_hours window, for the owner to see "
+        "at a glance whether the late-cancellation fee applies.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -665,6 +729,12 @@ class Invoice(models.Model):
     issued_at = models.DateField(default=timezone.localdate)
     due_at = models.DateField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
+    stripe_checkout_session_id = models.CharField(
+        max_length=255, blank=True
+    )
+    stripe_payment_intent_id = models.CharField(
+        max_length=255, blank=True
+    )
 
     class Meta:
         unique_together = ("workspace", "number")
