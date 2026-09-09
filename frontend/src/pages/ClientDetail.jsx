@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
 import api from "../lib/api";
 import LanguageToggle from "../components/LanguageToggle.jsx";
+import ThemeToggle from "../components/ThemeToggle.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
 
 export default function ClientDetail() {
@@ -36,14 +37,14 @@ export default function ClientDetail() {
   }, [clientId]);
 
   if (!client) {
-    return <div className="p-8 text-gray-500">Loading...</div>;
+    return <div className="p-8 text-ink-soft">Loading...</div>;
   }
 
   const project = projects[0];
 
   return (
-    <div className="min-h-screen bg-brand-50">
-      <header className="bg-white border-b border-brand-100 px-8 py-4 flex justify-between items-start">
+    <div className="min-h-screen bg-canvas text-ink">
+      <header className="sticky top-0 z-10 glass-panel px-8 py-4 flex justify-between items-start">
         <div>
           <Link
             to="/"
@@ -52,10 +53,15 @@ export default function ClientDetail() {
           >
             &larr; {t("clientDetail.allClients")}
           </Link>
-          <h1 className="text-lg font-semibold mt-1">{client.company_name}</h1>
-          <p className="text-sm text-gray-500">{client.contact_email}</p>
+          <h1 className="text-lg font-semibold mt-1 text-ink">
+            {client.company_name}
+          </h1>
+          <p className="text-sm text-ink-soft">{client.contact_email}</p>
         </div>
-        <LanguageToggle />
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <LanguageToggle />
+        </div>
       </header>
       <nav
         className="max-w-2xl mx-auto px-8 pt-4 flex gap-1"
@@ -69,8 +75,8 @@ export default function ClientDetail() {
             aria-label={label}
             className={
               activeTab === key
-                ? "px-4 py-2 text-sm rounded-t-lg font-medium bg-white border border-b-0 border-brand-100 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
-                : "px-4 py-2 text-sm rounded-t-lg font-medium text-gray-500 transition-colors hover:text-brand-700 hover:bg-white/60 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                ? "px-4 py-2 text-sm rounded-t-lg font-medium bg-surface border border-b-0 border-line transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                : "px-4 py-2 text-sm rounded-t-lg font-medium text-ink-soft transition-colors hover:text-brand-700 hover:bg-surface/60 focus:outline-none focus:ring-2 focus:ring-brand-400"
             }
           >
             {label}
@@ -78,7 +84,7 @@ export default function ClientDetail() {
         ))}
       </nav>
       <main className="max-w-2xl mx-auto px-8 pb-8">
-        <div className="bg-white border border-brand-100 rounded-b-xl rounded-tr-xl p-6">
+        <div className="bg-surface border border-line rounded-b-2xl rounded-tr-2xl p-6">
           {activeTab === "overview" &&
             (project ? (
               <ProjectOverview project={project} onChange={load} />
@@ -99,7 +105,7 @@ export default function ClientDetail() {
           )}
           {activeTab === "activity" && <ActivityFeed clientId={client.id} />}
           {!project && activeTab !== "overview" && activeTab !== "activity" && (
-            <p className="text-gray-500 text-sm">
+            <p className="text-ink-soft text-sm">
               {t("clientDetail.createProjectFirst")}
             </p>
           )}
@@ -238,8 +244,8 @@ function ProjectOverview({ project, onChange }) {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold">{project.name}</h2>
-      <p className="text-sm text-gray-500 mb-3">
+      <h2 className="text-xl font-semibold text-ink">{project.name}</h2>
+      <p className="text-sm text-ink-soft mb-3">
         {project.budget && `\u20ac${project.budget} \u00b7 `}
         {project.deadline && `Due ${project.deadline}`}
       </p>
@@ -249,7 +255,7 @@ function ProjectOverview({ project, onChange }) {
           style={{ width: `${project.progress_percent}%` }}
         />
       </div>
-      <p className="text-xs text-gray-400 mb-6">
+      <p className="text-xs text-ink-soft mb-6">
         {project.progress_percent}
         {t("clientDetail.percentComplete")}
       </p>
@@ -267,7 +273,7 @@ function ProjectOverview({ project, onChange }) {
         </div>
       )}
 
-      <h3 className="font-medium mb-2">{t("clientDetail.milestones")}</h3>
+      <h3 className="font-medium mb-2 text-ink">{t("clientDetail.milestones")}</h3>
       <ul className="space-y-1 mb-4">
         {project.milestones.map((milestone) => (
           <li key={milestone.id} className="text-sm">
@@ -283,7 +289,7 @@ function ProjectOverview({ project, onChange }) {
                   id={`edit-milestone-${milestone.id}`}
                   value={editMilestoneTitle}
                   onChange={(e) => setEditMilestoneTitle(e.target.value)}
-                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  className="flex-1 px-3 py-1.5 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                 />
                 <button
                   onClick={() => saveEditMilestone(milestone.id)}
@@ -295,7 +301,7 @@ function ProjectOverview({ project, onChange }) {
                 <button
                   onClick={cancelEditMilestone}
                   aria-label={t("clientDetail.cancel")}
-                  className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   {t("clientDetail.cancel")}
                 </button>
@@ -314,7 +320,7 @@ function ProjectOverview({ project, onChange }) {
                   htmlFor={`milestone-${milestone.id}`}
                   className={
                     milestone.is_complete
-                      ? "line-through text-gray-400 cursor-pointer flex-1"
+                      ? "line-through text-ink-soft cursor-pointer flex-1"
                       : "cursor-pointer flex-1"
                   }
                 >
@@ -348,7 +354,7 @@ function ProjectOverview({ project, onChange }) {
           value={newMilestone}
           onChange={(e) => setNewMilestone(e.target.value)}
           placeholder={t("clientDetail.addMilestone")}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          className="flex-1 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
         <button
           aria-label={t("clientDetail.add")}
@@ -357,7 +363,7 @@ function ProjectOverview({ project, onChange }) {
           {t("clientDetail.add")}
         </button>
       </form>
-      <h3 className="font-medium mb-2 mt-6">{t("clientDetail.tasks")}</h3>
+      <h3 className="font-medium mb-2 mt-6 text-ink">{t("clientDetail.tasks")}</h3>
       <ul className="space-y-1 mb-4">
         {tasks.map((task) => (
           <li key={task.id} className="text-sm">
@@ -370,7 +376,7 @@ function ProjectOverview({ project, onChange }) {
                   id={`edit-task-${task.id}`}
                   value={editTaskTitle}
                   onChange={(e) => setEditTaskTitle(e.target.value)}
-                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  className="flex-1 px-3 py-1.5 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                 />
                 <button
                   onClick={() => saveEditTask(task.id)}
@@ -382,7 +388,7 @@ function ProjectOverview({ project, onChange }) {
                 <button
                   onClick={cancelEditTask}
                   aria-label={t("clientDetail.cancel")}
-                  className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   {t("clientDetail.cancel")}
                 </button>
@@ -401,7 +407,7 @@ function ProjectOverview({ project, onChange }) {
                   htmlFor={`task-${task.id}`}
                   className={
                     task.is_complete
-                      ? "line-through text-gray-400 cursor-pointer flex-1"
+                      ? "line-through text-ink-soft cursor-pointer flex-1"
                       : "cursor-pointer flex-1"
                   }
                 >
@@ -426,7 +432,7 @@ function ProjectOverview({ project, onChange }) {
           </li>
         ))}
         {tasks.length === 0 && (
-          <p className="text-gray-500 text-sm">{t("clientDetail.noTasks")}</p>
+          <p className="text-ink-soft text-sm">{t("clientDetail.noTasks")}</p>
         )}
       </ul>
       <form onSubmit={addTask} className="flex gap-2">
@@ -438,7 +444,7 @@ function ProjectOverview({ project, onChange }) {
           value={newTask}
           onChange={(e) => setNewTask(e.target.value)}
           placeholder={t("clientDetail.addTask")}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          className="flex-1 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
         <button
           aria-label={t("clientDetail.add")}
@@ -470,7 +476,7 @@ function NewProjectForm({ clientId, onCreated }) {
 
   return (
     <form onSubmit={onSubmit}>
-      <h2 className="font-medium mb-4">
+      <h2 className="font-medium mb-4 text-ink">
         {t("clientDetail.createFirstProject")}
       </h2>
       <label htmlFor="new-project-name" className="sr-only">
@@ -482,7 +488,7 @@ function NewProjectForm({ clientId, onCreated }) {
         placeholder={t("clientDetail.projectName")}
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+        className="w-full mb-3 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />
       <label htmlFor="new-project-budget" className="sr-only">
         {t("clientDetail.budget")}
@@ -493,7 +499,7 @@ function NewProjectForm({ clientId, onCreated }) {
         placeholder={t("clientDetail.budget")}
         value={budget}
         onChange={(e) => setBudget(e.target.value)}
-        className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+        className="w-full mb-3 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />
       <label htmlFor="new-project-deadline" className="sr-only">
         Deadline
@@ -503,7 +509,7 @@ function NewProjectForm({ clientId, onCreated }) {
         type="date"
         value={deadline}
         onChange={(e) => setDeadline(e.target.value)}
-        className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+        className="w-full mb-4 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />
       <button
         aria-label={t("clientDetail.createProject")}
@@ -616,7 +622,7 @@ function DocumentsTab({ project }) {
         </div>
       )}
 
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-line">
         {documents.map((doc) => (
           <li key={doc.id} className="py-2 text-sm">
             {editingId === doc.id ? (
@@ -628,7 +634,7 @@ function DocumentsTab({ project }) {
                   id={`edit-doc-${doc.id}`}
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  className="flex-1 px-3 py-1.5 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                 />
                 <button
                   onClick={() => saveEdit(doc.id)}
@@ -640,7 +646,7 @@ function DocumentsTab({ project }) {
                 <button
                   onClick={cancelEdit}
                   aria-label={t("clientDetail.cancel")}
-                  className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   {t("clientDetail.cancel")}
                 </button>
@@ -657,7 +663,7 @@ function DocumentsTab({ project }) {
                   {doc.original_name}
                 </a>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-gray-400">
+                  <span className="text-ink-soft">
                     {(doc.size_bytes / 1024).toFixed(0)} KB
                   </span>
                   <button
@@ -680,7 +686,7 @@ function DocumentsTab({ project }) {
           </li>
         ))}
         {documents.length === 0 && (
-          <p className="text-gray-500 text-sm">
+          <p className="text-ink-soft text-sm">
             {t("clientDetail.noDocuments")}
           </p>
         )}
@@ -772,7 +778,7 @@ function MessagesTab({ project }) {
             message.sender_role === "owner" || message.sender_role === "staff";
           return (
             <div key={message.id} className="text-sm">
-              <p className="text-xs text-gray-400">{message.sender_name}</p>
+              <p className="text-xs text-ink-soft">{message.sender_name}</p>
               {editingId === message.id ? (
                 <div className="flex gap-2 items-center">
                   <label
@@ -785,7 +791,7 @@ function MessagesTab({ project }) {
                     id={`edit-message-${message.id}`}
                     value={editBody}
                     onChange={(e) => setEditBody(e.target.value)}
-                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    className="flex-1 px-3 py-1.5 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
                   <button
                     onClick={() => saveEdit(message.id)}
@@ -797,7 +803,7 @@ function MessagesTab({ project }) {
                   <button
                     onClick={cancelEdit}
                     aria-label={t("clientDetail.cancel")}
-                    className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     {t("clientDetail.cancel")}
                   </button>
@@ -829,7 +835,7 @@ function MessagesTab({ project }) {
           );
         })}
         {messages.length === 0 && (
-          <p className="text-gray-500 text-sm">
+          <p className="text-ink-soft text-sm">
             {t("clientDetail.noMessages")}
           </p>
         )}
@@ -843,7 +849,7 @@ function MessagesTab({ project }) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder={t("clientDetail.writeMessage")}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          className="flex-1 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
         <button
           aria-label={t("clientDetail.send")}
@@ -957,9 +963,9 @@ function InvoicesTab({ client, project }) {
     <div>
       <form
         onSubmit={onCreate}
-        className="border border-gray-200 rounded-lg p-4 mb-6"
+        className="border border-line rounded-lg p-4 mb-6"
       >
-        <h4 className="font-medium mb-3">{t("clientDetail.newInvoice")}</h4>
+        <h4 className="font-medium mb-3 text-ink">{t("clientDetail.newInvoice")}</h4>
         <label htmlFor="invoice-number" className="sr-only">
           {t("clientDetail.invoiceNumber")}
         </label>
@@ -969,7 +975,7 @@ function InvoicesTab({ client, project }) {
           placeholder={t("clientDetail.invoiceNumber")}
           value={number}
           onChange={(e) => setNumber(e.target.value)}
-          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          className="w-full mb-3 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
         {items.map((item, index) => (
           <div key={index} className="flex gap-2 mb-2">
@@ -981,7 +987,7 @@ function InvoicesTab({ client, project }) {
               placeholder={t("clientDetail.description")}
               value={item.description}
               onChange={(e) => updateItem(index, "description", e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              className="flex-1 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
             <label htmlFor={`invoice-item-amount-${index}`} className="sr-only">
               {t("clientDetail.amount")}
@@ -992,7 +998,7 @@ function InvoicesTab({ client, project }) {
               type="number"
               value={item.amount}
               onChange={(e) => updateItem(index, "amount", e.target.value)}
-              className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
           </div>
         ))}
@@ -1027,7 +1033,7 @@ function InvoicesTab({ client, project }) {
         </div>
       )}
 
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-line">
         {invoices.map((invoice) => (
           <li key={invoice.id} className="py-3 text-sm">
             {editingId === invoice.id ? (
@@ -1042,7 +1048,7 @@ function InvoicesTab({ client, project }) {
                   id={`edit-invoice-number-${invoice.id}`}
                   value={editNumber}
                   onChange={(e) => setEditNumber(e.target.value)}
-                  className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                 />
                 {editItems.map((item, index) => (
                   <div key={index} className="flex gap-2 mb-2">
@@ -1058,7 +1064,7 @@ function InvoicesTab({ client, project }) {
                       onChange={(e) =>
                         updateEditItem(index, "description", e.target.value)
                       }
-                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                      className="flex-1 px-3 py-1.5 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                     />
                     <label
                       htmlFor={`edit-item-amount-${invoice.id}-${index}`}
@@ -1073,7 +1079,7 @@ function InvoicesTab({ client, project }) {
                       onChange={(e) =>
                         updateEditItem(index, "amount", e.target.value)
                       }
-                      className="w-24 px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                      className="w-24 px-3 py-1.5 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                     />
                   </div>
                 ))}
@@ -1101,7 +1107,7 @@ function InvoicesTab({ client, project }) {
                   <button
                     onClick={cancelEdit}
                     aria-label={t("clientDetail.cancel")}
-                    className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     {t("clientDetail.cancel")}
                   </button>
@@ -1110,8 +1116,8 @@ function InvoicesTab({ client, project }) {
             ) : (
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="font-medium">Invoice #{invoice.number}</p>
-                  <p className="text-gray-500">
+                  <p className="font-medium text-ink">Invoice #{invoice.number}</p>
+                  <p className="text-ink-soft">
                     {`\u20ac${invoice.total} \u00b7 ${invoice.status}`}
                   </p>
                 </div>
@@ -1143,7 +1149,7 @@ function InvoicesTab({ client, project }) {
           </li>
         ))}
         {invoices.length === 0 && (
-          <p className="text-gray-500 text-sm">
+          <p className="text-ink-soft text-sm">
             {t("clientDetail.noInvoices")}
           </p>
         )}
@@ -1193,16 +1199,16 @@ function ApprovalsTab({ project }) {
     if (status === "changes_requested") {
       return "bg-red-50 text-red-700 border-red-200";
     }
-    return "bg-gray-50 text-gray-600 border-gray-200";
+    return "bg-gray-50 text-ink-soft border-gray-200";
   }
 
   return (
     <div>
       <form
         onSubmit={onCreate}
-        className="border border-gray-200 rounded-lg p-4 mb-6"
+        className="border border-line rounded-lg p-4 mb-6"
       >
-        <h4 className="font-medium mb-3">{t("clientDetail.newApproval")}</h4>
+        <h4 className="font-medium mb-3 text-ink">{t("clientDetail.newApproval")}</h4>
         <label htmlFor="approval-title" className="sr-only">
           {t("clientDetail.approvalTitle")}
         </label>
@@ -1212,7 +1218,7 @@ function ApprovalsTab({ project }) {
           placeholder={t("clientDetail.approvalTitle")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          className="w-full mb-3 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
         <label htmlFor="approval-description" className="sr-only">
           {t("clientDetail.approvalDescription")}
@@ -1222,7 +1228,7 @@ function ApprovalsTab({ project }) {
           placeholder={t("clientDetail.approvalDescription")}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          className="w-full mb-3 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
           rows={2}
         />
         <button
@@ -1236,10 +1242,10 @@ function ApprovalsTab({ project }) {
         {approvals.map((approval) => (
           <li
             key={approval.id}
-            className="border border-gray-200 rounded-lg p-4"
+            className="border border-line rounded-lg p-4"
           >
             <div className="flex justify-between items-start mb-1">
-              <p className="font-medium">{approval.title}</p>
+              <p className="font-medium text-ink">{approval.title}</p>
               <span
                 className={`text-xs px-2 py-1 rounded-full border ${statusClass(approval.status)}`}
               >
@@ -1247,19 +1253,19 @@ function ApprovalsTab({ project }) {
               </span>
             </div>
             {approval.description && (
-              <p className="text-sm text-gray-600 mb-1">
+              <p className="text-sm text-ink-soft mb-1">
                 {approval.description}
               </p>
             )}
             {approval.client_comment && (
-              <p className="text-sm text-gray-500 italic">
+              <p className="text-sm text-ink-soft italic">
                 &ldquo;{approval.client_comment}&rdquo;
               </p>
             )}
           </li>
         ))}
         {approvals.length === 0 && (
-          <p className="text-gray-500 text-sm">
+          <p className="text-ink-soft text-sm">
             {t("clientDetail.noApprovals")}
           </p>
         )}
