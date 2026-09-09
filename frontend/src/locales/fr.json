@@ -124,7 +124,8 @@
     "policyDepositRequired": "Un acompte de {{percent}}% ({{amount}} {{currency}}) est requis pour confirmer cette r\u00e9servation.",
     "policyFullPaymentRequired": "Le paiement int\u00e9gral ({{amount}} {{currency}}) est requis pour confirmer cette r\u00e9servation.",
     "policyCancellationFee": "Toute annulation dans les {{hours}} heures pr\u00e9c\u00e9dant le rendez-vous entra\u00eene des frais de {{percent}}%.",
-    "payNow": "Payer maintenant"
+    "payNow": "Payer maintenant",
+    "reminderHoursLabel": "D\u00e9lai de rappel (heures avant)"
   },
   "team": {
     "teamTitle": "\u00c9quipe",

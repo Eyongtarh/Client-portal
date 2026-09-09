@@ -72,7 +72,8 @@ class WorkspaceSerializer(serializers.ModelSerializer):
         model = Workspace
         fields = [
             "id", "name", "slug", "logo", "currency", "timezone",
-            "brand_color", "plan", "client_count", "team_member_count",
+            "brand_color", "reminder_hours_before", "plan", "client_count",
+            "team_member_count",
         ]
         read_only_fields = ["id", "slug"]
 

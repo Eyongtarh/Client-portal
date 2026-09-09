@@ -170,6 +170,7 @@ function ServicesSection() {
   const [workspace, setWorkspace] = useState(null);
   const [currency, setCurrency] = useState("");
   const [timezoneValue, setTimezoneValue] = useState("UTC");
+  const [reminderHours, setReminderHours] = useState("24");
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -203,6 +204,7 @@ function ServicesSection() {
     setWorkspace(res.data);
     setCurrency(res.data.currency);
     setTimezoneValue(res.data.timezone);
+    setReminderHours(String(res.data.reminder_hours_before ?? "24"));
   }
   useEffect(() => {
     load();
@@ -219,6 +221,15 @@ function ServicesSection() {
     const value = e.target.value;
     setTimezoneValue(value);
     const res = await api.patch("/workspace/", { timezone: value });
+    setWorkspace(res.data);
+  }
+
+  async function onReminderHoursBlur() {
+    const hours = parseInt(reminderHours, 10);
+    if (!hours || hours === workspace?.reminder_hours_before) return;
+    const res = await api.patch("/workspace/", {
+      reminder_hours_before: hours,
+    });
     setWorkspace(res.data);
   }
 
@@ -411,6 +422,24 @@ function ServicesSection() {
             <option value="America/Los_Angeles">America/Los_Angeles</option>
             <option value="Asia/Dubai">Asia/Dubai</option>
           </select>
+        </div>
+
+        <div>
+          <label
+            htmlFor="workspace-reminder-hours"
+            className="block text-xs text-gray-500 mb-1"
+          >
+            {t("booking.reminderHoursLabel")}
+          </label>
+          <input
+            id="workspace-reminder-hours"
+            type="number"
+            min="1"
+            value={reminderHours}
+            onChange={(e) => setReminderHours(e.target.value)}
+            onBlur={onReminderHoursBlur}
+            className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
         </div>
       </div>
 

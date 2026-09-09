@@ -124,7 +124,8 @@
     "policyDepositRequired": "A {{percent}}% deposit ({{amount}} {{currency}}) is required to secure this booking.",
     "policyFullPaymentRequired": "Full payment ({{amount}} {{currency}}) is required to secure this booking.",
     "policyCancellationFee": "Cancelling within {{hours}} hours of the appointment incurs a {{percent}}% late-cancellation fee.",
-    "payNow": "Pay now"
+    "payNow": "Pay now",
+    "reminderHoursLabel": "Reminder timing (hours before)"
   },
   "team": {
     "teamTitle": "Team",

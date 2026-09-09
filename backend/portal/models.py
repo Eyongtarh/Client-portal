@@ -72,6 +72,11 @@ class Workspace(models.Model):
         default="#2563eb",
         help_text="Hex color, e.g. #2563eb",
     )
+    reminder_hours_before = models.PositiveIntegerField(
+        default=24,
+        help_text="How many hours before an appointment "
+        "send_booking_reminders should email a reminder (BOOK-59).",
+    )
     plan = models.ForeignKey(
         "SubscriptionPlan",
         on_delete=models.SET_NULL,
@@ -608,6 +613,13 @@ class Booking(models.Model):
         help_text="Set when cancelled inside the service's "
         "cancellation_notice_hours window, for the owner to see "
         "at a glance whether the late-cancellation fee applies.",
+    )
+    reminder_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Set by the send_booking_reminders management "
+        "command once a reminder email has gone out, so the same "
+        "booking is never reminded twice.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

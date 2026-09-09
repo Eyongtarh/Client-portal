@@ -634,7 +634,25 @@ class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         return self.filter_by_query_param(qs)
 
     def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
+        message = serializer.save(sender=self.request.user)
+        project = message.project
+        if self.request.user.role == "client":
+            recipient = project.workspace.owner.email
+            sender_label = project.client.company_name
+        else:
+            recipient = project.client.contact_email
+            sender_label = project.workspace.name
+        send_mail(
+            subject=f"New message from {sender_label}",
+            message=(
+                f"{sender_label} sent a new message on \"{project.name}\":"
+                f"\n\n{message.body}\n\n"
+                "Log in to your portal to reply."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[recipient],
+            fail_silently=True,
+        )
 
 
 class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
@@ -699,6 +717,32 @@ class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             client=invoice.client,
             metadata={"total": str(invoice.total)},
         )
+        if verb == "invoice_sent":
+            send_mail(
+                subject=f"Invoice #{invoice.number} from {invoice.workspace.name}",
+                message=(
+                    f"You have a new invoice from {invoice.workspace.name}."
+                    f"\n\nInvoice #{invoice.number}\n"
+                    f"Total: {invoice.total} {invoice.workspace.currency}\n"
+                    + (f"Due: {invoice.due_at}\n" if invoice.due_at else "")
+                    + "\nLog in to your client portal to view and pay it."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[invoice.client.contact_email],
+                fail_silently=True,
+            )
+        elif verb == "invoice_paid":
+            send_mail(
+                subject=f"Payment confirmed: invoice #{invoice.number}",
+                message=(
+                    f"Invoice #{invoice.number} "
+                    f"({invoice.total} {invoice.workspace.currency}) has "
+                    f"been marked as paid."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[invoice.workspace.owner.email],
+                fail_silently=True,
+            )
 
 
 class InvoicePDFView(APIView):
