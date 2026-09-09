@@ -387,6 +387,11 @@ class Resource(models.Model):
         default=1,
         help_text="How many identical units exist, e.g. 3 chairs.",
     )
+    price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Price for a direct booking of this resource, "
+        "optional.",
+    )
     duration_minutes = models.PositiveIntegerField(
         default=60,
         help_text="Default booking length when this resource is "

@@ -96,7 +96,13 @@
     "responseSubmitted": "R\u00e9ponse soumise.",
     "ownerResponse": "R\u00e9ponse du propri\u00e9taire",
     "averageRating": "Note moyenne",
-    "usesResources": "Utilise"
+    "usesResources": "Utilise",
+    "bookResource": "R\u00e9server une ressource",
+    "selectResource": "S\u00e9lectionner une ressource",
+    "bookingType": "Que souhaitez-vous r\u00e9server\u00a0?",
+    "aService": "Un service",
+    "aResource": "Une ressource",
+    "noResources": "Aucune ressource disponible."
   },
   "team": {
     "teamTitle": "\u00c9quipe",
@@ -312,6 +318,8 @@
     "cancel": "Annuler",
     "remainingCapacity": "places restantes",
     "addPhotoOptional": "Ajouter une photo (optionnel)",
-    "changePhoto": "Changer la photo"
+    "changePhoto": "Changer la photo",
+    "duration": "Dur\u00e9e",
+    "priceOptional": "Prix (optionnel)"
   }
 }

@@ -474,22 +474,25 @@ class ResourceSerializer(serializers.ModelSerializer):
     service IDs this resource is tied to - a booking for any of
     those services reserves one unit of this resource for its
     time slot. `duration_minutes` is the slot length used when
-    this resource is booked directly, without a service.
+    this resource is booked directly, without a service - can
+    span multiple days (e.g. booking a room for a week) with no
+    upper limit; `price` is optional and only applies to that
+    direct booking.
     """
 
     class Meta:
         model = Resource
         fields = [
             "id", "workspace", "name", "description", "photo",
-            "quantity", "duration_minutes", "services", "created_at",
+            "quantity", "price", "duration_minutes", "services",
+            "created_at",
         ]
         read_only_fields = ["workspace", "created_at"]
 
     def validate_duration_minutes(self, value):
-        if value < 1 or value > 1440:
+        if value < 1:
             raise serializers.ValidationError(
-                "Duration must be between 1 minute and 1440 minutes "
-                "(24 hours)."
+                "Duration must be at least 1 minute."
             )
         return value
 

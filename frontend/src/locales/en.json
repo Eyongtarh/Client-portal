@@ -96,7 +96,13 @@
     "responseSubmitted": "Response submitted.",
     "ownerResponse": "Owner's response",
     "averageRating": "Average rating",
-    "usesResources": "Uses"
+    "usesResources": "Uses",
+    "bookResource": "Book a resource",
+    "selectResource": "Select a resource",
+    "bookingType": "What would you like to book?",
+    "aService": "A service",
+    "aResource": "A resource",
+    "noResources": "No resources available."
   },
   "team": {
     "teamTitle": "Team",
@@ -312,6 +318,8 @@
     "cancel": "Cancel",
     "remainingCapacity": "spots left",
     "addPhotoOptional": "Add photo (optional)",
-    "changePhoto": "Change photo"
+    "changePhoto": "Change photo",
+    "duration": "Duration",
+    "priceOptional": "Price (optional)"
   }
 }

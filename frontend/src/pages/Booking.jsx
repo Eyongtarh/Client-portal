@@ -5,7 +5,9 @@
 // remove), see upcoming bookings (with cancel confirmation,
 // remaining capacity, and a status message), manage the
 // waitlist, respond to reviews, and manage bookable resources
-// (rooms, equipment, chairs, etc.) tied to services.
+// (rooms, equipment, chairs, etc.) tied to services, with their
+// own optional price and duration in minutes or hours (up to 24
+// hours) for direct booking.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -22,6 +24,21 @@ const WEEKDAY_KEYS = [
   "saturday",
   "sunday",
 ];
+
+// Displays a duration in whichever unit it was most likely
+// entered in - whole days if it divides evenly into days, whole
+// hours if it divides evenly into hours, otherwise minutes.
+function formatDuration(minutes) {
+  if (minutes % 1440 === 0) {
+    const days = minutes / 1440;
+    return `${days} day${days !== 1 ? "s" : ""}`;
+  }
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `${hours} hr${hours !== 1 ? "s" : ""}`;
+  }
+  return `${minutes} min`;
+}
 
 export default function Booking() {
   const { t } = useTranslation();
@@ -118,9 +135,11 @@ function ServicesSection() {
   async function onCreate(e) {
     e.preventDefault();
     const minutes =
-      durationUnit === "hours"
-        ? Math.round(parseFloat(duration) * 60)
-        : parseInt(duration, 10);
+      durationUnit === "days"
+        ? Math.round(parseFloat(duration) * 1440)
+        : durationUnit === "hours"
+          ? Math.round(parseFloat(duration) * 60)
+          : parseInt(duration, 10);
     const res = await api.post("/services/", {
       name,
       description,
@@ -358,8 +377,20 @@ function ServicesSection() {
               id="service-duration"
               required
               type="number"
-              min={durationUnit === "hours" ? "0.25" : "5"}
-              step={durationUnit === "hours" ? "0.25" : "5"}
+              min={
+                durationUnit === "days"
+                  ? "1"
+                  : durationUnit === "hours"
+                    ? "0.25"
+                    : "5"
+              }
+              step={
+                durationUnit === "days"
+                  ? "1"
+                  : durationUnit === "hours"
+                    ? "0.25"
+                    : "5"
+              }
               placeholder={t("booking.serviceDuration")}
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
@@ -376,6 +407,7 @@ function ServicesSection() {
             >
               <option value="minutes">min</option>
               <option value="hours">hrs</option>
+              <option value="days">days</option>
             </select>
             <label htmlFor="service-price" className="sr-only">
               Price
@@ -517,7 +549,7 @@ function ServicesSection() {
                 <div className="flex-1">
                   <span className="font-medium">{service.name}</span>
                   {" \u00b7 "}
-                  {service.duration_minutes} min
+                  {formatDuration(service.duration_minutes)}
                   {service.price && ` \u00b7 ${service.price} ${currency}`}
                   {service.capacity > 1 &&
                     ` \u00b7 up to ${service.capacity} per slot`}
@@ -566,6 +598,9 @@ function ResourcesSection() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [quantity, setQuantity] = useState("1");
+  const [duration, setDuration] = useState("60");
+  const [durationUnit, setDurationUnit] = useState("minutes");
+  const [price, setPrice] = useState("");
   const [selectedServices, setSelectedServices] = useState([]);
   const [newPhoto, setNewPhoto] = useState(null);
   const [newPhotoPreview, setNewPhotoPreview] = useState(null);
@@ -573,6 +608,7 @@ function ResourcesSection() {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editQuantity, setEditQuantity] = useState("1");
+  const [editPrice, setEditPrice] = useState("");
   const [editServices, setEditServices] = useState([]);
   const [statusMsg, setStatusMsg] = useState(null);
 
@@ -599,11 +635,19 @@ function ResourcesSection() {
 
   async function onCreate(e) {
     e.preventDefault();
+    const minutes =
+      durationUnit === "days"
+        ? Math.round(parseFloat(duration) * 1440)
+        : durationUnit === "hours"
+          ? Math.round(parseFloat(duration) * 60)
+          : parseInt(duration, 10);
     try {
       const res = await api.post("/resources/", {
         name,
         description,
         quantity,
+        duration_minutes: minutes,
+        price: price || null,
         services: selectedServices,
       });
       if (newPhoto) {
@@ -616,6 +660,9 @@ function ResourcesSection() {
       setName("");
       setDescription("");
       setQuantity("1");
+      setDuration("60");
+      setDurationUnit("minutes");
+      setPrice("");
       setSelectedServices([]);
       setNewPhoto(null);
       setNewPhotoPreview(null);
@@ -645,6 +692,7 @@ function ResourcesSection() {
     setEditName(resource.name);
     setEditDescription(resource.description || "");
     setEditQuantity(String(resource.quantity));
+    setEditPrice(resource.price || "");
     setEditServices(resource.services);
   }
   function cancelEdit() {
@@ -656,6 +704,7 @@ function ResourcesSection() {
         name: editName,
         description: editDescription,
         quantity: editQuantity,
+        price: editPrice || null,
         services: editServices,
       });
       setEditingId(null);
@@ -785,19 +834,71 @@ function ResourcesSection() {
             />
           </label>
 
-          <label htmlFor="resource-quantity" className="sr-only">
-            {t("resources.quantity")}
-          </label>
-          <input
-            id="resource-quantity"
-            type="number"
-            min="1"
-            title={t("resources.quantity")}
-            placeholder={t("resources.quantity")}
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            className="w-28 mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
-          />
+          <div className="flex gap-2 mb-2">
+            <label htmlFor="resource-duration" className="sr-only">
+              {t("resources.duration")}
+            </label>
+            <input
+              id="resource-duration"
+              required
+              type="number"
+              min={
+                durationUnit === "days"
+                  ? "1"
+                  : durationUnit === "hours"
+                    ? "0.25"
+                    : "5"
+              }
+              step={
+                durationUnit === "days"
+                  ? "1"
+                  : durationUnit === "hours"
+                    ? "0.25"
+                    : "5"
+              }
+              placeholder={t("resources.duration")}
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+            <label htmlFor="resource-duration-unit" className="sr-only">
+              Duration unit
+            </label>
+            <select
+              id="resource-duration-unit"
+              value={durationUnit}
+              onChange={(e) => setDurationUnit(e.target.value)}
+              className="px-2 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              <option value="minutes">min</option>
+              <option value="hours">hrs</option>
+              <option value="days">days</option>
+            </select>
+            <label htmlFor="resource-price" className="sr-only">
+              Price
+            </label>
+            <input
+              id="resource-price"
+              type="number"
+              placeholder={t("resources.priceOptional")}
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+            <label htmlFor="resource-quantity" className="sr-only">
+              {t("resources.quantity")}
+            </label>
+            <input
+              id="resource-quantity"
+              type="number"
+              min="1"
+              title={t("resources.quantity")}
+              placeholder={t("resources.quantity")}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+          </div>
           <p className="text-xs text-gray-500 mb-1">
             {t("resources.assignServices")}
           </p>
@@ -863,20 +964,36 @@ function ResourcesSection() {
                   rows={2}
                   className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                 />
-                <label
-                  htmlFor={`edit-resource-qty-${resource.id}`}
-                  className="sr-only"
-                >
-                  {t("resources.quantity")}
-                </label>
-                <input
-                  id={`edit-resource-qty-${resource.id}`}
-                  type="number"
-                  min="1"
-                  value={editQuantity}
-                  onChange={(e) => setEditQuantity(e.target.value)}
-                  className="w-28 mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
-                />
+                <div className="flex gap-2 mb-2">
+                  <label
+                    htmlFor={`edit-resource-price-${resource.id}`}
+                    className="sr-only"
+                  >
+                    Price
+                  </label>
+                  <input
+                    id={`edit-resource-price-${resource.id}`}
+                    type="number"
+                    placeholder={t("resources.priceOptional")}
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                  <label
+                    htmlFor={`edit-resource-qty-${resource.id}`}
+                    className="sr-only"
+                  >
+                    {t("resources.quantity")}
+                  </label>
+                  <input
+                    id={`edit-resource-qty-${resource.id}`}
+                    type="number"
+                    min="1"
+                    value={editQuantity}
+                    onChange={(e) => setEditQuantity(e.target.value)}
+                    className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
                 <p className="text-xs text-gray-500 mb-1">
                   {t("resources.assignServices")}
                 </p>
@@ -952,6 +1069,9 @@ function ResourcesSection() {
                 <div className="flex-1 flex justify-between items-start">
                   <div>
                     <span className="font-medium">{resource.name}</span>
+                    {" \u00b7 "}
+                    {formatDuration(resource.duration_minutes)}
+                    {resource.price && ` \u00b7 ${resource.price}`}
                     {" \u00b7 "}
                     {t("resources.quantity")}: {resource.quantity}
                     {resource.services.length > 0 && (
@@ -1306,6 +1426,7 @@ function BookingsSection() {
   }
 
   function startEdit(booking) {
+    if (!booking.service) return;
     const start = new Date(booking.start_time);
     setEditingId(booking.id);
     setEditDate(start.toISOString().slice(0, 10));
@@ -1434,7 +1555,8 @@ function BookingsSection() {
               ) : (
                 <div className="flex justify-between items-center">
                   <span>
-                    {booking.service_name} {"\u00b7"} {booking.client_name}
+                    {booking.service_name || booking.resource_name} {"\u00b7"}{" "}
+                    {booking.client_name}
                     {" \u00b7 "}
                     {new Date(booking.start_time).toLocaleString()}
                     {" \u00b7 "}
@@ -1444,13 +1566,15 @@ function BookingsSection() {
                     </span>
                   </span>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => startEdit(booking)}
-                      aria-label={`${t("booking.edit")} booking for ${booking.client_name}`}
-                      className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
-                    >
-                      {t("booking.edit")}
-                    </button>
+                    {booking.service && (
+                      <button
+                        onClick={() => startEdit(booking)}
+                        aria-label={`${t("booking.edit")} booking for ${booking.client_name}`}
+                        className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      >
+                        {t("booking.edit")}
+                      </button>
+                    )}
                     <button
                       onClick={() => cancel(booking.id)}
                       aria-label={`Cancel booking for ${booking.client_name}`}

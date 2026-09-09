@@ -8,6 +8,21 @@ import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import api from "../lib/api";
 
+// Displays a duration in whichever unit it was most likely
+// entered in - whole days if it divides evenly into days, whole
+// hours if it divides evenly into hours, otherwise minutes.
+function formatDuration(minutes) {
+  if (minutes % 1440 === 0) {
+    const days = minutes / 1440;
+    return `${days} day${days !== 1 ? "s" : ""}`;
+  }
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `${hours} hr${hours !== 1 ? "s" : ""}`;
+  }
+  return `${minutes} min`;
+}
+
 export default function ClientPortal() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
@@ -288,8 +303,11 @@ export default function ClientPortal() {
 
 function BookingSection() {
   const { t } = useTranslation();
+  const [bookingType, setBookingType] = useState("service");
   const [services, setServices] = useState([]);
+  const [resources, setResources] = useState([]);
   const [selectedService, setSelectedService] = useState("");
+  const [selectedResource, setSelectedResource] = useState("");
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -317,6 +335,10 @@ function BookingSection() {
     const workspaceRes = await api.get("/workspace/");
     setCurrency(workspaceRes.data.currency);
   }
+  async function loadResources() {
+    const res = await api.get("/resources/");
+    setResources(res.data);
+  }
   async function loadMyBookings() {
     const res = await api.get("/bookings/");
     setMyBookings(res.data);
@@ -327,20 +349,24 @@ function BookingSection() {
   }
   useEffect(() => {
     loadServices();
+    loadResources();
     loadMyBookings();
     loadMyWaitlist();
   }, []);
 
   async function loadSlots() {
-    if (!selectedService || !date) {
+    const itemId =
+      bookingType === "service" ? selectedService : selectedResource;
+    if (!itemId || !date) {
       setSlots([]);
       return;
     }
     setLoadingSlots(true);
     setSelectedSlot("");
     try {
+      const param = bookingType === "service" ? "service" : "resource";
       const res = await api.get(
-        `/availability/?service=${selectedService}&date=${date}`,
+        `/availability/?${param}=${itemId}&date=${date}`,
       );
       setSlots(res.data.slots);
     } finally {
@@ -350,7 +376,7 @@ function BookingSection() {
   useEffect(() => {
     loadSlots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedService, date]);
+  }, [selectedService, selectedResource, bookingType, date]);
 
   function selectSlot(time) {
     setSelectedSlot(time);
@@ -360,7 +386,7 @@ function BookingSection() {
   async function confirmBooking() {
     try {
       const startTime = new Date(`${date}T${selectedSlot}:00`).toISOString();
-      if (repeatWeekly) {
+      if (bookingType === "service" && repeatWeekly) {
         await api.post("/recurring-series/", {
           service: selectedService,
           start_time: startTime,
@@ -370,9 +396,18 @@ function BookingSection() {
           key: "booking.recurringBookingConfirmed",
           type: "success",
         });
-      } else {
+      } else if (bookingType === "service") {
         await api.post("/bookings/", {
           service: selectedService,
+          start_time: startTime,
+        });
+        setStatusMsg({
+          key: "booking.bookingConfirmed",
+          type: "success",
+        });
+      } else {
+        await api.post("/bookings/", {
+          resource: selectedResource,
           start_time: startTime,
         });
         setStatusMsg({
@@ -408,6 +443,7 @@ function BookingSection() {
   }
 
   function startEditMine(booking) {
+    if (!booking.service) return;
     const start = new Date(booking.start_time);
     setEditingId(booking.id);
     setEditDate(start.toISOString().slice(0, 10));
@@ -541,58 +577,157 @@ function BookingSection() {
         </div>
       )}
 
-      <p className="text-xs text-gray-500 mb-2">{t("booking.selectService")}</p>
-      <div className="space-y-2 mb-3">
-        {services.map((service) => (
-          <button
-            key={service.id}
-            onClick={() => setSelectedService(String(service.id))}
-            aria-pressed={selectedService === String(service.id)}
-            aria-label={`Select ${service.name}`}
-            className={
-              selectedService === String(service.id)
-                ? "w-full flex items-start gap-3 p-3 border-2 border-brand-600 bg-brand-50 rounded-lg text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
-                : "w-full flex items-start gap-3 p-3 border border-gray-200 rounded-lg text-left transition-colors hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
-            }
-          >
-            {service.photo ? (
-              <img
-                src={service.photo}
-                alt={`${service.name} photo`}
-                className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0"
-              />
-            ) : (
-              <div
-                aria-hidden="true"
-                className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 shrink-0"
-              />
-            )}
-            <div>
-              <p className="text-sm font-medium">
-                {service.name}
-                {" \u00b7 "}
-                {service.duration_minutes} min
-                {service.price && ` \u00b7 ${service.price} ${currency}`}
-              </p>
-              {service.description && (
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {service.description}
-                </p>
-              )}
-              {service.resource_names && service.resource_names.length > 0 && (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {t("booking.usesResources")}
-                  {": "}
-                  {service.resource_names.join(", ")}
-                </p>
-              )}
-            </div>
-          </button>
-        ))}
-        {services.length === 0 && (
-          <p className="text-gray-500 text-sm">{t("booking.noServices")}</p>
-        )}
+      <p className="text-xs text-gray-500 mb-2">{t("booking.bookingType")}</p>
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => {
+            setBookingType("service");
+            setSelectedResource("");
+            setSlots([]);
+            setSelectedSlot("");
+          }}
+          aria-pressed={bookingType === "service"}
+          aria-label={t("booking.aService")}
+          className={
+            bookingType === "service"
+              ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+              : "px-3 py-1.5 rounded-lg text-sm border border-gray-200 transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          }
+        >
+          {t("booking.aService")}
+        </button>
+        <button
+          onClick={() => {
+            setBookingType("resource");
+            setSelectedService("");
+            setRepeatWeekly(false);
+            setSlots([]);
+            setSelectedSlot("");
+          }}
+          aria-pressed={bookingType === "resource"}
+          aria-label={t("booking.aResource")}
+          className={
+            bookingType === "resource"
+              ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+              : "px-3 py-1.5 rounded-lg text-sm border border-gray-200 transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          }
+        >
+          {t("booking.aResource")}
+        </button>
       </div>
+
+      {bookingType === "service" && (
+        <>
+          <p className="text-xs text-gray-500 mb-2">
+            {t("booking.selectService")}
+          </p>
+          <div className="space-y-2 mb-3">
+            {services.map((service) => (
+              <button
+                key={service.id}
+                onClick={() => setSelectedService(String(service.id))}
+                aria-pressed={selectedService === String(service.id)}
+                aria-label={`Select ${service.name}`}
+                className={
+                  selectedService === String(service.id)
+                    ? "w-full flex items-start gap-3 p-3 border-2 border-brand-600 bg-brand-50 rounded-lg text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    : "w-full flex items-start gap-3 p-3 border border-gray-200 rounded-lg text-left transition-colors hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                }
+              >
+                {service.photo ? (
+                  <img
+                    src={service.photo}
+                    alt={`${service.name} photo`}
+                    className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0"
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 shrink-0"
+                  />
+                )}
+                <div>
+                  <p className="text-sm font-medium">
+                    {service.name}
+                    {" \u00b7 "}
+                    {formatDuration(service.duration_minutes)}
+                    {service.price && ` \u00b7 ${service.price} ${currency}`}
+                  </p>
+                  {service.description && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {service.description}
+                    </p>
+                  )}
+                  {service.resource_names &&
+                    service.resource_names.length > 0 && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {t("booking.usesResources")}
+                        {": "}
+                        {service.resource_names.join(", ")}
+                      </p>
+                    )}
+                </div>
+              </button>
+            ))}
+            {services.length === 0 && (
+              <p className="text-gray-500 text-sm">{t("booking.noServices")}</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {bookingType === "resource" && (
+        <>
+          <p className="text-xs text-gray-500 mb-2">
+            {t("booking.selectResource")}
+          </p>
+          <div className="space-y-2 mb-3">
+            {resources.map((resource) => (
+              <button
+                key={resource.id}
+                onClick={() => setSelectedResource(String(resource.id))}
+                aria-pressed={selectedResource === String(resource.id)}
+                aria-label={`Select ${resource.name}`}
+                className={
+                  selectedResource === String(resource.id)
+                    ? "w-full flex items-start gap-3 p-3 border-2 border-brand-600 bg-brand-50 rounded-lg text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    : "w-full flex items-start gap-3 p-3 border border-gray-200 rounded-lg text-left transition-colors hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                }
+              >
+                {resource.photo ? (
+                  <img
+                    src={resource.photo}
+                    alt={`${resource.name} photo`}
+                    className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0"
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 shrink-0"
+                  />
+                )}
+                <div>
+                  <p className="text-sm font-medium">
+                    {resource.name}
+                    {" \u00b7 "}
+                    {formatDuration(resource.duration_minutes)}
+                  </p>
+                  {resource.description && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {resource.description}
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
+            {resources.length === 0 && (
+              <p className="text-gray-500 text-sm">
+                {t("booking.noResources")}
+              </p>
+            )}
+          </div>
+        </>
+      )}
 
       <label htmlFor="book-date" className="block text-xs text-gray-500 mb-1">
         {t("booking.selectDate")}
@@ -606,18 +741,20 @@ function BookingSection() {
         className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />
 
-      <label className="flex items-center gap-2 mb-3 cursor-pointer w-fit">
-        <input
-          type="checkbox"
-          checked={repeatWeekly}
-          onChange={(e) => setRepeatWeekly(e.target.checked)}
-          className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
-        />
-        <span className="text-sm text-gray-700">
-          {t("booking.repeatWeekly")}
-        </span>
-      </label>
-      {repeatWeekly && (
+      {bookingType === "service" && (
+        <label className="flex items-center gap-2 mb-3 cursor-pointer w-fit">
+          <input
+            type="checkbox"
+            checked={repeatWeekly}
+            onChange={(e) => setRepeatWeekly(e.target.checked)}
+            className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          />
+          <span className="text-sm text-gray-700">
+            {t("booking.repeatWeekly")}
+          </span>
+        </label>
+      )}
+      {bookingType === "service" && repeatWeekly && (
         <div className="mb-3">
           <label
             htmlFor="number-of-weeks"
@@ -637,49 +774,52 @@ function BookingSection() {
         </div>
       )}
 
-      {selectedService && date && (
-        <div className="mb-4">
-          <p className="text-xs text-gray-500 mb-2">
-            {t("booking.availableSlots")}
-          </p>
-          {loadingSlots && (
-            <p className="text-sm text-gray-500">{t("booking.loadingSlots")}</p>
-          )}
-          {!loadingSlots && slots.length === 0 && (
-            <p className="text-sm text-gray-500">{t("booking.noSlots")}</p>
-          )}
-          {!loadingSlots && slots.length > 0 && (
-            <div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {slots.map((slot) => (
+      {(bookingType === "service" ? selectedService : selectedResource) &&
+        date && (
+          <div className="mb-4">
+            <p className="text-xs text-gray-500 mb-2">
+              {t("booking.availableSlots")}
+            </p>
+            {loadingSlots && (
+              <p className="text-sm text-gray-500">
+                {t("booking.loadingSlots")}
+              </p>
+            )}
+            {!loadingSlots && slots.length === 0 && (
+              <p className="text-sm text-gray-500">{t("booking.noSlots")}</p>
+            )}
+            {!loadingSlots && slots.length > 0 && (
+              <div>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {slots.map((slot) => (
+                    <button
+                      key={slot}
+                      onClick={() => selectSlot(slot)}
+                      aria-pressed={selectedSlot === slot}
+                      aria-label={`Select ${slot}`}
+                      className={
+                        selectedSlot === slot
+                          ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                          : "px-3 py-1.5 rounded-lg text-sm border border-brand-200 transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      }
+                    >
+                      {slot}
+                    </button>
+                  ))}
+                </div>
+                {selectedSlot && (
                   <button
-                    key={slot}
-                    onClick={() => selectSlot(slot)}
-                    aria-pressed={selectedSlot === slot}
-                    aria-label={`Select ${slot}`}
-                    className={
-                      selectedSlot === slot
-                        ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
-                        : "px-3 py-1.5 rounded-lg text-sm border border-brand-200 transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
-                    }
+                    onClick={confirmBooking}
+                    aria-label={t("booking.confirmBooking")}
+                    className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
-                    {slot}
+                    {t("booking.confirmBooking")} ({selectedSlot})
                   </button>
-                ))}
+                )}
               </div>
-              {selectedSlot && (
-                <button
-                  onClick={confirmBooking}
-                  aria-label={t("booking.confirmBooking")}
-                  className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
-                >
-                  {t("booking.confirmBooking")} ({selectedSlot})
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
 
       <div className="mb-4 border-t border-gray-100 pt-4">
         <p className="text-xs text-gray-500 mb-2">
@@ -937,21 +1077,23 @@ function BookingSection() {
               <>
                 <div className="flex justify-between items-center">
                   <span>
-                    {booking.service_name}
+                    {booking.service_name || booking.resource_name}
                     {" \u00b7 "}
                     {new Date(booking.start_time).toLocaleString()}
                   </span>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => startEditMine(booking)}
-                      aria-label={`${t("booking.edit")} booking for ${booking.service_name}`}
-                      className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
-                    >
-                      {t("booking.edit")}
-                    </button>
+                    {booking.service && (
+                      <button
+                        onClick={() => startEditMine(booking)}
+                        aria-label={`${t("booking.edit")} booking for ${booking.service_name}`}
+                        className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      >
+                        {t("booking.edit")}
+                      </button>
+                    )}
                     <button
                       onClick={() => cancelMine(booking.id)}
-                      aria-label={`Cancel booking for ${booking.service_name}`}
+                      aria-label={`Cancel booking for ${booking.service_name || booking.resource_name}`}
                       className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                     >
                       {t("booking.cancelThisOne")}
