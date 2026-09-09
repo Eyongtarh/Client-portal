@@ -11,6 +11,7 @@ import ThemeToggle from "../components/ThemeToggle.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
 import SearchBar from "../components/SearchBar.jsx";
 import MobileNav from "../components/MobileNav.jsx";
+import SkipLink from "../components/SkipLink.jsx";
 import api from "../lib/api";
 import applyBrandColor from "../lib/applyBrandColor";
 
@@ -120,6 +121,7 @@ export default function OwnerDashboard() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
+      <SkipLink />
       <header className="sticky top-0 z-10 glass-panel px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
           {isOwner ? (
@@ -262,7 +264,7 @@ export default function OwnerDashboard() {
           </div>
         </div>
       )}
-      <main className="max-w-3xl mx-auto px-8 py-8 space-y-8">
+      <main id="main-content" className="max-w-3xl mx-auto px-8 py-8 space-y-8">
         <div>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold">{t("dashboard.clients")}</h2>

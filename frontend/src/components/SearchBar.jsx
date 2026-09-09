@@ -47,6 +47,12 @@ export default function SearchBar() {
     navigate(`/clients/${clientId}`);
   }
 
+  function handleKeyDown(e) {
+    if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }
+
   const hasResults =
     results &&
     Object.values(results).some((group) => group.length > 0);
@@ -62,6 +68,7 @@ export default function SearchBar() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results && setOpen(true)}
+        onKeyDown={handleKeyDown}
         placeholder={t("search.placeholder")}
         className="w-full px-3 py-1.5 bg-canvas border border-line rounded-lg text-sm text-ink transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />

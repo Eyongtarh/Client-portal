@@ -7,14 +7,34 @@
 // row (desktop) and a slide-down panel (mobile, toggled open/
 // closed), so toggle components never end up duplicated with
 // independent local state.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function MobileNav({ children }) {
   const [open, setOpen] = useState(false);
+  const buttonRef = useRef(null);
+
+  // Closing via Escape is expected keyboard behavior for any
+  // dismissible overlay (WAI-ARIA disclosure pattern), and returning
+  // focus to the trigger afterwards keeps keyboard users oriented
+  // instead of dropping them at the top of the document.
+  useEffect(() => {
+    if (!open) return;
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open]);
 
   return (
     <div className="md:contents">
       <button
+        ref={buttonRef}
         onClick={() => setOpen(!open)}
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}

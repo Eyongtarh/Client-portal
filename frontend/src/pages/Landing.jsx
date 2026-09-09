@@ -8,6 +8,7 @@ import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import LogoMark from "../components/LogoMark.jsx";
 import MobileNav from "../components/MobileNav.jsx";
+import SkipLink from "../components/SkipLink.jsx";
 
 const STEPS = ["step1", "step2", "step3"];
 
@@ -73,6 +74,7 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
+      <SkipLink />
       <header className="sticky top-0 z-10 glass-panel">
         <div className="max-w-6xl mx-auto px-8 py-4 flex justify-between items-center">
           <span className="flex items-center gap-2 text-lg font-semibold tracking-tight text-brand-700">
@@ -100,7 +102,7 @@ export default function Landing() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-8">
+      <main id="main-content" className="max-w-6xl mx-auto px-8">
         <section className="relative isolate py-20 sm:py-28 text-center overflow-hidden">
           <div
             aria-hidden="true"

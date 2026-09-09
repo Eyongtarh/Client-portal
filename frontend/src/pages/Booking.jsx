@@ -15,6 +15,7 @@ import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import MobileNav from "../components/MobileNav.jsx";
+import SkipLink from "../components/SkipLink.jsx";
 import api from "../lib/api";
 
 const WEEKDAY_KEYS = [
@@ -48,6 +49,7 @@ export default function Booking() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
+      <SkipLink />
       <header className="sticky top-0 z-10 glass-panel px-8 py-4 flex justify-between items-center">
         <div>
           <Link
@@ -73,7 +75,7 @@ export default function Booking() {
           </button>
         </MobileNav>
       </header>
-      <main className="max-w-2xl mx-auto px-8 py-8 space-y-6">
+      <main id="main-content" className="max-w-2xl mx-auto px-8 py-8 space-y-6">
         <ServicesSection />
         <ResourcesSection />
         <WorkingHoursSection />

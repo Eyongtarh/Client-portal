@@ -8,10 +8,12 @@ import { Link } from "react-router-dom";
 import LanguageToggle from "./LanguageToggle.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 import LogoMark from "./LogoMark.jsx";
+import SkipLink from "./SkipLink.jsx";
 
 export default function AuthShell({ children }) {
   return (
     <div className="relative isolate min-h-screen flex flex-col items-center justify-center overflow-hidden bg-canvas text-ink px-4 py-12">
+      <SkipLink />
       <div
         aria-hidden="true"
         className="aurora-bg pointer-events-none absolute inset-0 -z-10"
@@ -29,6 +31,7 @@ export default function AuthShell({ children }) {
         Clientflow
       </Link>
       <div
+        id="main-content"
         className="animate-rise w-full max-w-sm"
         style={{ animationDelay: "0.06s" }}
       >

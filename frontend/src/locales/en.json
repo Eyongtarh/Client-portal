@@ -1,4 +1,7 @@
 {
+  "common": {
+    "skipToContent": "Skip to main content"
+  },
   "booking": {
     "servicesTitle": "Services",
     "addService": "+ Add service",

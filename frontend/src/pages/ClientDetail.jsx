@@ -11,6 +11,7 @@ import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
 import MobileNav from "../components/MobileNav.jsx";
+import SkipLink from "../components/SkipLink.jsx";
 
 export default function ClientDetail() {
   const { t } = useTranslation();
@@ -45,6 +46,7 @@ export default function ClientDetail() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
+      <SkipLink />
       <header className="sticky top-0 z-10 glass-panel px-8 py-4 flex justify-between items-start">
         <div>
           <Link
@@ -84,7 +86,7 @@ export default function ClientDetail() {
           </button>
         ))}
       </nav>
-      <main className="max-w-2xl mx-auto px-8 pb-8">
+      <main id="main-content" className="max-w-2xl mx-auto px-8 pb-8">
         <div className="bg-surface border border-line rounded-b-2xl rounded-tr-2xl p-6">
           {activeTab === "overview" &&
             (project ? (

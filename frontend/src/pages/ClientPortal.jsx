@@ -9,6 +9,7 @@ import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
 import MobileNav from "../components/MobileNav.jsx";
+import SkipLink from "../components/SkipLink.jsx";
 import api from "../lib/api";
 
 // Displays a duration in whichever unit it was most likely
@@ -99,6 +100,7 @@ export default function ClientPortal() {
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
+      <SkipLink />
       <header className="sticky top-0 z-10 glass-panel px-8 py-4 flex justify-between items-center">
         <div>
           <h1 className="text-lg font-semibold text-ink">{user.company_name}</h1>
@@ -134,7 +136,7 @@ export default function ClientPortal() {
           </div>
         </div>
       )}
-      <main className="max-w-2xl mx-auto px-8 py-8 space-y-6">
+      <main id="main-content" className="max-w-2xl mx-auto px-8 py-8 space-y-6">
         <BookingSection />
         <ReviewsSection />
         {!project && (

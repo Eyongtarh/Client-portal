@@ -1,7 +1,9 @@
 // Top-level routes: public landing page, auth pages, plus
 // protected routes. Owners and staff see the dashboard; clients
 // see the client portal.
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "./lib/AuthContext.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
@@ -17,6 +19,15 @@ import Booking from "./pages/Booking.jsx";
 
 export default function App() {
   const { user, loading } = useAuth();
+  const { i18n } = useTranslation();
+
+  // The <html lang> attribute never followed the user's chosen UI
+  // language before (always hardcoded "en" in index.html) - screen
+  // readers use it to pick pronunciation rules, so a French user
+  // reading French content with lang="en" would be mispronounced.
+  useEffect(() => {
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
 
   if (loading) {
     return (
