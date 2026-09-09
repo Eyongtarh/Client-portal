@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
 import api from "../lib/api";
 import LanguageToggle from "../components/LanguageToggle.jsx";
+import ActivityFeed from "../components/ActivityFeed.jsx";
 
 export default function ClientDetail() {
   const { t } = useTranslation();
@@ -22,6 +23,7 @@ export default function ClientDetail() {
     ["messages", t("clientDetail.tabMessages")],
     ["invoices", t("clientDetail.tabInvoices")],
     ["approvals", t("clientDetail.tabApprovals")],
+    ["activity", t("activity.title")],
   ];
   async function load() {
     const clientRes = await api.get(`/clients/${clientId}/`);
@@ -95,7 +97,8 @@ export default function ClientDetail() {
           {activeTab === "approvals" && project && (
             <ApprovalsTab project={project} />
           )}
-          {!project && activeTab !== "overview" && (
+          {activeTab === "activity" && <ActivityFeed clientId={client.id} />}
+          {!project && activeTab !== "overview" && activeTab !== "activity" && (
             <p className="text-gray-500 text-sm">
               {t("clientDetail.createProjectFirst")}
             </p>

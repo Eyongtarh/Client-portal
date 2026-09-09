@@ -1,8 +1,8 @@
 from .models import (
-    Approval, Client, ClientInvite, Document, Invoice, InvoiceItem,
-    Message, Milestone, Project, RecurringSeries, Resource, Review,
-    Service, SubscriptionPlan, Task, TeamInvite, User, WaitlistEntry,
-    WorkingHours, Booking, Workspace,
+    Activity, Approval, Client, ClientInvite, Document, Invoice,
+    InvoiceItem, Message, Milestone, Project, RecurringSeries,
+    Resource, Review, Service, SubscriptionPlan, Task, TeamInvite,
+    User, WaitlistEntry, WorkingHours, Booking, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -11,6 +11,30 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.conf import settings
 from django.core.mail import send_mail
+
+
+class ActivitySerializer(serializers.ModelSerializer):
+    """actor_name resolves to whichever label makes sense for who
+    performed the action - a client's company name, or a staff/
+    owner's first name/email - so the frontend never has to know
+    the difference.
+    """
+    actor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Activity
+        fields = [
+            "id", "verb", "target_type", "target_id", "target_repr",
+            "actor_name", "client", "metadata", "created_at",
+        ]
+
+    def get_actor_name(self, obj):
+        if not obj.actor:
+            return None
+        if obj.actor.role == "client":
+            client = getattr(obj.actor, "client_profile", None)
+            return client.company_name if client else obj.actor.email
+        return obj.actor.first_name or obj.actor.email
 
 
 class ClientSerializer(serializers.ModelSerializer):

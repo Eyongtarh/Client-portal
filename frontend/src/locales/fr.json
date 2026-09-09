@@ -121,18 +121,18 @@
   "landing": {
     "signIn": "Se connecter",
     "getStarted": "Commencer",
-    "heroTitle": "Offrez à chaque client son propre espace professionnel",
-    "heroSubtitle": "Projets, fichiers, factures et communication - le tout au même endroit.",
-    "heroCta": "Créez votre espace de travail",
+    "heroTitle": "Offrez \u00e0 chaque client son propre espace professionnel",
+    "heroSubtitle": "Projets, fichiers, factures et communication - le tout au m\u00eame endroit.",
+    "heroCta": "Cr\u00e9ez votre espace de travail",
     "featureProjectsTitle": "Projets et jalons",
     "featureProjectsBody": "Suivez l'avancement que vos clients peuvent voir, sans e-mail de statut.",
     "featureDocsTitle": "Documents",
-    "featureDocsBody": "Partagez des fichiers au même endroit, sans fouiller dans les e-mails.",
+    "featureDocsBody": "Partagez des fichiers au m\u00eame endroit, sans fouiller dans les e-mails.",
     "featureMessagesTitle": "Messagerie",
-    "featureMessagesBody": "Gardez les conversations de projet organisées, hors de votre boîte personnelle.",
+    "featureMessagesBody": "Gardez les conversations de projet organis\u00e9es, hors de votre bo\u00eete personnelle.",
     "featureInvoicesTitle": "Factures",
-    "featureInvoicesBody": "Envoyez des factures PDF professionnelles et soyez payé plus vite.",
-    "footerCta": "Prêt à offrir une meilleure expérience à vos clients ?",
+    "featureInvoicesBody": "Envoyez des factures PDF professionnelles et soyez pay\u00e9 plus vite.",
+    "footerCta": "Pr\u00eat \u00e0 offrir une meilleure exp\u00e9rience \u00e0 vos clients ?",
     "footerCtaButton": "Commencer gratuitement"
   },
   "acceptInvite": {
@@ -140,10 +140,10 @@
     "subtitle": "Configurez votre compte pour voir votre projet.",
     "emailFromInvite": "Votre e-mail (depuis l'invitation)",
     "yourName": "Votre nom",
-    "setPassword": "Définissez un mot de passe",
-    "submit": "Accéder à mon espace",
+    "setPassword": "D\u00e9finissez un mot de passe",
+    "submit": "Acc\u00e9der \u00e0 mon espace",
     "submitting": "Configuration...",
-    "error": "Ce lien d'invitation est peut-être invalide ou expiré."
+    "error": "Ce lien d'invitation est peut-\u00eatre invalide ou expir\u00e9."
   },
   "login": {
     "title": "Connexion",
@@ -154,7 +154,7 @@
     "error": "E-mail ou mot de passe invalide.",
     "newHere": "Nouveau ici ?",
     "createWorkspace": "Cr\u00e9er un espace de travail",
-    "forgotPassword": "Mot de passe oublié ?"
+    "forgotPassword": "Mot de passe oubli\u00e9 ?"
   },
   "register": {
     "title": "Cr\u00e9ez votre espace de travail",
@@ -195,9 +195,9 @@
     "milestones": "Jalons",
     "addMilestone": "Ajouter un jalon...",
     "add": "Ajouter",
-    "tasks": "Tâches",
-    "addTask": "Ajouter une tâche...",
-    "noTasks": "Aucune tâche pour le moment.",
+    "tasks": "T\u00e2ches",
+    "addTask": "Ajouter une t\u00e2che...",
+    "noTasks": "Aucune t\u00e2che pour le moment.",
     "createProjectFirst": "Cr\u00e9ez d'abord un projet, dans l'onglet Aper\u00e7u.",
     "uploadDocument": "+ T\u00e9l\u00e9verser un document",
     "uploading": "T\u00e9l\u00e9versement...",
@@ -220,8 +220,8 @@
     "createApproval": "Demander l'approbation",
     "noApprovals": "Aucune demande d'approbation pour le moment.",
     "statusPending": "En attente",
-    "statusApproved": "Approuvé",
-    "statusChangesRequested": "Modifications demandées",
+    "statusApproved": "Approuv\u00e9",
+    "statusChangesRequested": "Modifications demand\u00e9es",
     "renameDocument": "Renommer",
     "deleteDocument": "Supprimer",
     "confirmDeleteDocument": "Supprimer ce document\u00a0?",
@@ -321,5 +321,37 @@
     "changePhoto": "Changer la photo",
     "duration": "Dur\u00e9e",
     "priceOptional": "Prix (optionnel)"
+  },
+  "activity": {
+    "title": "Activit\u00e9 r\u00e9cente",
+    "empty": "Aucune activit\u00e9 pour le moment.",
+    "systemActor": "Le syst\u00e8me",
+    "verbs": {
+      "client_invited": "{{actor}} a invit\u00e9 {{target}}",
+      "client_joined": "{{target}} a rejoint l\u2019espace de travail",
+      "team_invited": "{{actor}} a invit\u00e9 un membre de l\u2019\u00e9quipe ({{target}})",
+      "team_joined": "{{target}} a rejoint l\u2019\u00e9quipe",
+      "team_removed": "{{actor}} a retir\u00e9 {{target}} de l\u2019\u00e9quipe",
+      "project_created": "{{actor}} a cr\u00e9\u00e9 le projet \u00ab\u00a0{{target}}\u00a0\u00bb",
+      "project_status_changed": "{{actor}} a marqu\u00e9 \u00ab\u00a0{{target}}\u00a0\u00bb comme {{status}}",
+      "milestone_completed": "{{actor}} a termin\u00e9 le jalon \u00ab\u00a0{{target}}\u00a0\u00bb",
+      "task_completed": "{{actor}} a termin\u00e9 la t\u00e2che \u00ab\u00a0{{target}}\u00a0\u00bb",
+      "document_uploaded": "{{actor}} a envoy\u00e9 {{target}}",
+      "invoice_created": "{{actor}} a cr\u00e9\u00e9 {{target}}",
+      "invoice_sent": "{{actor}} a envoy\u00e9 {{target}}",
+      "invoice_paid": "{{target}} a \u00e9t\u00e9 marqu\u00e9e comme pay\u00e9e",
+      "approval_requested": "{{actor}} a demand\u00e9 une approbation pour \u00ab\u00a0{{target}}\u00a0\u00bb",
+      "approval_approved": "{{actor}} a approuv\u00e9 \u00ab\u00a0{{target}}\u00a0\u00bb",
+      "approval_changes_requested": "{{actor}} a demand\u00e9 des modifications sur \u00ab\u00a0{{target}}\u00a0\u00bb",
+      "booking_created": "{{actor}} a r\u00e9serv\u00e9 {{target}}",
+      "booking_cancelled": "{{actor}} a annul\u00e9 {{target}}",
+      "review_submitted": "{{actor}} a laiss\u00e9 un avis sur {{target}}",
+      "review_responded": "{{actor}} a r\u00e9pondu \u00e0 un avis sur {{target}}"
+    },
+    "statuses": {
+      "active": "actif",
+      "completed": "termin\u00e9",
+      "on_hold": "en pause"
+    }
   }
 }

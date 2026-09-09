@@ -686,3 +686,47 @@ class InvoiceItem(models.Model):
     )
     description = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+
+class Activity(models.Model):
+    """A read-only audit-trail entry: who did what, to which
+    object, when. Created internally via portal.activity.log()
+    whenever a tracked action happens - never written directly
+    through the API. `verb` is a stable code (e.g.
+    "invoice_paid") the frontend maps to a translated sentence,
+    not free text. `target_repr` snapshots the object's label at
+    the time of the action so the entry stays readable even if the
+    object is later renamed or deleted. `client` scopes visibility:
+    set for anything tied to one client's relationship (so that
+    client can see it in their own portal); left blank for
+    workspace-internal events (e.g. a team member joining) that
+    only the owner/staff should see.
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="activities"
+    )
+    actor = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="+",
+    )
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="activities",
+    )
+    verb = models.CharField(max_length=50)
+    target_type = models.CharField(max_length=50)
+    target_id = models.PositiveIntegerField(null=True, blank=True)
+    target_repr = models.CharField(max_length=255)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name_plural = "activities"
+
+    def __str__(self):
+        who = self.actor.email if self.actor else "Someone"
+        return f"{who} - {self.verb} - {self.target_repr}"

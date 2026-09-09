@@ -321,5 +321,37 @@
     "changePhoto": "Change photo",
     "duration": "Duration",
     "priceOptional": "Price (optional)"
+  },
+  "activity": {
+    "title": "Recent activity",
+    "empty": "No activity yet.",
+    "systemActor": "The system",
+    "verbs": {
+      "client_invited": "{{actor}} invited {{target}}",
+      "client_joined": "{{target}} joined the workspace",
+      "team_invited": "{{actor}} invited a team member ({{target}})",
+      "team_joined": "{{target}} joined the team",
+      "team_removed": "{{actor}} removed {{target}} from the team",
+      "project_created": "{{actor}} created project \u201c{{target}}\u201d",
+      "project_status_changed": "{{actor}} marked \u201c{{target}}\u201d as {{status}}",
+      "milestone_completed": "{{actor}} completed milestone \u201c{{target}}\u201d",
+      "task_completed": "{{actor}} completed task \u201c{{target}}\u201d",
+      "document_uploaded": "{{actor}} uploaded {{target}}",
+      "invoice_created": "{{actor}} created {{target}}",
+      "invoice_sent": "{{actor}} sent {{target}}",
+      "invoice_paid": "{{target}} was marked as paid",
+      "approval_requested": "{{actor}} requested approval for \u201c{{target}}\u201d",
+      "approval_approved": "{{actor}} approved \u201c{{target}}\u201d",
+      "approval_changes_requested": "{{actor}} requested changes on \u201c{{target}}\u201d",
+      "booking_created": "{{actor}} booked {{target}}",
+      "booking_cancelled": "{{actor}} cancelled {{target}}",
+      "review_submitted": "{{actor}} left a review on {{target}}",
+      "review_responded": "{{actor}} responded to a review on {{target}}"
+    },
+    "statuses": {
+      "active": "active",
+      "completed": "completed",
+      "on_hold": "on hold"
+    }
   }
 }

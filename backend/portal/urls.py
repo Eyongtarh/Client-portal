@@ -46,6 +46,9 @@ router.register(
 router.register(
     "resources", views.ResourceViewSet, basename="resource"
 )
+router.register(
+    "activities", views.ActivityViewSet, basename="activity"
+)
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view()),

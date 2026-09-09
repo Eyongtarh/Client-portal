@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
+import ActivityFeed from "../components/ActivityFeed.jsx";
 import api from "../lib/api";
 
 // Displays a duration in whichever unit it was most likely
@@ -296,6 +297,7 @@ export default function ClientPortal() {
             </form>
           </section>
         )}
+        <ActivityFeed />
       </main>
     </div>
   );

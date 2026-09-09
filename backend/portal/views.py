@@ -15,14 +15,16 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .activity import log as log_activity
 from .models import (
-    Approval, Booking, Client, Document, Invoice, Message, Milestone,
-    Project, RecurringSeries, Resource, Review, Service,
+    Activity, Approval, Booking, Client, Document, Invoice, Message,
+    Milestone, Project, RecurringSeries, Resource, Review, Service,
     SubscriptionPlan, Task, User, WaitlistEntry, WorkingHours,
 )
 from .serializers import (
     AcceptInviteSerializer,
     AcceptTeamInviteSerializer,
+    ActivitySerializer,
     ApprovalDecisionSerializer,
     ApprovalSerializer,
     BookingSerializer,
@@ -107,6 +109,9 @@ class InviteClientView(generics.CreateAPIView):
                 f"invite more."
             )
         invite = serializer.save(workspace=workspace)
+        log_activity(
+            workspace, self.request.user, "client_invited", invite
+        )
         link = f"{settings.FRONTEND_URL}/accept-invite/{invite.token}"
         send_mail(
             subject=(
@@ -136,6 +141,9 @@ class AcceptInviteView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         client = serializer.save()
+        log_activity(
+            client.workspace, None, "client_joined", client, client=client
+        )
         return Response(
             {"company_name": client.company_name},
             status=status.HTTP_201_CREATED,
@@ -170,6 +178,7 @@ class TeamInviteView(generics.CreateAPIView):
                 f"your plan to invite more."
             )
         invite = serializer.save(workspace=workspace)
+        log_activity(workspace, self.request.user, "team_invited", invite)
         link = f"{settings.FRONTEND_URL}/accept-team-invite/{invite.token}"
         send_mail(
             subject=(
@@ -199,6 +208,9 @@ class AcceptTeamInviteView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        log_activity(
+            user.staff_workspace, None, "team_joined", user
+        )
         return Response(
             {"workspace_name": user.staff_workspace.name},
             status=status.HTTP_201_CREATED,
@@ -224,6 +236,12 @@ class TeamViewSet(viewsets.ModelViewSet):
             raise PermissionDenied(
                 "Only the workspace owner can remove team members."
             )
+        log_activity(
+            instance.staff_workspace,
+            self.request.user,
+            "team_removed",
+            instance,
+        )
         instance.delete()
 
 
@@ -328,7 +346,27 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return Project.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
-        serializer.save(workspace=self.request.user.get_workspace())
+        project = serializer.save(workspace=self.request.user.get_workspace())
+        log_activity(
+            project.workspace,
+            self.request.user,
+            "project_created",
+            project,
+            client=project.client,
+        )
+
+    def perform_update(self, serializer):
+        old_status = serializer.instance.status
+        project = serializer.save()
+        if project.status != old_status:
+            log_activity(
+                project.workspace,
+                self.request.user,
+                "project_status_changed",
+                project,
+                client=project.client,
+                metadata={"status": project.status},
+            )
 
 
 class MilestoneViewSet(viewsets.ModelViewSet):
@@ -348,6 +386,18 @@ class MilestoneViewSet(viewsets.ModelViewSet):
             project__client=user.client_profile
         )
 
+    def perform_update(self, serializer):
+        was_complete = serializer.instance.is_complete
+        milestone = serializer.save()
+        if milestone.is_complete and not was_complete:
+            log_activity(
+                milestone.project.workspace,
+                self.request.user,
+                "milestone_completed",
+                milestone,
+                client=milestone.project.client,
+            )
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     """Same tenant-scoping pattern as MilestoneViewSet."""
@@ -363,6 +413,18 @@ class TaskViewSet(viewsets.ModelViewSet):
         return Task.objects.filter(
             project__client=user.client_profile
         )
+
+    def perform_update(self, serializer):
+        was_complete = serializer.instance.is_complete
+        task = serializer.save()
+        if task.is_complete and not was_complete:
+            log_activity(
+                task.project.workspace,
+                self.request.user,
+                "task_completed",
+                task,
+                client=task.project.client,
+            )
 
 
 class ApprovalViewSet(viewsets.ModelViewSet):
@@ -403,7 +465,14 @@ class ApprovalViewSet(viewsets.ModelViewSet):
             raise PermissionDenied(
                 "Only the owner or team can request an approval."
             )
-        serializer.save()
+        approval = serializer.save()
+        log_activity(
+            approval.project.workspace,
+            self.request.user,
+            "approval_requested",
+            approval,
+            client=approval.project.client,
+        )
 
 
 class ApprovalDecisionView(APIView):
@@ -432,6 +501,18 @@ class ApprovalDecisionView(APIView):
         )
         approval.decided_at = timezone.now()
         approval.save()
+        verb = (
+            "approval_approved"
+            if approval.status == "approved"
+            else "approval_changes_requested"
+        )
+        log_activity(
+            approval.project.workspace,
+            user,
+            verb,
+            approval,
+            client=user.client_profile,
+        )
 
         return Response(ApprovalSerializer(approval).data)
 
@@ -456,10 +537,17 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         uploaded_file = self.request.FILES.get("file")
-        serializer.save(
+        document = serializer.save(
             uploaded_by=self.request.user,
             original_name=uploaded_file.name if uploaded_file else "",
             size_bytes=uploaded_file.size if uploaded_file else 0,
+        )
+        log_activity(
+            document.project.workspace,
+            self.request.user,
+            "document_uploaded",
+            document,
+            client=document.project.client,
         )
 
 
@@ -499,7 +587,34 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         return Invoice.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
-        serializer.save(workspace=self.request.user.get_workspace())
+        invoice = serializer.save(workspace=self.request.user.get_workspace())
+        log_activity(
+            invoice.workspace,
+            self.request.user,
+            "invoice_created",
+            invoice,
+            client=invoice.client,
+        )
+
+    def perform_update(self, serializer):
+        old_status = serializer.instance.status
+        invoice = serializer.save()
+        if invoice.status == old_status:
+            return
+        if invoice.status == "sent":
+            verb = "invoice_sent"
+        elif invoice.status == "paid":
+            verb = "invoice_paid"
+        else:
+            return
+        log_activity(
+            invoice.workspace,
+            self.request.user,
+            verb,
+            invoice,
+            client=invoice.client,
+            metadata={"total": str(invoice.total)},
+        )
 
 
 class InvoicePDFView(APIView):
@@ -703,6 +818,13 @@ class BookingViewSet(viewsets.ModelViewSet):
         booked_name = (
             booking.service.name if booking.service else booking.resource.name
         )
+        log_activity(
+            booking.workspace,
+            user,
+            "booking_created",
+            booking,
+            client=booking.client,
+        )
         send_mail(
             subject=f"Booking confirmed: {booked_name}",
             message=(
@@ -734,6 +856,13 @@ class BookingViewSet(viewsets.ModelViewSet):
             booking.service.name if booking.service else booking.resource.name
         )
         if booking.status == "cancelled":
+            log_activity(
+                booking.workspace,
+                self.request.user,
+                "booking_cancelled",
+                booking,
+                client=booking.client,
+            )
             send_mail(
                 subject=f"Booking cancelled: {booked_name}",
                 message=(
@@ -931,10 +1060,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
             raise PermissionDenied(
                 "You can only review your own bookings."
             )
-        serializer.save(
+        review = serializer.save(
             workspace=booking.workspace,
             service=booking.service,
             client=user.client_profile,
+        )
+        log_activity(
+            review.workspace,
+            user,
+            "review_submitted",
+            review,
+            client=review.client,
         )
 
     def perform_update(self, serializer):
@@ -973,7 +1109,41 @@ class ReviewViewSet(viewsets.ModelViewSet):
             "owner_response"
         ]
         review.save(update_fields=["owner_response"])
+        log_activity(
+            review.workspace,
+            request.user,
+            "review_responded",
+            review,
+            client=review.client,
+        )
         return Response(ReviewSerializer(review).data)
+
+
+class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
+    """GET /api/activities/ - the audit-trail feed. Owners/staff see
+    every event in their workspace (optionally narrowed to one
+    client via ?client=<id>, used on the client detail page);
+    clients see only events scoped to their own client relationship
+    - workspace-internal events (team management, etc.) never reach
+    them. Read-only: entries are only ever written internally via
+    portal.activity.log().
+    """
+    serializer_class = ActivitySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ("owner", "staff"):
+            qs = Activity.objects.filter(workspace=user.get_workspace())
+            client_id = self.request.query_params.get("client")
+            if client_id:
+                qs = qs.filter(client_id=client_id)
+        else:
+            qs = Activity.objects.filter(
+                workspace=user.client_profile.workspace,
+                client=user.client_profile,
+            )
+        return qs[:100]
 
 
 class AvailabilityView(APIView):
