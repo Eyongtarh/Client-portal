@@ -55,7 +55,7 @@ export default function Landing() {
       <header className="sticky top-0 z-10 glass-panel">
         <div className="max-w-5xl mx-auto px-8 py-4 flex justify-between items-center">
           <span className="text-lg font-semibold tracking-tight text-brand-700">
-            Client Portal
+            Clientflow
           </span>
           <div className="flex items-center gap-4">
             <ThemeToggle />

@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /clients/
+Disallow: /booking
+Disallow: /reset-password/
+Disallow: /accept-invite/
+Disallow: /accept-team-invite/
+
+Sitemap: https://client-portal-phi-ten.vercel.app/sitemap.xml

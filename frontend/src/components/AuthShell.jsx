@@ -21,10 +21,10 @@ export default function AuthShell({ children }) {
       </div>
       <Link
         to="/"
-        aria-label="Client Portal home"
+        aria-label="Clientflow home"
         className="animate-rise mb-8 text-lg font-semibold tracking-tight text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
       >
-        Client Portal
+        Clientflow
       </Link>
       <div
         className="animate-rise w-full max-w-sm"
