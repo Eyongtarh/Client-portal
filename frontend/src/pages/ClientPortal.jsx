@@ -8,6 +8,7 @@ import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
+import MobileNav from "../components/MobileNav.jsx";
 import api from "../lib/api";
 
 // Displays a duration in whichever unit it was most likely
@@ -105,7 +106,7 @@ export default function ClientPortal() {
             {t("clientPortal.welcomeBack")} {user.first_name}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <MobileNav>
           <ThemeToggle />
           <LanguageToggle />
           <button
@@ -115,7 +116,7 @@ export default function ClientPortal() {
           >
             {t("dashboard.signOut")}
           </button>
-        </div>
+        </MobileNav>
       </header>
       {paymentBanner && (
         <div className="max-w-2xl mx-auto px-8 pt-4">
@@ -196,7 +197,7 @@ export default function ClientPortal() {
               {invoices.map((invoice) => (
                 <li
                   key={invoice.id}
-                  className="py-2 flex justify-between text-sm"
+                  className="py-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm"
                 >
                   <span>
                     {`#${invoice.number} - ${invoice.total} - ${invoice.status}`}
@@ -1078,7 +1079,7 @@ function BookingSection() {
                   </button>
                 </div>
               ) : (
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <span>
                     {entry.service_name}
                     {" \u00b7 "}
@@ -1090,7 +1091,7 @@ function BookingSection() {
                         : t("booking.waiting")}
                     </span>
                   </span>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => startEditWaitlist(entry)}
                       aria-label={`${t("booking.edit")} waitlist entry`}
@@ -1194,14 +1195,14 @@ function BookingSection() {
               </div>
             ) : (
               <>
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <span>
                     {booking.service_name || booking.resource_name}
                     {" \u00b7 "}
                     {new Date(booking.start_time).toLocaleString()}{" "}
                     <ClientPaymentBadge status={booking.payment_status} />
                   </span>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {booking.payment_status === "pending" && (
                       <button
                         onClick={() => payForBooking(booking.id)}
