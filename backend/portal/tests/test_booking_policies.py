@@ -121,7 +121,9 @@ class BookingPaymentAmountTests(BookingPolicyTestCase):
         start = timezone.now() + timedelta(days=3)
         res = self._book(service, start)
         self.assertEqual(res.status_code, 201, res.data)
-        self.assertEqual(Decimal(res.data["payment_amount"]), Decimal("150.00"))
+        self.assertEqual(
+            Decimal(res.data["payment_amount"]), Decimal("150.00")
+        )
 
     def test_no_payment_service_never_sets_an_amount(self):
         service = Service.objects.create(

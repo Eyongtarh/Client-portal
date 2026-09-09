@@ -40,9 +40,13 @@ class StripeWebhookView(View):
             metadata = session.get("metadata") or {}
             payment_intent_id = session.get("payment_intent") or ""
             if metadata.get("type") == "invoice":
-                _mark_invoice_paid(metadata.get("invoice_id"), payment_intent_id)
+                _mark_invoice_paid(
+                    metadata.get("invoice_id"), payment_intent_id
+                )
             elif metadata.get("type") == "booking":
-                _mark_booking_paid(metadata.get("booking_id"), payment_intent_id)
+                _mark_booking_paid(
+                    metadata.get("booking_id"), payment_intent_id
+                )
 
         return HttpResponse(status=200)
 
@@ -100,7 +104,9 @@ def _mark_booking_paid(booking_id, payment_intent_id):
         booking,
         client=booking.client,
     )
-    booked_name = booking.service.name if booking.service else booking.resource.name
+    booked_name = (
+        booking.service.name if booking.service else booking.resource.name
+    )
     send_mail(
         subject=f"Payment received: {booked_name}",
         message=(

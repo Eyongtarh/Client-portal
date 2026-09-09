@@ -9,7 +9,9 @@ from decimal import Decimal
 from django.core import mail
 from django.test import TestCase
 
-from portal.models import Client, Invoice, InvoiceItem, Project, User, Workspace
+from portal.models import (
+    Client, Invoice, InvoiceItem, Project, User, Workspace,
+)
 from portal.tests.helpers import auth_client
 
 

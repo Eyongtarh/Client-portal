@@ -229,7 +229,8 @@ class BookingCheckoutTests(PaymentTestCase):
 @override_settings(STRIPE_WEBHOOK_SECRET="whsec_fake")
 class StripeWebhookTests(PaymentTestCase):
     def _post_event(self, event):
-        with patch("portal.webhooks.stripe.Webhook.construct_event") as mock_construct:
+        target = "portal.webhooks.stripe.Webhook.construct_event"
+        with patch(target) as mock_construct:
             mock_construct.return_value = event
             return self.client.post(
                 "/api/stripe/webhook/",

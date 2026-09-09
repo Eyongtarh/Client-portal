@@ -726,7 +726,10 @@ class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         )
         if verb == "invoice_sent":
             send_mail(
-                subject=f"Invoice #{invoice.number} from {invoice.workspace.name}",
+                subject=(
+                    f"Invoice #{invoice.number} from "
+                    f"{invoice.workspace.name}"
+                ),
                 message=(
                     f"You have a new invoice from {invoice.workspace.name}."
                     f"\n\nInvoice #{invoice.number}\n"

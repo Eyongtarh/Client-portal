@@ -10,7 +10,9 @@ from decimal import Decimal
 from django.test import TestCase
 from django.utils import timezone
 
-from portal.models import Booking, Client, Invoice, InvoiceItem, Service, User, Workspace
+from portal.models import (
+    Booking, Client, Invoice, InvoiceItem, Service, User, Workspace,
+)
 from portal.tests.helpers import auth_client
 
 
@@ -75,7 +77,9 @@ class InvoiceWriteAccessTests(AuthBoundaryTestCase):
 
     def test_client_cannot_delete_an_invoice(self):
         invoice = self._invoice()
-        res = auth_client(self.client_user).delete(f"/api/invoices/{invoice.id}/")
+        res = auth_client(self.client_user).delete(
+            f"/api/invoices/{invoice.id}/"
+        )
         self.assertEqual(res.status_code, 403)
         self.assertTrue(Invoice.objects.filter(pk=invoice.id).exists())
 
