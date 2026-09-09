@@ -18,7 +18,7 @@ export default function MobileNav({ children }) {
         onClick={() => setOpen(!open)}
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
-        className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg border border-line text-ink-soft transition-colors hover:bg-surface-2 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        className="md:hidden relative z-20 inline-flex items-center justify-center w-9 h-9 rounded-lg border border-line text-ink-soft transition-colors hover:bg-surface-2 focus:outline-none focus:ring-2 focus:ring-brand-400"
       >
         <svg
           aria-hidden="true"
@@ -38,14 +38,26 @@ export default function MobileNav({ children }) {
           )}
         </svg>
       </button>
+
+      {/* Dims and separates the page behind the open panel - also
+          the main way to close it besides the buttons themselves,
+          since a stray tap outside a mobile menu should dismiss it. */}
+      {open && (
+        <div
+          aria-hidden="true"
+          onClick={() => setOpen(false)}
+          className="md:hidden fixed inset-0 bg-black/40 z-10"
+        />
+      )}
+
       <div
         className={
           (open ? "flex" : "hidden") +
-          " md:flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-4" +
+          " md:flex flex-col md:flex-row items-center gap-4" +
           " absolute md:static top-full inset-x-0 md:inset-auto" +
-          " bg-surface md:bg-transparent shadow-lg md:shadow-none" +
+          " bg-surface md:bg-transparent shadow-xl md:shadow-none" +
           " border-t border-line md:border-0" +
-          " p-4 md:p-0 z-20"
+          " py-5 px-6 md:p-0 z-20"
         }
       >
         {children}
