@@ -13,7 +13,7 @@ export default function LanguageToggle() {
   const isEnglish = i18n.language === "en";
 
   return (
-    <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+    <div className="inline-flex rounded-lg border border-line overflow-hidden text-sm">
       <button
         onClick={() => setLanguage("en")}
         aria-label="Switch to English"
@@ -22,7 +22,7 @@ export default function LanguageToggle() {
         className={
           isEnglish
             ? "px-3 py-1 bg-brand-600 text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
-            : "px-3 py-1 bg-white text-gray-600 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            : "px-3 py-1 bg-surface text-ink-soft transition-colors hover:bg-surface-2 focus:outline-none focus:ring-2 focus:ring-brand-400"
         }
       >
         EN
@@ -35,7 +35,7 @@ export default function LanguageToggle() {
         className={
           !isEnglish
             ? "px-3 py-1 bg-brand-600 text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
-            : "px-3 py-1 bg-white text-gray-600 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            : "px-3 py-1 bg-surface text-ink-soft transition-colors hover:bg-surface-2 focus:outline-none focus:ring-2 focus:ring-brand-400"
         }
       >
         FR
