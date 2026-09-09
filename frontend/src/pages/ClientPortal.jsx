@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
+import ThemeToggle from "../components/ThemeToggle.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
 import api from "../lib/api";
 
@@ -96,15 +97,16 @@ export default function ClientPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-50">
-      <header className="bg-white border-b border-brand-100 px-8 py-4 flex justify-between items-center">
+    <div className="min-h-screen bg-canvas text-ink">
+      <header className="sticky top-0 z-10 glass-panel px-8 py-4 flex justify-between items-center">
         <div>
-          <h1 className="text-lg font-semibold">{user.company_name}</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-lg font-semibold text-ink">{user.company_name}</h1>
+          <p className="text-sm text-ink-soft">
             {t("clientPortal.welcomeBack")} {user.first_name}
           </p>
         </div>
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <LanguageToggle />
           <button
             onClick={logout}
@@ -135,11 +137,11 @@ export default function ClientPortal() {
         <BookingSection />
         <ReviewsSection />
         {!project && (
-          <p className="text-gray-500">{t("clientPortal.noProjectYet")}</p>
+          <p className="text-ink-soft">{t("clientPortal.noProjectYet")}</p>
         )}
         {project && (
-          <section className="bg-white border border-brand-100 rounded-xl p-6">
-            <h2 className="text-xl font-semibold">{project.name}</h2>
+          <section className="bg-surface border border-line rounded-2xl p-6">
+            <h2 className="text-xl font-semibold text-ink">{project.name}</h2>
             <div className="w-full bg-brand-100 rounded-full h-2 mt-2 mb-1">
               <div
                 className="bg-brand-600 h-2 rounded-full"
@@ -148,7 +150,7 @@ export default function ClientPortal() {
                 }}
               />
             </div>
-            <p className="text-xs text-gray-400 mb-4">
+            <p className="text-xs text-ink-soft mb-4">
               {project.progress_percent}
               {t("clientDetail.percentComplete")}
             </p>
@@ -163,9 +165,9 @@ export default function ClientPortal() {
           </section>
         )}
         {project && (
-          <section className="bg-white border border-brand-100 rounded-xl p-6">
-            <h3 className="font-medium mb-3">{t("clientPortal.documents")}</h3>
-            <ul className="divide-y divide-gray-100">
+          <section className="bg-surface border border-line rounded-2xl p-6">
+            <h3 className="font-medium mb-3 text-ink">{t("clientPortal.documents")}</h3>
+            <ul className="divide-y divide-line">
               {documents.map((doc) => (
                 <li key={doc.id} className="py-2 text-sm">
                   <a
@@ -180,7 +182,7 @@ export default function ClientPortal() {
                 </li>
               ))}
               {documents.length === 0 && (
-                <p className="text-gray-500 text-sm">
+                <p className="text-ink-soft text-sm">
                   {t("clientPortal.noDocuments")}
                 </p>
               )}
@@ -188,9 +190,9 @@ export default function ClientPortal() {
           </section>
         )}
         {project && (
-          <section className="bg-white border border-brand-100 rounded-xl p-6">
-            <h3 className="font-medium mb-3">{t("clientPortal.invoices")}</h3>
-            <ul className="divide-y divide-gray-100">
+          <section className="bg-surface border border-line rounded-2xl p-6">
+            <h3 className="font-medium mb-3 text-ink">{t("clientPortal.invoices")}</h3>
+            <ul className="divide-y divide-line">
               {invoices.map((invoice) => (
                 <li
                   key={invoice.id}
@@ -220,7 +222,7 @@ export default function ClientPortal() {
                 </li>
               ))}
               {invoices.length === 0 && (
-                <p className="text-gray-500 text-sm">
+                <p className="text-ink-soft text-sm">
                   {t("clientPortal.noInvoices")}
                 </p>
               )}
@@ -228,17 +230,17 @@ export default function ClientPortal() {
           </section>
         )}
         {project && (
-          <section className="bg-white border border-brand-100 rounded-xl p-6">
-            <h3 className="font-medium mb-3">{t("clientPortal.approvals")}</h3>
+          <section className="bg-surface border border-line rounded-2xl p-6">
+            <h3 className="font-medium mb-3 text-ink">{t("clientPortal.approvals")}</h3>
             <ul className="space-y-3">
               {approvals.map((approval) => (
                 <li
                   key={approval.id}
-                  className="border border-gray-200 rounded-lg p-4"
+                  className="border border-line rounded-lg p-4"
                 >
                   <p className="font-medium">{approval.title}</p>
                   {approval.description && (
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="text-sm text-ink-soft mb-2">
                       {approval.description}
                     </p>
                   )}
@@ -260,7 +262,7 @@ export default function ClientPortal() {
                           })
                         }
                         placeholder={t("clientPortal.commentPlaceholder")}
-                        className="w-full mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                        className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                       />
                       <div className="flex gap-2">
                         <button
@@ -282,7 +284,7 @@ export default function ClientPortal() {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-ink-soft">
                       {approval.status === "approved"
                         ? t("clientDetail.statusApproved")
                         : t("clientDetail.statusChangesRequested")}
@@ -293,7 +295,7 @@ export default function ClientPortal() {
                 </li>
               ))}
               {approvals.length === 0 && (
-                <p className="text-gray-500 text-sm">
+                <p className="text-ink-soft text-sm">
                   {t("clientPortal.noApprovals")}
                 </p>
               )}
@@ -301,19 +303,19 @@ export default function ClientPortal() {
           </section>
         )}
         {project && (
-          <section className="bg-white border border-brand-100 rounded-xl p-6">
-            <h3 className="font-medium mb-3">{t("clientPortal.messages")}</h3>
+          <section className="bg-surface border border-line rounded-2xl p-6">
+            <h3 className="font-medium mb-3 text-ink">{t("clientPortal.messages")}</h3>
             <div className="space-y-3 mb-4 max-h-72 overflow-y-auto">
               {messages.map((message) => (
                 <div key={message.id} className="text-sm">
-                  <p className="text-xs text-gray-400">{message.sender_name}</p>
+                  <p className="text-xs text-ink-soft">{message.sender_name}</p>
                   <p className="inline-block px-3 py-2 rounded-lg bg-brand-50">
                     {message.body}
                   </p>
                 </div>
               ))}
               {messages.length === 0 && (
-                <p className="text-gray-500 text-sm">
+                <p className="text-ink-soft text-sm">
                   {t("clientPortal.noMessages")}
                 </p>
               )}
@@ -327,7 +329,7 @@ export default function ClientPortal() {
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 placeholder={t("clientPortal.writeMessage")}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                className="flex-1 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
               />
               <button
                 aria-label={t("clientPortal.send")}
@@ -350,7 +352,7 @@ function ClientPaymentBadge({ status }) {
   const styles = {
     pending: "bg-amber-50 text-amber-700 border-amber-200",
     paid: "bg-green-50 text-green-700 border-green-200",
-    refunded: "bg-gray-50 text-gray-600 border-gray-200",
+    refunded: "bg-gray-50 text-ink-soft border-line",
   };
   return (
     <span
@@ -375,7 +377,7 @@ function BookingPolicyNotice({ service, currency }) {
       ? ((service.price * service.deposit_percent) / 100).toFixed(2)
       : null;
   return (
-    <div className="mb-3 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1">
+    <div className="mb-3 text-xs text-ink-soft bg-surface-2 border border-line rounded-lg p-3 space-y-1">
       {service.payment_requirement === "deposit" && (
         <p>
           {t("booking.policyDepositRequired", {
@@ -668,8 +670,8 @@ function BookingSection() {
   const confirmedBookings = myBookings.filter((b) => b.status === "confirmed");
 
   return (
-    <section className="bg-white border border-brand-100 rounded-xl p-6">
-      <h3 className="font-medium mb-3 text-blue-700">
+    <section className="bg-surface border border-line rounded-2xl p-6">
+      <h3 className="font-medium mb-3 text-brand-700">
         {t("booking.bookAppointment")}
       </h3>
 
@@ -686,7 +688,7 @@ function BookingSection() {
         </div>
       )}
 
-      <p className="text-xs text-gray-500 mb-2">{t("booking.bookingType")}</p>
+      <p className="text-xs text-ink-soft mb-2">{t("booking.bookingType")}</p>
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => {
@@ -700,7 +702,7 @@ function BookingSection() {
           className={
             bookingType === "service"
               ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
-              : "px-3 py-1.5 rounded-lg text-sm border border-gray-200 transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              : "px-3 py-1.5 rounded-lg text-sm border border-line transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
           }
         >
           {t("booking.aService")}
@@ -718,7 +720,7 @@ function BookingSection() {
           className={
             bookingType === "resource"
               ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
-              : "px-3 py-1.5 rounded-lg text-sm border border-gray-200 transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              : "px-3 py-1.5 rounded-lg text-sm border border-line transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
           }
         >
           {t("booking.aResource")}
@@ -727,7 +729,7 @@ function BookingSection() {
 
       {bookingType === "service" && (
         <>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-ink-soft mb-2">
             {t("booking.selectService")}
           </p>
           <div className="space-y-2 mb-3">
@@ -740,19 +742,19 @@ function BookingSection() {
                 className={
                   selectedService === String(service.id)
                     ? "w-full flex items-start gap-3 p-3 border-2 border-brand-600 bg-brand-50 rounded-lg text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
-                    : "w-full flex items-start gap-3 p-3 border border-gray-200 rounded-lg text-left transition-colors hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    : "w-full flex items-start gap-3 p-3 border border-line rounded-lg text-left transition-colors hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 }
               >
                 {service.photo ? (
                   <img
                     src={service.photo}
                     alt={`${service.name} photo`}
-                    className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0"
+                    className="w-12 h-12 rounded-lg object-cover border border-line shrink-0"
                   />
                 ) : (
                   <div
                     aria-hidden="true"
-                    className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 shrink-0"
+                    className="w-12 h-12 rounded-lg bg-surface-2 border border-dashed border-line-strong shrink-0"
                   />
                 )}
                 <div>
@@ -763,13 +765,13 @@ function BookingSection() {
                     {service.price && ` \u00b7 ${service.price} ${currency}`}
                   </p>
                   {service.description && (
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-ink-soft mt-0.5">
                       {service.description}
                     </p>
                   )}
                   {service.resource_names &&
                     service.resource_names.length > 0 && (
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-ink-soft mt-0.5">
                         {t("booking.usesResources")}
                         {": "}
                         {service.resource_names.join(", ")}
@@ -779,7 +781,7 @@ function BookingSection() {
               </button>
             ))}
             {services.length === 0 && (
-              <p className="text-gray-500 text-sm">{t("booking.noServices")}</p>
+              <p className="text-ink-soft text-sm">{t("booking.noServices")}</p>
             )}
           </div>
         </>
@@ -787,7 +789,7 @@ function BookingSection() {
 
       {bookingType === "resource" && (
         <>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-ink-soft mb-2">
             {t("booking.selectResource")}
           </p>
           <div className="space-y-2 mb-3">
@@ -800,19 +802,19 @@ function BookingSection() {
                 className={
                   selectedResource === String(resource.id)
                     ? "w-full flex items-start gap-3 p-3 border-2 border-brand-600 bg-brand-50 rounded-lg text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
-                    : "w-full flex items-start gap-3 p-3 border border-gray-200 rounded-lg text-left transition-colors hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    : "w-full flex items-start gap-3 p-3 border border-line rounded-lg text-left transition-colors hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 }
               >
                 {resource.photo ? (
                   <img
                     src={resource.photo}
                     alt={`${resource.name} photo`}
-                    className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0"
+                    className="w-12 h-12 rounded-lg object-cover border border-line shrink-0"
                   />
                 ) : (
                   <div
                     aria-hidden="true"
-                    className="w-12 h-12 rounded-lg bg-gray-50 border border-dashed border-gray-300 shrink-0"
+                    className="w-12 h-12 rounded-lg bg-surface-2 border border-dashed border-line-strong shrink-0"
                   />
                 )}
                 <div>
@@ -822,7 +824,7 @@ function BookingSection() {
                     {formatDuration(resource.duration_minutes)}
                   </p>
                   {resource.description && (
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-ink-soft mt-0.5">
                       {resource.description}
                     </p>
                   )}
@@ -830,7 +832,7 @@ function BookingSection() {
               </button>
             ))}
             {resources.length === 0 && (
-              <p className="text-gray-500 text-sm">
+              <p className="text-ink-soft text-sm">
                 {t("booking.noResources")}
               </p>
             )}
@@ -838,7 +840,7 @@ function BookingSection() {
         </>
       )}
 
-      <label htmlFor="book-date" className="block text-xs text-gray-500 mb-1">
+      <label htmlFor="book-date" className="block text-xs text-ink-soft mb-1">
         {t("booking.selectDate")}
       </label>
       <input
@@ -847,7 +849,7 @@ function BookingSection() {
         min={today}
         value={date}
         onChange={(e) => setDate(e.target.value)}
-        className="w-full mb-3 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+        className="w-full mb-3 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />
 
       {bookingType === "service" && (
@@ -858,7 +860,7 @@ function BookingSection() {
             onChange={(e) => setRepeatWeekly(e.target.checked)}
             className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           />
-          <span className="text-sm text-gray-700">
+          <span className="text-sm text-ink">
             {t("booking.repeatWeekly")}
           </span>
         </label>
@@ -867,7 +869,7 @@ function BookingSection() {
         <div className="mb-3">
           <label
             htmlFor="number-of-weeks"
-            className="block text-xs text-gray-500 mb-1"
+            className="block text-xs text-ink-soft mb-1"
           >
             {t("booking.numberOfWeeks")}
           </label>
@@ -878,7 +880,7 @@ function BookingSection() {
             max="52"
             value={numberOfWeeks}
             onChange={(e) => setNumberOfWeeks(e.target.value)}
-            className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            className="w-24 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
           />
         </div>
       )}
@@ -886,16 +888,16 @@ function BookingSection() {
       {(bookingType === "service" ? selectedService : selectedResource) &&
         date && (
           <div className="mb-4">
-            <p className="text-xs text-gray-500 mb-2">
+            <p className="text-xs text-ink-soft mb-2">
               {t("booking.availableSlots")}
             </p>
             {loadingSlots && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-ink-soft">
                 {t("booking.loadingSlots")}
               </p>
             )}
             {!loadingSlots && slots.length === 0 && (
-              <p className="text-sm text-gray-500">{t("booking.noSlots")}</p>
+              <p className="text-sm text-ink-soft">{t("booking.noSlots")}</p>
             )}
             {!loadingSlots && slots.length > 0 && (
               <div>
@@ -938,15 +940,15 @@ function BookingSection() {
           </div>
         )}
 
-      <div className="mb-4 border-t border-gray-100 pt-4">
-        <p className="text-xs text-gray-500 mb-2">
+      <div className="mb-4 border-t border-line pt-4">
+        <p className="text-xs text-ink-soft mb-2">
           {t("booking.waitlistTitle")}
         </p>
         <div className="flex flex-wrap gap-2 mb-2">
           <div>
             <label
               htmlFor="waitlist-service"
-              className="block text-xs text-gray-500 mb-1"
+              className="block text-xs text-ink-soft mb-1"
             >
               {t("booking.selectService")}
             </label>
@@ -954,7 +956,7 @@ function BookingSection() {
               id="waitlist-service"
               value={selectedService}
               onChange={(e) => setSelectedService(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             >
               <option value="">{t("booking.selectService")}</option>
               {services.map((service) => (
@@ -967,7 +969,7 @@ function BookingSection() {
           <div>
             <label
               htmlFor="waitlist-date"
-              className="block text-xs text-gray-500 mb-1"
+              className="block text-xs text-ink-soft mb-1"
             >
               {t("booking.selectDate")}
             </label>
@@ -977,13 +979,13 @@ function BookingSection() {
               min={today}
               value={waitlistDate}
               onChange={(e) => setWaitlistDate(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
           </div>
           <div>
             <label
               htmlFor="waitlist-time"
-              className="block text-xs text-gray-500 mb-1"
+              className="block text-xs text-ink-soft mb-1"
             >
               {t("booking.startTime")}
             </label>
@@ -992,7 +994,7 @@ function BookingSection() {
               type="time"
               value={waitlistTime}
               onChange={(e) => setWaitlistTime(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
           </div>
           <button
@@ -1004,7 +1006,7 @@ function BookingSection() {
             {t("booking.joinWaitlist")}
           </button>
         </div>
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-line">
           {myWaitlist.map((entry) => (
             <li key={entry.id} className="py-2 text-sm">
               {editingWaitlistId === entry.id ? (
@@ -1012,7 +1014,7 @@ function BookingSection() {
                   <div>
                     <label
                       htmlFor={`edit-waitlist-service-${entry.id}`}
-                      className="block text-xs text-gray-500 mb-1"
+                      className="block text-xs text-ink-soft mb-1"
                     >
                       {t("booking.selectService")}
                     </label>
@@ -1020,7 +1022,7 @@ function BookingSection() {
                       id={`edit-waitlist-service-${entry.id}`}
                       value={editWaitlistService}
                       onChange={(e) => setEditWaitlistService(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                      className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                     >
                       {services.map((service) => (
                         <option key={service.id} value={service.id}>
@@ -1032,7 +1034,7 @@ function BookingSection() {
                   <div>
                     <label
                       htmlFor={`edit-waitlist-date-${entry.id}`}
-                      className="block text-xs text-gray-500 mb-1"
+                      className="block text-xs text-ink-soft mb-1"
                     >
                       {t("booking.selectDate")}
                     </label>
@@ -1042,13 +1044,13 @@ function BookingSection() {
                       min={today}
                       value={editWaitlistDate}
                       onChange={(e) => setEditWaitlistDate(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                      className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                     />
                   </div>
                   <div>
                     <label
                       htmlFor={`edit-waitlist-time-${entry.id}`}
-                      className="block text-xs text-gray-500 mb-1"
+                      className="block text-xs text-ink-soft mb-1"
                     >
                       {t("booking.startTime")}
                     </label>
@@ -1057,7 +1059,7 @@ function BookingSection() {
                       type="time"
                       value={editWaitlistTime}
                       onChange={(e) => setEditWaitlistTime(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                      className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                     />
                   </div>
                   <button
@@ -1070,7 +1072,7 @@ function BookingSection() {
                   <button
                     onClick={cancelEditWaitlist}
                     aria-label={t("booking.cancel")}
-                    className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     {t("booking.cancel")}
                   </button>
@@ -1082,7 +1084,7 @@ function BookingSection() {
                     {" \u00b7 "}
                     {new Date(entry.start_time).toLocaleString()}
                     {" \u00b7 "}
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-ink-soft">
                       {entry.notified
                         ? t("booking.notified")
                         : t("booking.waiting")}
@@ -1099,7 +1101,7 @@ function BookingSection() {
                     <button
                       onClick={() => leaveWaitlist(entry.id)}
                       aria-label={t("booking.leaveWaitlist")}
-                      className="bg-gray-100 text-gray-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      className="bg-surface-2 text-ink-soft text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                     >
                       {t("booking.leaveWaitlist")}
                     </button>
@@ -1109,17 +1111,17 @@ function BookingSection() {
             </li>
           ))}
           {myWaitlist.length === 0 && (
-            <p className="text-gray-500 text-xs">
+            <p className="text-ink-soft text-xs">
               {t("booking.noWaitlistEntries")}
             </p>
           )}
         </ul>
       </div>
 
-      <h4 className="text-xs text-gray-500 mb-2 mt-4">
+      <h4 className="text-xs text-ink-soft mb-2 mt-4">
         {t("booking.bookingsTitle")}
       </h4>
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-line">
         {confirmedBookings.map((booking) => (
           <li key={booking.id} className="py-2 text-sm">
             {editingId === booking.id ? (
@@ -1127,7 +1129,7 @@ function BookingSection() {
                 <div>
                   <label
                     htmlFor={`edit-mybooking-service-${booking.id}`}
-                    className="block text-xs text-gray-500 mb-1"
+                    className="block text-xs text-ink-soft mb-1"
                   >
                     {t("booking.selectService")}
                   </label>
@@ -1135,7 +1137,7 @@ function BookingSection() {
                     id={`edit-mybooking-service-${booking.id}`}
                     value={editService}
                     onChange={(e) => setEditService(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   >
                     {services.map((service) => (
                       <option key={service.id} value={service.id}>
@@ -1147,7 +1149,7 @@ function BookingSection() {
                 <div>
                   <label
                     htmlFor={`edit-mybooking-date-${booking.id}`}
-                    className="block text-xs text-gray-500 mb-1"
+                    className="block text-xs text-ink-soft mb-1"
                   >
                     {t("booking.selectDate")}
                   </label>
@@ -1157,13 +1159,13 @@ function BookingSection() {
                     min={today}
                     value={editDate}
                     onChange={(e) => setEditDate(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
                 </div>
                 <div>
                   <label
                     htmlFor={`edit-mybooking-time-${booking.id}`}
-                    className="block text-xs text-gray-500 mb-1"
+                    className="block text-xs text-ink-soft mb-1"
                   >
                     {t("booking.startTime")}
                   </label>
@@ -1172,7 +1174,7 @@ function BookingSection() {
                     type="time"
                     value={editTime}
                     onChange={(e) => setEditTime(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
                 </div>
                 <button
@@ -1185,7 +1187,7 @@ function BookingSection() {
                 <button
                   onClick={cancelEditMine}
                   aria-label={t("booking.cancel")}
-                  className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   {t("booking.cancel")}
                 </button>
@@ -1229,7 +1231,7 @@ function BookingSection() {
                 </div>
                 {booking.series && (
                   <div className="flex justify-between items-center mt-1">
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-ink-soft">
                       {t("booking.partOfSeries")}
                     </span>
                     <button
@@ -1246,7 +1248,7 @@ function BookingSection() {
           </li>
         ))}
         {confirmedBookings.length === 0 && (
-          <p className="text-gray-500 text-sm">{t("booking.noBookings")}</p>
+          <p className="text-ink-soft text-sm">{t("booking.noBookings")}</p>
         )}
       </ul>
     </section>
@@ -1350,7 +1352,7 @@ function ReviewsSection() {
             className={
               n <= value
                 ? "text-xl text-yellow-500 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
-                : "text-xl text-gray-300 transition-colors hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                : "text-xl text-ink-soft transition-colors hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
             }
           >
             {"\u2605"}
@@ -1363,8 +1365,8 @@ function ReviewsSection() {
   if (completedBookings.length === 0) return null;
 
   return (
-    <section className="bg-white border border-brand-100 rounded-xl p-6">
-      <h3 className="font-medium mb-3">{t("booking.reviewsTitle")}</h3>
+    <section className="bg-surface border border-line rounded-2xl p-6">
+      <h3 className="font-medium mb-3 text-ink">{t("booking.reviewsTitle")}</h3>
       {statusMsg && (
         <div
           role="status"
@@ -1377,7 +1379,7 @@ function ReviewsSection() {
           {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
         </div>
       )}
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-line">
         {completedBookings.map((booking) => {
           const review = reviewFor(booking.id);
           return (
@@ -1388,8 +1390,8 @@ function ReviewsSection() {
                 {new Date(booking.start_time).toLocaleDateString()}
               </p>
               {!review && (
-                <div className="border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">
+                <div className="border border-line rounded-lg p-3">
+                  <p className="text-xs text-ink-soft mb-1">
                     {t("booking.yourRating")}
                   </p>
                   <StarPicker
@@ -1415,7 +1417,7 @@ function ReviewsSection() {
                       })
                     }
                     rows={2}
-                    className="w-full mt-2 mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    className="w-full mt-2 mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
                   <button
                     onClick={() => submitReview(booking.id)}
@@ -1427,15 +1429,15 @@ function ReviewsSection() {
                 </div>
               )}
               {review && editingId !== review.id && (
-                <div className="border border-gray-200 rounded-lg p-3">
+                <div className="border border-line rounded-lg p-3">
                   <div className="flex text-yellow-500 mb-1">
                     {"\u2605".repeat(review.rating)}
-                    <span className="text-gray-300">
+                    <span className="text-ink-soft">
                       {"\u2605".repeat(5 - review.rating)}
                     </span>
                   </div>
                   {review.comment && (
-                    <p className="text-gray-600 mb-2">{review.comment}</p>
+                    <p className="text-ink-soft mb-2">{review.comment}</p>
                   )}
                   {review.owner_response && (
                     <p className="text-xs bg-brand-50 rounded p-2 mb-2">
@@ -1465,7 +1467,7 @@ function ReviewsSection() {
               )}
               {review && editingId === review.id && (
                 <div className="border border-brand-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">
+                  <p className="text-xs text-ink-soft mb-1">
                     {t("booking.yourRating")}
                   </p>
                   <StarPicker value={editRating} onChange={setEditRating} />
@@ -1480,7 +1482,7 @@ function ReviewsSection() {
                     value={editComment}
                     onChange={(e) => setEditComment(e.target.value)}
                     rows={2}
-                    className="w-full mt-2 mb-2 px-3 py-2 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    className="w-full mt-2 mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
                   <div className="flex gap-2">
                     <button
@@ -1493,7 +1495,7 @@ function ReviewsSection() {
                     <button
                       onClick={cancelEdit}
                       aria-label={t("booking.cancel")}
-                      className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                     >
                       {t("booking.cancel")}
                     </button>
