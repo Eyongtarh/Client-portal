@@ -334,18 +334,50 @@ class PasswordResetConfirmView(generics.CreateAPIView):
         return Response(status=status.HTTP_200_OK)
 
 
-class ProjectViewSet(viewsets.ModelViewSet):
+class QueryParamFilterMixin:
+    """Lets an optional query param (e.g. ?client=3 or ?project=7)
+    narrow an already tenant-scoped list, without ever letting it
+    escape that tenant scoping - it only ever adds a further
+    .filter() on top of what get_queryset() already restricted to
+    this workspace/client. Set filter_param (the query string key)
+    and filter_field (the ORM field to filter on) on the viewset.
+
+    This exists because every list endpoint used to silently ignore
+    these params for owner/staff - e.g. GET /projects/?client=3
+    returned every project in the workspace, not just client 3's -
+    so the client-detail page could show one client's tabs full of
+    a *different* client's tasks/documents/messages/invoices/
+    approvals in any workspace with more than one client.
+    """
+    filter_param = None
+    filter_field = None
+
+    def filter_by_query_param(self, queryset):
+        if not self.filter_param:
+            return queryset
+        value = self.request.query_params.get(self.filter_param)
+        if not value or not str(value).isdigit():
+            return queryset
+        return queryset.filter(**{self.filter_field: value})
+
+
+class ProjectViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Owners and staff manage their workspace's projects; clients
-    see only their own project(s).
+    see only their own project(s). ?client=<id> narrows the list to
+    one client's project(s) - used by the client-detail page.
     """
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
+    filter_param = "client"
+    filter_field = "client_id"
 
     def get_queryset(self):
         user = self.request.user
         if user.role in ("owner", "staff"):
-            return Project.objects.filter(workspace=user.get_workspace())
-        return Project.objects.filter(client=user.client_profile)
+            qs = Project.objects.filter(workspace=user.get_workspace())
+        else:
+            qs = Project.objects.filter(client=user.client_profile)
+        return self.filter_by_query_param(qs)
 
     def perform_create(self, serializer):
         project = serializer.save(workspace=self.request.user.get_workspace())
@@ -371,22 +403,26 @@ class ProjectViewSet(viewsets.ModelViewSet):
             )
 
 
-class MilestoneViewSet(viewsets.ModelViewSet):
+class MilestoneViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Same tenant-scoping pattern as ProjectViewSet, scoped through
-    the parent project.
+    the parent project. ?project=<id> narrows to one project.
     """
     serializer_class = MilestoneSerializer
     permission_classes = [IsAuthenticated]
+    filter_param = "project"
+    filter_field = "project_id"
 
     def get_queryset(self):
         user = self.request.user
         if user.role in ("owner", "staff"):
-            return Milestone.objects.filter(
+            qs = Milestone.objects.filter(
                 project__workspace=user.get_workspace()
             )
-        return Milestone.objects.filter(
-            project__client=user.client_profile
-        )
+        else:
+            qs = Milestone.objects.filter(
+                project__client=user.client_profile
+            )
+        return self.filter_by_query_param(qs)
 
     def perform_update(self, serializer):
         was_complete = serializer.instance.is_complete
@@ -401,20 +437,26 @@ class MilestoneViewSet(viewsets.ModelViewSet):
             )
 
 
-class TaskViewSet(viewsets.ModelViewSet):
-    """Same tenant-scoping pattern as MilestoneViewSet."""
+class TaskViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
+    """Same tenant-scoping pattern as MilestoneViewSet. ?project=<id>
+    narrows to one project.
+    """
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
+    filter_param = "project"
+    filter_field = "project_id"
 
     def get_queryset(self):
         user = self.request.user
         if user.role in ("owner", "staff"):
-            return Task.objects.filter(
+            qs = Task.objects.filter(
                 project__workspace=user.get_workspace()
             )
-        return Task.objects.filter(
-            project__client=user.client_profile
-        )
+        else:
+            qs = Task.objects.filter(
+                project__client=user.client_profile
+            )
+        return self.filter_by_query_param(qs)
 
     def perform_update(self, serializer):
         was_complete = serializer.instance.is_complete
@@ -429,24 +471,28 @@ class TaskViewSet(viewsets.ModelViewSet):
             )
 
 
-class ApprovalViewSet(viewsets.ModelViewSet):
+class ApprovalViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Same tenant-scoping pattern as TaskViewSet. Owners and
     staff can create/edit; clients get read-only access here and
     record their decision through the separate 'decide' action
-    below.
+    below. ?project=<id> narrows to one project.
     """
     serializer_class = ApprovalSerializer
     permission_classes = [IsAuthenticated]
+    filter_param = "project"
+    filter_field = "project_id"
 
     def get_queryset(self):
         user = self.request.user
         if user.role in ("owner", "staff"):
-            return Approval.objects.filter(
+            qs = Approval.objects.filter(
                 project__workspace=user.get_workspace()
             )
-        return Approval.objects.filter(
-            project__client=user.client_profile
-        )
+        else:
+            qs = Approval.objects.filter(
+                project__client=user.client_profile
+            )
+        return self.filter_by_query_param(qs)
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
@@ -519,23 +565,28 @@ class ApprovalDecisionView(APIView):
         return Response(ApprovalSerializer(approval).data)
 
 
-class DocumentViewSet(viewsets.ModelViewSet):
+class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Same tenant-scoping pattern as MilestoneViewSet. On create,
     we capture who uploaded it and the file's size automatically -
-    the client never has to send those.
+    the client never has to send those. ?project=<id> narrows to
+    one project.
     """
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
+    filter_param = "project"
+    filter_field = "project_id"
 
     def get_queryset(self):
         user = self.request.user
         if user.role in ("owner", "staff"):
-            return Document.objects.filter(
+            qs = Document.objects.filter(
                 project__workspace=user.get_workspace()
             )
-        return Document.objects.filter(
-            project__client=user.client_profile
-        )
+        else:
+            qs = Document.objects.filter(
+                project__client=user.client_profile
+            )
+        return self.filter_by_query_param(qs)
 
     def perform_create(self, serializer):
         uploaded_file = self.request.FILES.get("file")
@@ -553,40 +604,48 @@ class DocumentViewSet(viewsets.ModelViewSet):
         )
 
 
-class MessageViewSet(viewsets.ModelViewSet):
+class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Same tenant-scoping pattern as the other project-scoped
     viewsets. The sender is always the logged-in user, never
-    client-supplied.
+    client-supplied. ?project=<id> narrows to one project.
     """
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
+    filter_param = "project"
+    filter_field = "project_id"
 
     def get_queryset(self):
         user = self.request.user
         if user.role in ("owner", "staff"):
-            return Message.objects.filter(
+            qs = Message.objects.filter(
                 project__workspace=user.get_workspace()
             )
-        return Message.objects.filter(
-            project__client=user.client_profile
-        )
+        else:
+            qs = Message.objects.filter(
+                project__client=user.client_profile
+            )
+        return self.filter_by_query_param(qs)
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
 
 
-class InvoiceViewSet(viewsets.ModelViewSet):
+class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Same tenant-scoping pattern as the other workspace-scoped
-    viewsets.
+    viewsets. ?client=<id> narrows to one client's invoices.
     """
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
+    filter_param = "client"
+    filter_field = "client_id"
 
     def get_queryset(self):
         user = self.request.user
         if user.role in ("owner", "staff"):
-            return Invoice.objects.filter(workspace=user.get_workspace())
-        return Invoice.objects.filter(client=user.client_profile)
+            qs = Invoice.objects.filter(workspace=user.get_workspace())
+        else:
+            qs = Invoice.objects.filter(client=user.client_profile)
+        return self.filter_by_query_param(qs)
 
     def perform_create(self, serializer):
         invoice = serializer.save(workspace=self.request.user.get_workspace())
