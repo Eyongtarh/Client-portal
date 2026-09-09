@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../lib/api";
-import LanguageToggle from "../components/LanguageToggle.jsx";
+import AuthShell from "../components/AuthShell.jsx";
 
 export default function ResetPassword() {
   const { uid, token } = useParams();
@@ -36,24 +36,25 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-brand-50 gap-4">
-      <LanguageToggle />
+    <AuthShell>
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm bg-white p-8 rounded-xl shadow-sm border border-brand-100"
+        className="bg-surface border border-line rounded-2xl shadow-xl shadow-black/5 p-8"
       >
-        <h1 className="text-xl font-semibold mb-6">Set a new password</h1>
+        <h1 className="text-xl font-semibold mb-6 text-ink">
+          Set a new password
+        </h1>
         {error && (
           <div
             role="alert"
-            className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2"
+            className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5"
           >
             {error}
           </div>
         )}
         <label
           htmlFor="reset-password"
-          className="block text-sm mb-1 text-gray-600"
+          className="block text-sm mb-1 text-ink-soft"
         >
           New password (8+ characters)
         </label>
@@ -63,16 +64,16 @@ export default function ResetPassword() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-6 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          className="w-full mb-6 px-3 py-2 bg-canvas border border-line rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
         />
         <button
           disabled={busy}
           aria-label="Set new password"
-          className="w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="glow-brand w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           {busy ? "Saving..." : "Set new password"}
         </button>
-        <p className="text-sm text-gray-500 mt-4 text-center">
+        <p className="text-sm text-ink-soft mt-4 text-center">
           <Link
             to="/login"
             aria-label="Back to sign in"
@@ -82,6 +83,6 @@ export default function ResetPassword() {
           </Link>
         </p>
       </form>
-    </div>
+    </AuthShell>
   );
 }

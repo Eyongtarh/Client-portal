@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
-import LanguageToggle from "../components/LanguageToggle.jsx";
+import AuthShell from "../components/AuthShell.jsx";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -23,23 +23,24 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-brand-50 gap-4">
-      <LanguageToggle />
-      <div className="w-full max-w-sm bg-white p-8 rounded-xl shadow-sm border border-brand-100">
+    <AuthShell>
+      <div className="bg-surface border border-line rounded-2xl shadow-xl shadow-black/5 p-8">
         {sent ? (
-          <p role="status" className="text-sm text-gray-700">
+          <p role="status" className="text-sm text-ink">
             If an account exists for that email, a reset link has been sent.
             Check your inbox.
           </p>
         ) : (
           <form onSubmit={onSubmit}>
-            <h1 className="text-xl font-semibold mb-1">Reset your password</h1>
-            <p className="text-sm text-gray-500 mb-6">
+            <h1 className="text-xl font-semibold mb-1 text-ink">
+              Reset your password
+            </h1>
+            <p className="text-sm text-ink-soft mb-6">
               Enter your email and we'll send you a reset link.
             </p>
             <label
               htmlFor="forgot-email"
-              className="block text-sm mb-1 text-gray-600"
+              className="block text-sm mb-1 text-ink-soft"
             >
               Email
             </label>
@@ -49,18 +50,18 @@ export default function ForgotPassword() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full mb-6 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              className="w-full mb-6 px-3 py-2 bg-canvas border border-line rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
             <button
               disabled={busy}
               aria-label="Send password reset link"
-              className="w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="glow-brand w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               {busy ? "Sending..." : "Send reset link"}
             </button>
           </form>
         )}
-        <p className="text-sm text-gray-500 mt-4 text-center">
+        <p className="text-sm text-ink-soft mt-4 text-center">
           <Link
             to="/login"
             aria-label="Back to sign in"
@@ -70,6 +71,6 @@ export default function ForgotPassword() {
           </Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }
