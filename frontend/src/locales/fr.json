@@ -123,7 +123,8 @@
     "recentlyCompleted": "R\u00e9cemment termin\u00e9es",
     "policyDepositRequired": "Un acompte de {{percent}}% ({{amount}} {{currency}}) est requis pour confirmer cette r\u00e9servation.",
     "policyFullPaymentRequired": "Le paiement int\u00e9gral ({{amount}} {{currency}}) est requis pour confirmer cette r\u00e9servation.",
-    "policyCancellationFee": "Toute annulation dans les {{hours}} heures pr\u00e9c\u00e9dant le rendez-vous entra\u00eene des frais de {{percent}}%."
+    "policyCancellationFee": "Toute annulation dans les {{hours}} heures pr\u00e9c\u00e9dant le rendez-vous entra\u00eene des frais de {{percent}}%.",
+    "payNow": "Payer maintenant"
   },
   "team": {
     "teamTitle": "\u00c9quipe",
@@ -297,7 +298,10 @@
     "noApprovals": "Aucune demande d'approbation pour le moment.",
     "approve": "Approuver",
     "requestChanges": "Demander des modifications",
-    "commentPlaceholder": "Ajouter un commentaire (facultatif)..."
+    "commentPlaceholder": "Ajouter un commentaire (facultatif)...",
+    "payNow": "Payer maintenant",
+    "paymentSuccess": "Paiement r\u00e9ussi. Merci !",
+    "paymentCancelled": "Le paiement a \u00e9t\u00e9 annul\u00e9 - rien n'a \u00e9t\u00e9 d\u00e9bit\u00e9."
   },
   "subscription": {
     "planTitle": "Forfait et utilisation",
@@ -367,7 +371,8 @@
       "booking_created": "{{actor}} a r\u00e9serv\u00e9 {{target}}",
       "booking_cancelled": "{{actor}} a annul\u00e9 {{target}}",
       "review_submitted": "{{actor}} a laiss\u00e9 un avis sur {{target}}",
-      "review_responded": "{{actor}} a r\u00e9pondu \u00e0 un avis sur {{target}}"
+      "review_responded": "{{actor}} a r\u00e9pondu \u00e0 un avis sur {{target}}",
+      "booking_payment_received": "Paiement re\u00e7u pour {{target}}"
     },
     "statuses": {
       "active": "actif",

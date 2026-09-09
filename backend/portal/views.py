@@ -2,6 +2,7 @@ import io
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import stripe
 from django.conf import settings
 from django.core.mail import send_mail
 from django.http import FileResponse
@@ -16,6 +17,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .activity import log as log_activity
+from .payments import create_checkout_session
 from .models import (
     Activity, Approval, Booking, Client, Document, Invoice, Message,
     Milestone, Project, RecurringSeries, Resource, Review, Service,
@@ -691,6 +693,88 @@ class InvoicePDFView(APIView):
         return FileResponse(
             buf, as_attachment=True, filename=filename
         )
+
+
+class InvoiceCheckoutView(APIView):
+    """POST /api/invoices/<id>/checkout/ - client starts a Stripe
+    Checkout session to pay this invoice online (PAY-01). Returns
+    the session URL to redirect the browser to. The invoice is
+    never marked paid here - only webhooks.StripeWebhookView does
+    that once Stripe itself confirms the charge, so a client can
+    never just claim they paid.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        user = request.user
+        if user.role != "client":
+            raise PermissionDenied("Only the client can pay an invoice.")
+        if not settings.STRIPE_SECRET_KEY:
+            raise ValidationError(
+                "Online payments aren't configured for this workspace yet."
+            )
+        invoice = generics.get_object_or_404(
+            Invoice.objects.filter(client=user.client_profile), pk=pk
+        )
+        if invoice.status == "paid":
+            raise ValidationError("This invoice is already paid.")
+        if invoice.total <= 0:
+            raise ValidationError("This invoice has no amount due.")
+        try:
+            session = create_checkout_session(
+                amount=invoice.total,
+                currency=invoice.workspace.currency,
+                description=f"Invoice #{invoice.number}",
+                success_url=f"{settings.FRONTEND_URL}/?payment=success",
+                cancel_url=f"{settings.FRONTEND_URL}/?payment=cancelled",
+                metadata={"type": "invoice", "invoice_id": str(invoice.id)},
+                customer_email=user.email,
+            )
+        except stripe.error.StripeError as exc:
+            raise ValidationError(str(exc))
+        invoice.stripe_checkout_session_id = session.id
+        invoice.save(update_fields=["stripe_checkout_session_id"])
+        return Response({"url": session.url})
+
+
+class BookingCheckoutView(APIView):
+    """POST /api/bookings/<id>/checkout/ - client pays the deposit
+    or full amount required to secure a booking (BOOK-72/73). Same
+    webhook-confirms-payment pattern as InvoiceCheckoutView.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        user = request.user
+        if user.role != "client":
+            raise PermissionDenied("Only the client can pay for a booking.")
+        if not settings.STRIPE_SECRET_KEY:
+            raise ValidationError(
+                "Online payments aren't configured for this workspace yet."
+            )
+        booking = generics.get_object_or_404(
+            Booking.objects.filter(client=user.client_profile), pk=pk
+        )
+        if booking.payment_status != "pending":
+            raise ValidationError("This booking has no pending payment.")
+        booked_name = (
+            booking.service.name if booking.service else booking.resource.name
+        )
+        try:
+            session = create_checkout_session(
+                amount=booking.payment_amount,
+                currency=booking.workspace.currency,
+                description=f"Booking: {booked_name}",
+                success_url=f"{settings.FRONTEND_URL}/?payment=success",
+                cancel_url=f"{settings.FRONTEND_URL}/?payment=cancelled",
+                metadata={"type": "booking", "booking_id": str(booking.id)},
+                customer_email=user.email,
+            )
+        except stripe.error.StripeError as exc:
+            raise ValidationError(str(exc))
+        booking.stripe_checkout_session_id = session.id
+        booking.save(update_fields=["stripe_checkout_session_id"])
+        return Response({"url": session.url})
 
 
 class ClientViewSet(viewsets.ModelViewSet):

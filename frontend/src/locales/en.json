@@ -123,7 +123,8 @@
     "recentlyCompleted": "Recently completed",
     "policyDepositRequired": "A {{percent}}% deposit ({{amount}} {{currency}}) is required to secure this booking.",
     "policyFullPaymentRequired": "Full payment ({{amount}} {{currency}}) is required to secure this booking.",
-    "policyCancellationFee": "Cancelling within {{hours}} hours of the appointment incurs a {{percent}}% late-cancellation fee."
+    "policyCancellationFee": "Cancelling within {{hours}} hours of the appointment incurs a {{percent}}% late-cancellation fee.",
+    "payNow": "Pay now"
   },
   "team": {
     "teamTitle": "Team",
@@ -297,7 +298,10 @@
     "noApprovals": "No approval requests yet.",
     "approve": "Approve",
     "requestChanges": "Request changes",
-    "commentPlaceholder": "Add a comment (optional)..."
+    "commentPlaceholder": "Add a comment (optional)...",
+    "payNow": "Pay now",
+    "paymentSuccess": "Payment successful. Thank you!",
+    "paymentCancelled": "Payment was cancelled - nothing was charged."
   },
   "subscription": {
     "planTitle": "Plan & Usage",
@@ -367,7 +371,8 @@
       "booking_created": "{{actor}} booked {{target}}",
       "booking_cancelled": "{{actor}} cancelled {{target}}",
       "review_submitted": "{{actor}} left a review on {{target}}",
-      "review_responded": "{{actor}} responded to a review on {{target}}"
+      "review_responded": "{{actor}} responded to a review on {{target}}",
+      "booking_payment_received": "Payment received for {{target}}"
     },
     "statuses": {
       "active": "active",

@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from . import views
+from . import views, webhooks
 
 router = DefaultRouter()
 router.register("projects", views.ProjectViewSet, basename="project")
@@ -84,6 +84,15 @@ urlpatterns = [
     path(
         "invoices/<int:pk>/pdf/", views.InvoicePDFView.as_view()
     ),
+    path(
+        "invoices/<int:pk>/checkout/",
+        views.InvoiceCheckoutView.as_view(),
+    ),
+    path(
+        "bookings/<int:pk>/checkout/",
+        views.BookingCheckoutView.as_view(),
+    ),
+    path("stripe/webhook/", webhooks.StripeWebhookView.as_view()),
     path("", include(router.urls)),
     path("availability/", views.AvailabilityView.as_view()),
     path(

@@ -34,6 +34,16 @@ export default function ClientPortal() {
   const [approvals, setApprovals] = useState([]);
   const [comments, setComments] = useState({});
   const [body, setBody] = useState("");
+  const [paymentBanner, setPaymentBanner] = useState(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    if (payment === "success" || payment === "cancelled") {
+      setPaymentBanner(payment);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   async function loadAll() {
     const projectsRes = await api.get(`/projects/?client=${user.client_id}`);
@@ -73,6 +83,10 @@ export default function ClientPortal() {
     const url = URL.createObjectURL(res.data);
     window.open(url, "_blank");
   }
+  async function payInvoice(invoiceId) {
+    const res = await api.post(`/invoices/${invoiceId}/checkout/`);
+    window.location.href = res.data.url;
+  }
   async function decide(approvalId, decisionStatus) {
     await api.post(`/approvals/${approvalId}/decide/`, {
       status: decisionStatus,
@@ -101,6 +115,22 @@ export default function ClientPortal() {
           </button>
         </div>
       </header>
+      {paymentBanner && (
+        <div className="max-w-2xl mx-auto px-8 pt-4">
+          <div
+            role="status"
+            className={
+              paymentBanner === "success"
+                ? "text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+                : "text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3"
+            }
+          >
+            {paymentBanner === "success"
+              ? t("clientPortal.paymentSuccess")
+              : t("clientPortal.paymentCancelled")}
+          </div>
+        </div>
+      )}
       <main className="max-w-2xl mx-auto px-8 py-8 space-y-6">
         <BookingSection />
         <ReviewsSection />
@@ -169,13 +199,24 @@ export default function ClientPortal() {
                   <span>
                     {`#${invoice.number} - ${invoice.total} - ${invoice.status}`}
                   </span>
-                  <button
-                    onClick={() => downloadPdf(invoice.id)}
-                    aria-label={`Download invoice ${invoice.number} as PDF`}
-                    className="text-brand-700 underline transition-colors hover:text-brand-900 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
-                  >
-                    {t("clientPortal.pdf")}
-                  </button>
+                  <span className="flex gap-3 items-center">
+                    {invoice.status !== "paid" && (
+                      <button
+                        onClick={() => payInvoice(invoice.id)}
+                        aria-label={`Pay invoice ${invoice.number} online`}
+                        className="bg-brand-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      >
+                        {t("clientPortal.payNow")}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => downloadPdf(invoice.id)}
+                      aria-label={`Download invoice ${invoice.number} as PDF`}
+                      className="text-brand-700 underline transition-colors hover:text-brand-900 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                    >
+                      {t("clientPortal.pdf")}
+                    </button>
+                  </span>
                 </li>
               ))}
               {invoices.length === 0 && (
@@ -503,6 +544,11 @@ function BookingSection() {
     });
     setStatusMsg({ key: "booking.bookingCancelledMsg", type: "error" });
     loadMyBookings();
+  }
+
+  async function payForBooking(bookingId) {
+    const res = await api.post(`/bookings/${bookingId}/checkout/`);
+    window.location.href = res.data.url;
   }
 
   function startEditMine(booking) {
@@ -1154,6 +1200,15 @@ function BookingSection() {
                     <ClientPaymentBadge status={booking.payment_status} />
                   </span>
                   <div className="flex gap-2">
+                    {booking.payment_status === "pending" && (
+                      <button
+                        onClick={() => payForBooking(booking.id)}
+                        aria-label={`${t("booking.payNow")} - ${booking.service_name}`}
+                        className="bg-brand-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      >
+                        {t("booking.payNow")}
+                      </button>
+                    )}
                     {booking.service && (
                       <button
                         onClick={() => startEditMine(booking)}

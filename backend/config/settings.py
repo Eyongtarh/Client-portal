@@ -176,3 +176,6 @@ MEDIA_URL = "/media/"
 FRONTEND_URL = config(
     "FRONTEND_URL", default="http://localhost:5173"
 )
+
+STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
+STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
