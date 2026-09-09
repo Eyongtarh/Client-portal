@@ -63,12 +63,12 @@ export default function SearchBar() {
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results && setOpen(true)}
         placeholder={t("search.placeholder")}
-        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+        className="w-full px-3 py-1.5 bg-canvas border border-line rounded-lg text-sm text-ink transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
       />
       {open && results && (
-        <div className="absolute z-10 mt-1 w-full bg-white border border-brand-100 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+        <div className="absolute z-10 mt-1 w-full bg-surface border border-line rounded-lg shadow-lg max-h-96 overflow-y-auto">
           {!hasResults && (
-            <p className="text-sm text-gray-500 p-3">{t("search.noResults")}</p>
+            <p className="text-sm text-ink-soft p-3">{t("search.noResults")}</p>
           )}
           {results.clients.length > 0 && (
             <ResultGroup title={t("search.clients")}>
@@ -148,8 +148,8 @@ export default function SearchBar() {
 
 function ResultGroup({ title, children }) {
   return (
-    <div className="border-b border-gray-100 last:border-b-0">
-      <p className="text-xs font-medium text-gray-400 px-3 pt-2">{title}</p>
+    <div className="border-b border-line last:border-b-0">
+      <p className="text-xs font-medium text-ink-soft px-3 pt-2">{title}</p>
       <ul>{children}</ul>
     </div>
   );
@@ -160,11 +160,11 @@ function ResultRow({ onClick, primary, secondary }) {
     <li>
       <button
         onClick={onClick}
-        className="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 transition-colors focus:outline-none focus:bg-brand-50"
+        className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-brand-50 transition-colors focus:outline-none focus:bg-brand-50"
       >
         <span className="block truncate">{primary}</span>
         {secondary && (
-          <span className="block text-xs text-gray-400 truncate">
+          <span className="block text-xs text-ink-soft truncate">
             {secondary}
           </span>
         )}

@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
+import ThemeToggle from "../components/ThemeToggle.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
 import SearchBar from "../components/SearchBar.jsx";
 import api from "../lib/api";
@@ -117,8 +118,8 @@ export default function OwnerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-50">
-      <header className="bg-white border-b border-brand-100 px-8 py-4 flex justify-between items-center">
+    <div className="min-h-screen bg-canvas text-ink">
+      <header className="sticky top-0 z-10 glass-panel px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
           {isOwner ? (
             <label
@@ -167,7 +168,7 @@ export default function OwnerDashboard() {
                 value={nameValue}
                 onChange={(e) => setNameValue(e.target.value)}
                 autoFocus
-                className="px-2 py-1 border border-gray-300 rounded-lg text-lg font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                className="px-2 py-1 bg-canvas border border-line rounded-lg text-lg font-semibold text-ink transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
               />
               <button
                 onClick={saveName}
@@ -179,7 +180,7 @@ export default function OwnerDashboard() {
               <button
                 onClick={cancelEditName}
                 aria-label={t("clientDetail.cancel")}
-                className="bg-gray-100 text-gray-700 px-3 py-1 rounded-lg text-sm font-medium transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="bg-surface-2 text-ink-soft px-3 py-1 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
                 {t("clientDetail.cancel")}
               </button>
@@ -221,6 +222,7 @@ export default function OwnerDashboard() {
           >
             Booking
           </Link>
+          <ThemeToggle />
           <LanguageToggle />
           <button
             onClick={logout}
@@ -286,19 +288,19 @@ export default function OwnerDashboard() {
           {showInviteForm && (
             <form
               onSubmit={onInviteSubmit}
-              className="bg-white border border-brand-100 rounded-xl p-6 mb-6"
+              className="bg-surface border border-line rounded-2xl p-6 mb-6"
             >
               {inviteError && (
                 <div
                   role="alert"
-                  className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2"
+                  className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5"
                 >
                   {inviteError}
                 </div>
               )}
               <label
                 htmlFor="invite-company"
-                className="block text-sm mb-1 text-gray-600"
+                className="block text-sm mb-1 text-ink-soft"
               >
                 {t("dashboard.companyName")}
               </label>
@@ -307,11 +309,11 @@ export default function OwnerDashboard() {
                 required
                 value={inviteCompany}
                 onChange={(e) => setInviteCompany(e.target.value)}
-                className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                className="w-full mb-4 px-3 py-2 bg-canvas border border-line rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
               />
               <label
                 htmlFor="invite-email"
-                className="block text-sm mb-1 text-gray-600"
+                className="block text-sm mb-1 text-ink-soft"
               >
                 {t("dashboard.clientEmail")}
               </label>
@@ -321,7 +323,7 @@ export default function OwnerDashboard() {
                 required
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                className="w-full mb-4 px-3 py-2 bg-canvas border border-line rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
               />
               <button
                 disabled={inviteBusy}
@@ -340,14 +342,14 @@ export default function OwnerDashboard() {
                 key={client.id}
                 to={`/clients/${client.id}`}
                 aria-label={`View ${client.company_name}`}
-                className="block bg-white border border-brand-100 rounded-xl p-4 transition-all hover:shadow-md hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="block bg-surface border border-line rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
-                <p className="font-medium">{client.company_name}</p>
-                <p className="text-sm text-gray-500">{client.contact_email}</p>
+                <p className="font-medium text-ink">{client.company_name}</p>
+                <p className="text-sm text-ink-soft">{client.contact_email}</p>
               </Link>
             ))}
             {clients.length === 0 && (
-              <p className="text-gray-500 text-sm">
+              <p className="text-ink-soft text-sm">
                 {t("dashboard.noClients")}
               </p>
             )}
@@ -455,11 +457,11 @@ function TeamSection({ isOwner }) {
       {isOwner && showInviteForm && (
         <form
           onSubmit={onInviteSubmit}
-          className="bg-white border border-brand-100 rounded-xl p-6 mb-6"
+          className="bg-surface border border-line rounded-2xl p-6 mb-6"
         >
           <label
             htmlFor="team-invite-email"
-            className="block text-sm mb-1 text-gray-600"
+            className="block text-sm mb-1 text-ink-soft"
           >
             {t("team.emailAddress")}
           </label>
@@ -469,7 +471,7 @@ function TeamSection({ isOwner }) {
             required
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
-            className="w-full mb-4 px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            className="w-full mb-4 px-3 py-2 bg-canvas border border-line rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
           />
           <button
             disabled={busy}
@@ -485,11 +487,11 @@ function TeamSection({ isOwner }) {
         {members.map((member) => (
           <div
             key={member.id}
-            className="bg-white border border-brand-100 rounded-xl p-4 flex justify-between items-center"
+            className="bg-surface border border-line rounded-2xl p-4 flex justify-between items-center"
           >
             <div>
-              <p className="font-medium">{member.first_name}</p>
-              <p className="text-sm text-gray-500">{member.email}</p>
+              <p className="font-medium text-ink">{member.first_name}</p>
+              <p className="text-sm text-ink-soft">{member.email}</p>
             </div>
             {isOwner && (
               <button
@@ -503,7 +505,7 @@ function TeamSection({ isOwner }) {
           </div>
         ))}
         {members.length === 0 && (
-          <p className="text-gray-500 text-sm">{t("team.noTeamMembers")}</p>
+          <p className="text-ink-soft text-sm">{t("team.noTeamMembers")}</p>
         )}
       </div>
     </section>
@@ -589,14 +591,14 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
         </div>
       )}
 
-      <div className="bg-white border border-brand-100 rounded-xl p-6 mb-4">
-        <p className="text-xs text-gray-500 mb-1">
+      <div className="bg-surface border border-line rounded-2xl p-6 mb-4">
+        <p className="text-xs text-ink-soft mb-1">
           {t("subscription.currentPlan")}
         </p>
-        <p className="text-lg font-semibold mb-4">
+        <p className="text-lg font-semibold mb-4 text-ink">
           {plan?.name || "\u2014"}
           {plan && (
-            <span className="text-sm font-normal text-gray-500">
+            <span className="text-sm font-normal text-ink-soft">
               {" "}
               {"\u00b7"} {plan.price_per_month} {t("subscription.perMonth")}
             </span>
@@ -604,10 +606,10 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
         </p>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-gray-600">
+            <span className="text-ink-soft">
               {t("subscription.clientsUsed")}
             </span>
-            <span className="font-medium">
+            <span className="font-medium text-ink">
               {workspace.client_count}
               {clientLimit !== null
                 ? ` / ${clientLimit}`
@@ -615,10 +617,10 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">
+            <span className="text-ink-soft">
               {t("subscription.teamMembersUsed")}
             </span>
-            <span className="font-medium">
+            <span className="font-medium text-ink">
               {workspace.team_member_count}
               {teamLimit !== null
                 ? ` / ${teamLimit}`
@@ -635,12 +637,12 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
               key={p.id}
               className={
                 p.id === plan?.id
-                  ? "border-2 border-brand-600 bg-brand-50 rounded-xl p-4"
-                  : "border border-gray-200 rounded-xl p-4"
+                  ? "border-2 border-brand-600 bg-brand-50 rounded-2xl p-4"
+                  : "border border-line rounded-2xl p-4"
               }
             >
-              <p className="font-medium">{p.name}</p>
-              <p className="text-sm text-gray-500 mb-3">
+              <p className="font-medium text-ink">{p.name}</p>
+              <p className="text-sm text-ink-soft mb-3">
                 {p.price_per_month} {t("subscription.perMonth")}
               </p>
               <button

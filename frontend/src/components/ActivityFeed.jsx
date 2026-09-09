@@ -54,20 +54,22 @@ export default function ActivityFeed({ clientId }) {
 
   return (
     <section>
-      <h2 className="text-xl font-semibold mb-6">{t("activity.title")}</h2>
+      <h2 className="text-xl font-semibold mb-6 text-ink">
+        {t("activity.title")}
+      </h2>
       {loading ? (
-        <p className="text-gray-500 text-sm">{"…"}</p>
+        <p className="text-ink-soft text-sm">{"…"}</p>
       ) : activities.length === 0 ? (
-        <p className="text-gray-500 text-sm">{t("activity.empty")}</p>
+        <p className="text-ink-soft text-sm">{t("activity.empty")}</p>
       ) : (
         <ol className="space-y-3">
           {activities.map((entry) => (
             <li
               key={entry.id}
-              className="bg-white border border-brand-100 rounded-xl p-4"
+              className="bg-surface border border-line rounded-2xl p-4"
             >
-              <p className="text-sm text-gray-800">{describe(entry)}</p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-sm text-ink">{describe(entry)}</p>
+              <p className="text-xs text-ink-soft mt-1">
                 {formatWhen(entry.created_at)}
               </p>
             </li>
