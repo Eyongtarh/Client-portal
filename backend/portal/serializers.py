@@ -658,6 +658,20 @@ class BookingSerializer(serializers.ModelSerializer):
             )
 
         new_status = attrs.get("status")
+        request = self.context.get("request")
+        if (
+            self.instance
+            and new_status
+            and new_status != self.instance.status
+            and request
+            and request.user.role == "client"
+            and new_status != "cancelled"
+        ):
+            raise serializers.ValidationError(
+                "You can only cancel your own booking. Other status "
+                "changes are made by the business."
+            )
+
         if (
             self.instance
             and new_status == "cancelled"

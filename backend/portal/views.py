@@ -20,6 +20,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .activity import log as log_activity
 from .payments import create_checkout_session
+from .permissions import IsOwnerOrStaffForWrite
 from .models import (
     Activity, Approval, Booking, Client, Document, Invoice, Message,
     Milestone, Project, RecurringSeries, Resource, Review, Service,
@@ -662,9 +663,15 @@ class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     ?due_before=<YYYY-MM-DD> narrow by status and due date
     (SEARCH-03). A malformed date is ignored, same as an invalid
     ?client=.
+
+    Write access (create/update/delete) is owner/staff only - a
+    client's only legitimate way to affect an invoice is paying it
+    via InvoiceCheckoutView, never a direct PATCH. Without this, a
+    client could PATCH status="paid" on their own invoice directly,
+    completely bypassing Stripe.
     """
     serializer_class = InvoiceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
     filter_param = "client"
     filter_field = "client_id"
 
