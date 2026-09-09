@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
+import MobileNav from "../components/MobileNav.jsx";
 import api from "../lib/api";
 
 const WEEKDAY_KEYS = [
@@ -60,7 +61,7 @@ export default function Booking() {
             {t("booking.servicesTitle")}
           </h1>
         </div>
-        <div className="flex items-center gap-4">
+        <MobileNav>
           <ThemeToggle />
           <LanguageToggle />
           <button
@@ -70,7 +71,7 @@ export default function Booking() {
           >
             {t("dashboard.signOut")}
           </button>
-        </div>
+        </MobileNav>
       </header>
       <main className="max-w-2xl mx-auto px-8 py-8 space-y-6">
         <ServicesSection />
@@ -510,7 +511,7 @@ function ServicesSection() {
             />
           </label>
 
-          <div className="flex gap-2 mb-2">
+          <div className="flex flex-wrap gap-2 mb-2">
             <label htmlFor="service-duration" className="sr-only">
               {t("booking.serviceDuration")}
             </label>
@@ -620,7 +621,7 @@ function ServicesSection() {
                   rows={2}
                   className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                 />
-                <div className="flex gap-2 mb-2">
+                <div className="flex flex-wrap gap-2 mb-2">
                   <label
                     htmlFor={`edit-price-${service.id}`}
                     className="sr-only"
@@ -1001,7 +1002,7 @@ function ResourcesSection() {
             />
           </label>
 
-          <div className="flex gap-2 mb-2">
+          <div className="flex flex-wrap gap-2 mb-2">
             <label htmlFor="resource-duration" className="sr-only">
               {t("resources.duration")}
             </label>
@@ -1131,7 +1132,7 @@ function ResourcesSection() {
                   rows={2}
                   className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                 />
-                <div className="flex gap-2 mb-2">
+                <div className="flex flex-wrap gap-2 mb-2">
                   <label
                     htmlFor={`edit-resource-price-${resource.id}`}
                     className="sr-only"
