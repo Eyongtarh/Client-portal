@@ -13,7 +13,7 @@ export default function LanguageToggle() {
   const isEnglish = i18n.language === "en";
 
   return (
-    <div className="inline-flex rounded-lg border border-line overflow-hidden text-sm">
+    <div className="flex-shrink-0 inline-flex rounded-lg border border-line overflow-hidden text-sm">
       <button
         onClick={() => setLanguage("en")}
         aria-label="Switch to English"
