@@ -1030,13 +1030,23 @@ class AvailabilityView(APIView):
                 target_date, datetime.min.time(), tzinfo=tz
             )
             day_end_local = day_start_local + timedelta(days=1)
+            # A slot only needs to *start* within the selected day; it
+            # may run for many hours or days past midnight (e.g. a
+            # multi-day resource rental), so the overlap search window
+            # must extend by the slot's own length on both sides rather
+            # than a fixed 24h padding, or long slots would never be
+            # found to overlap and long resources would never produce
+            # any slots at all (they'd also never see a fitting
+            # conflict from earlier bookings that run into this day).
+            query_start = day_start_local - slot_length
+            query_end = day_end_local + slot_length
             direct_bookings = list(
                 Booking.objects.filter(
                     workspace=workspace,
                     resource=resource,
                     status="confirmed",
-                    start_time__gte=day_start_local - timedelta(hours=24),
-                    start_time__lt=day_end_local + timedelta(hours=24),
+                    start_time__lt=query_end,
+                    end_time__gt=query_start,
                 )
             )
             via_service_bookings = list(
@@ -1044,8 +1054,8 @@ class AvailabilityView(APIView):
                     workspace=workspace,
                     service__resources=resource,
                     status="confirmed",
-                    start_time__gte=day_start_local - timedelta(hours=24),
-                    start_time__lt=day_end_local + timedelta(hours=24),
+                    start_time__lt=query_end,
+                    end_time__gt=query_start,
                 )
             )
             all_bookings = direct_bookings + via_service_bookings
@@ -1053,7 +1063,7 @@ class AvailabilityView(APIView):
             slots = []
             cursor = day_start_local.replace(tzinfo=None)
             day_end_naive = day_end_local.replace(tzinfo=None)
-            while cursor + slot_length <= day_end_naive:
+            while cursor < day_end_naive:
                 slot_end = cursor + slot_length
                 overlap_count = sum(
                     1
