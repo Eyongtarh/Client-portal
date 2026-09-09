@@ -18,6 +18,29 @@ from portal.models import (
 from portal.tests.helpers import auth_client
 
 
+class FakeStripeObject(dict):
+    """A real bug (found via an actual end-to-end Stripe test
+    payment, not by these tests) was webhooks.py calling
+    session.get("metadata") on the checkout.session.completed
+    payload: the installed stripe-python SDK returns a typed
+    Session object there, which supports [] access and .to_dict()
+    but raises AttributeError on .get() - "a Session is not a
+    dict". A plain dict mock doesn't have that restriction, so it
+    silently passed here while 500-ing on every real webhook
+    delivery. This class replicates the restriction so that
+    regression can never hide behind these tests again.
+    """
+
+    def get(self, *args, **kwargs):
+        raise AttributeError(
+            "'get' is a dict method, but a Session is not a dict. "
+            "Use .to_dict() to convert it."
+        )
+
+    def to_dict(self):
+        return dict(self)
+
+
 class PaymentTestCase(TestCase):
     def setUp(self):
         self.owner = User.objects.create_user(
@@ -123,6 +146,7 @@ class InvoiceCheckoutTests(PaymentTestCase):
         self.assertEqual(res.status_code, 400)
 
 
+@override_settings(STRIPE_SECRET_KEY="")
 class InvoiceCheckoutNotConfiguredTests(PaymentTestCase):
     def test_checkout_blocked_when_stripe_not_configured(self):
         invoice = Invoice.objects.create(
@@ -239,13 +263,15 @@ class StripeWebhookTests(PaymentTestCase):
         event = {
             "type": "checkout.session.completed",
             "data": {
-                "object": {
-                    "metadata": {
-                        "type": "invoice",
-                        "invoice_id": str(invoice.id),
-                    },
-                    "payment_intent": "pi_test_1",
-                }
+                "object": FakeStripeObject(
+                    {
+                        "metadata": {
+                            "type": "invoice",
+                            "invoice_id": str(invoice.id),
+                        },
+                        "payment_intent": "pi_test_1",
+                    }
+                )
             },
         }
         res = self._post_event(event)
@@ -275,13 +301,15 @@ class StripeWebhookTests(PaymentTestCase):
         event = {
             "type": "checkout.session.completed",
             "data": {
-                "object": {
-                    "metadata": {
-                        "type": "booking",
-                        "booking_id": str(booking.id),
-                    },
-                    "payment_intent": "pi_test_2",
-                }
+                "object": FakeStripeObject(
+                    {
+                        "metadata": {
+                            "type": "booking",
+                            "booking_id": str(booking.id),
+                        },
+                        "payment_intent": "pi_test_2",
+                    }
+                )
             },
         }
         res = self._post_event(event)
@@ -294,10 +322,15 @@ class StripeWebhookTests(PaymentTestCase):
         event = {
             "type": "checkout.session.completed",
             "data": {
-                "object": {
-                    "metadata": {"type": "invoice", "invoice_id": "999999"},
-                    "payment_intent": "pi_test_3",
-                }
+                "object": FakeStripeObject(
+                    {
+                        "metadata": {
+                            "type": "invoice",
+                            "invoice_id": "999999",
+                        },
+                        "payment_intent": "pi_test_3",
+                    }
+                )
             },
         }
         res = self._post_event(event)
@@ -317,13 +350,15 @@ class StripeWebhookTests(PaymentTestCase):
         event = {
             "type": "checkout.session.completed",
             "data": {
-                "object": {
-                    "metadata": {
-                        "type": "invoice",
-                        "invoice_id": str(invoice.id),
-                    },
-                    "payment_intent": "pi_test_dupe",
-                }
+                "object": FakeStripeObject(
+                    {
+                        "metadata": {
+                            "type": "invoice",
+                            "invoice_id": str(invoice.id),
+                        },
+                        "payment_intent": "pi_test_dupe",
+                    }
+                )
             },
         }
         self._post_event(event)

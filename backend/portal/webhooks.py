@@ -32,7 +32,11 @@ class StripeWebhookView(View):
             return HttpResponseBadRequest("Invalid payload or signature.")
 
         if event["type"] == "checkout.session.completed":
-            session = event["data"]["object"]
+            # The installed stripe-python SDK returns a typed Session
+            # object here, not a dict - it supports [] access but not
+            # .get(), so convert once up front rather than sprinkle
+            # [] vs .get() inconsistently below.
+            session = event["data"]["object"].to_dict()
             metadata = session.get("metadata") or {}
             payment_intent_id = session.get("payment_intent") or ""
             if metadata.get("type") == "invoice":
