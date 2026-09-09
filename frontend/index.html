@@ -5,6 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Client Portal</title>
+    <script>
+      (function () {
+        // TODO: once every page has been redesigned for both
+        // themes, switch the fallback below to respect
+        // prefers-color-scheme instead of always defaulting new
+        // visitors to light - until then, auto-dark would show a
+        // half-migrated mix of the new dark tokens and old
+        // not-yet-redesigned pages that only style for light.
+        try {
+          var stored = localStorage.getItem("theme");
+          document.documentElement.setAttribute(
+            "data-theme",
+            stored === "dark" ? "dark" : "light",
+          );
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

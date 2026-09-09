@@ -1,30 +1,176 @@
 @import "tailwindcss";
 
-/* Light-blue brand palette used across the whole app instead of
-   Tailwind's generic "blue" - keeps every screen visually
-   consistent and easy to re-theme later from one place.
-   Each shade is expressed relative to --brand-rgb (set at
-   runtime from the workspace's brand_color) so the whole
-   palette can be re-tinted per-workspace without touching any
-   of the brand color classes used throughout the app. Falls
-   back to the original light-blue values until JS sets
-   --brand-rgb. */
+/* Design tokens for both themes. Everything downstream (the brand
+   accent palette, and every bg-canvas/bg-surface/text-ink/border-line
+   utility used across the app) reads from these, so a page redesign
+   never hardcodes a literal color - it just uses the semantic
+   classes below and gets both themes for free. Theme switching is a
+   single [data-theme] attribute on <html> (see index.html's inline
+   script for the no-flash-on-load bootstrap, and lib/theme.js for
+   the runtime toggle). --brand-rgb is set at runtime from the
+   workspace's brand_color (see applyBrandColor.js). */
 
 :root {
-  --brand-rgb: 59, 127, 196;
+  /* Space-separated (modern rgb() syntax), not comma-separated -
+     required so rgb(var(--brand-rgb) / <alpha>) is valid CSS
+     anywhere this token is used with transparency (glow/aurora
+     effects). applyBrandColor.js writes this same space-separated
+     format at runtime. */
+  --brand-rgb: 59 127 196;
+
+  --canvas: 250 250 252;
+  --surface: 255 255 255;
+  --surface-2: 247 248 250;
+  --ink: 15 23 42;
+  --ink-soft: 100 116 139;
+  --line: 226 232 240;
+  --line-strong: 203 213 225;
+
+  --shadow-color: 15 23 42;
+}
+
+:root[data-theme="dark"] {
+  --canvas: 7 9 15;
+  --surface: 16 19 28;
+  --surface-2: 23 27 39;
+  --ink: 236 239 244;
+  --ink-soft: 148 158 178;
+  --line: 39 44 60;
+  --line-strong: 56 63 84;
+
+  --shadow-color: 0 0 0;
 }
 
 @theme {
-  --color-brand-50: color-mix(in srgb, rgb(var(--brand-rgb)) 6%, white);
-  --color-brand-100: color-mix(in srgb, rgb(var(--brand-rgb)) 15%, white);
-  --color-brand-200: color-mix(in srgb, rgb(var(--brand-rgb)) 30%, white);
-  --color-brand-500: color-mix(in srgb, rgb(var(--brand-rgb)) 80%, white);
+  --color-canvas: rgb(var(--canvas));
+  --color-surface: rgb(var(--surface));
+  --color-surface-2: rgb(var(--surface-2));
+  --color-ink: rgb(var(--ink));
+  --color-ink-soft: rgb(var(--ink-soft));
+  --color-line: rgb(var(--line));
+  --color-line-strong: rgb(var(--line-strong));
+
+  /* Brand accent palette, mixed toward the current theme's surface/
+     ink instead of literal white/black - so brand-50/100/200
+     (tinted backgrounds, in light mode) automatically become dark-
+     tinted surfaces in dark mode instead of staying near-white, and
+     brand-700/800 (dark accent text in light mode) lighten toward
+     the dark theme's ink instead of drifting toward black-on-black. */
+  --color-brand-50: color-mix(
+    in srgb,
+    rgb(var(--brand-rgb)) 8%,
+    rgb(var(--surface))
+  );
+  --color-brand-100: color-mix(
+    in srgb,
+    rgb(var(--brand-rgb)) 18%,
+    rgb(var(--surface))
+  );
+  --color-brand-200: color-mix(
+    in srgb,
+    rgb(var(--brand-rgb)) 34%,
+    rgb(var(--surface))
+  );
+  --color-brand-400: color-mix(
+    in srgb,
+    rgb(var(--brand-rgb)) 65%,
+    rgb(var(--surface))
+  );
+  --color-brand-500: color-mix(
+    in srgb,
+    rgb(var(--brand-rgb)) 82%,
+    rgb(var(--surface))
+  );
   --color-brand-600: rgb(var(--brand-rgb));
-  --color-brand-700: color-mix(in srgb, rgb(var(--brand-rgb)) 85%, black);
-  --color-brand-800: color-mix(in srgb, rgb(var(--brand-rgb)) 70%, black);
+  --color-brand-700: color-mix(
+    in srgb,
+    rgb(var(--brand-rgb)) 85%,
+    rgb(var(--ink))
+  );
+  --color-brand-800: color-mix(
+    in srgb,
+    rgb(var(--brand-rgb)) 68%,
+    rgb(var(--ink))
+  );
 }
 
 body {
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: rgb(var(--canvas));
+  color: rgb(var(--ink));
+}
+
+/* A frosted, elevated panel - used sparingly for headers/nav and
+   hero surfaces to read as "futuristic" without applying it
+   everywhere and losing the effect. */
+.glass-panel {
+  background: rgb(var(--surface) / 0.72);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgb(var(--line) / 0.8);
+}
+
+/* A soft glow in the current brand color, for a hero CTA or the
+   single most important action on a page - not a default button
+   style, so it stays meaningful. */
+.glow-brand {
+  box-shadow: 0 0 0 1px rgb(var(--brand-rgb) / 0.25),
+    0 8px 30px -6px rgb(var(--brand-rgb) / 0.45);
+}
+
+/* A faint animated gradient sheen for hero backgrounds - kept to a
+   very slow, subtle drift so it reads as ambient motion, not a
+   distraction, and respects reduced-motion preferences. */
+@keyframes aurora-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -3%, 0) scale(1.05);
+  }
+}
+
+.aurora-bg {
+  background: radial-gradient(
+      55% 55% at 22% 20%,
+      rgb(var(--brand-rgb) / 0.55),
+      transparent 68%
+    ),
+    radial-gradient(
+      50% 50% at 82% 15%,
+      rgb(var(--brand-rgb) / 0.4),
+      transparent 65%
+    ),
+    radial-gradient(
+      65% 60% at 50% 100%,
+      rgb(var(--brand-rgb) / 0.22),
+      transparent 70%
+    );
+  animation: aurora-drift 18s ease-in-out infinite;
+}
+
+/* A short entrance for above-the-fold content - stagger it with an
+   inline animation-delay per element. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise {
+  animation: rise-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-bg,
+  .animate-rise {
+    animation: none;
+  }
 }

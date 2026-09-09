@@ -8,5 +8,5 @@ export default function applyBrandColor(hex) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  document.documentElement.style.setProperty("--brand-rgb", `${r}, ${g}, ${b}`);
+  document.documentElement.style.setProperty("--brand-rgb", `${r} ${g} ${b}`);
 }
