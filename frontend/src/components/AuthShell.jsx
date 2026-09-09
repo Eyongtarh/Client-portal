@@ -7,6 +7,7 @@
 import { Link } from "react-router-dom";
 import LanguageToggle from "./LanguageToggle.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
+import LogoMark from "./LogoMark.jsx";
 
 export default function AuthShell({ children }) {
   return (
@@ -22,8 +23,9 @@ export default function AuthShell({ children }) {
       <Link
         to="/"
         aria-label="Clientflow home"
-        className="animate-rise mb-8 text-lg font-semibold tracking-tight text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+        className="animate-rise mb-8 flex items-center gap-2 text-lg font-semibold tracking-tight text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
       >
+        <LogoMark className="w-7 h-7" />
         Clientflow
       </Link>
       <div

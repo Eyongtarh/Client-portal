@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
+import LogoMark from "../components/LogoMark.jsx";
 
 const FEATURES = [
   ["featureProjectsTitle", "featureProjectsBody", "briefcase"],
@@ -54,7 +55,8 @@ export default function Landing() {
     <div className="min-h-screen bg-canvas text-ink">
       <header className="sticky top-0 z-10 glass-panel">
         <div className="max-w-5xl mx-auto px-8 py-4 flex justify-between items-center">
-          <span className="text-lg font-semibold tracking-tight text-brand-700">
+          <span className="flex items-center gap-2 text-lg font-semibold tracking-tight text-brand-700">
+            <LogoMark className="w-7 h-7" />
             Clientflow
           </span>
           <div className="flex items-center gap-4">
