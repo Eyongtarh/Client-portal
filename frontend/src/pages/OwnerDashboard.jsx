@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
+import SearchBar from "../components/SearchBar.jsx";
 import api from "../lib/api";
 import applyBrandColor from "../lib/applyBrandColor";
 
@@ -212,6 +213,7 @@ export default function OwnerDashboard() {
           )}
         </div>
         <div className="flex items-center gap-4">
+          <SearchBar />
           <Link
             to="/booking"
             aria-label="Manage bookings"

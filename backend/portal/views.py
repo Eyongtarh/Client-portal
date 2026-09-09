@@ -5,8 +5,10 @@ from zoneinfo import ZoneInfo
 import stripe
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.http import FileResponse
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
@@ -365,6 +367,7 @@ class ProjectViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Owners and staff manage their workspace's projects; clients
     see only their own project(s). ?client=<id> narrows the list to
     one client's project(s) - used by the client-detail page.
+    ?status=<active|completed|on_hold> narrows by status (SEARCH-02).
     """
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
@@ -377,7 +380,11 @@ class ProjectViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             qs = Project.objects.filter(workspace=user.get_workspace())
         else:
             qs = Project.objects.filter(client=user.client_profile)
-        return self.filter_by_query_param(qs)
+        qs = self.filter_by_query_param(qs)
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            qs = qs.filter(status=status_param)
+        return qs
 
     def perform_create(self, serializer):
         project = serializer.save(workspace=self.request.user.get_workspace())
@@ -633,6 +640,10 @@ class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
 class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Same tenant-scoping pattern as the other workspace-scoped
     viewsets. ?client=<id> narrows to one client's invoices.
+    ?status=<draft|sent|paid>, ?due_after=<YYYY-MM-DD> and
+    ?due_before=<YYYY-MM-DD> narrow by status and due date
+    (SEARCH-03). A malformed date is ignored, same as an invalid
+    ?client=.
     """
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
@@ -645,7 +656,19 @@ class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             qs = Invoice.objects.filter(workspace=user.get_workspace())
         else:
             qs = Invoice.objects.filter(client=user.client_profile)
-        return self.filter_by_query_param(qs)
+        qs = self.filter_by_query_param(qs)
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            qs = qs.filter(status=status_param)
+        due_after = parse_date(self.request.query_params.get("due_after", ""))
+        if due_after:
+            qs = qs.filter(due_at__gte=due_after)
+        due_before = parse_date(
+            self.request.query_params.get("due_before", "")
+        )
+        if due_before:
+            qs = qs.filter(due_at__lte=due_before)
+        return qs
 
     def perform_create(self, serializer):
         invoice = serializer.save(workspace=self.request.user.get_workspace())
@@ -928,7 +951,12 @@ class BookingViewSet(viewsets.ModelViewSet):
     entry is cleaned up automatically since they no longer need
     to wait for it. Any confirmed booking whose end time has
     passed is automatically flipped to completed, so it stops
-    showing as upcoming and becomes reviewable.
+    showing as upcoming and becomes reviewable. For owner/staff,
+    ?date=<YYYY-MM-DD>, ?service=<id>, ?resource=<id>, ?client=<id>
+    and ?status=<confirmed|cancelled|completed|no_show> each
+    optionally narrow the list (SEARCH-04) - there's no per-booking
+    team-member assignment in the data model yet, so filtering by
+    team member isn't possible.
     """
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
@@ -946,7 +974,23 @@ class BookingViewSet(viewsets.ModelViewSet):
             end_time__lt=timezone.now(),
         ).update(status="completed")
         if user.role in ("owner", "staff"):
-            return Booking.objects.filter(workspace=workspace)
+            qs = Booking.objects.filter(workspace=workspace)
+            params = self.request.query_params
+            date_param = parse_date(params.get("date", ""))
+            if date_param:
+                qs = qs.filter(start_time__date=date_param)
+            for param, field in (
+                ("service", "service_id"),
+                ("resource", "resource_id"),
+                ("client", "client_id"),
+            ):
+                value = params.get(param)
+                if value and str(value).isdigit():
+                    qs = qs.filter(**{field: value})
+            status_param = params.get("status")
+            if status_param:
+                qs = qs.filter(status=status_param)
+            return qs
         return Booking.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
@@ -1339,6 +1383,115 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
                 client=user.client_profile,
             )
         return qs[:100]
+
+
+class SearchView(APIView):
+    """GET /api/search/?q=<term> - owner/staff full-workspace search
+    across clients, projects, bookings, documents, invoices, and
+    messages (SEARCH-01). Each result is a small hand-picked
+    dict, not a full serializer, so a broad match still returns a
+    small, fast response; each group is capped at 10 results.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ("owner", "staff"):
+            raise PermissionDenied(
+                "Search is only available to the workspace owner or team."
+            )
+        query = request.query_params.get("q", "").strip()
+        if len(query) < 2:
+            return Response(
+                {
+                    "clients": [], "projects": [], "bookings": [],
+                    "documents": [], "invoices": [], "messages": [],
+                }
+            )
+        workspace = request.user.get_workspace()
+
+        clients = Client.objects.filter(workspace=workspace).filter(
+            Q(company_name__icontains=query)
+            | Q(contact_email__icontains=query)
+        )[:10]
+        projects = Project.objects.filter(
+            workspace=workspace, name__icontains=query
+        )[:10]
+        bookings = Booking.objects.filter(workspace=workspace).filter(
+            Q(service__name__icontains=query)
+            | Q(resource__name__icontains=query)
+            | Q(client__company_name__icontains=query)
+        )[:10]
+        documents = Document.objects.filter(
+            project__workspace=workspace, original_name__icontains=query
+        ).select_related("project")[:10]
+        invoices = Invoice.objects.filter(workspace=workspace).filter(
+            Q(number__icontains=query)
+            | Q(client__company_name__icontains=query)
+        )[:10]
+        messages = Message.objects.filter(
+            project__workspace=workspace, body__icontains=query
+        ).select_related("project")[:10]
+
+        return Response(
+            {
+                "clients": [
+                    {
+                        "id": c.id,
+                        "company_name": c.company_name,
+                        "contact_email": c.contact_email,
+                    }
+                    for c in clients
+                ],
+                "projects": [
+                    {
+                        "id": p.id,
+                        "name": p.name,
+                        "client_id": p.client_id,
+                        "client_name": p.client.company_name,
+                    }
+                    for p in projects
+                ],
+                "bookings": [
+                    {
+                        "id": b.id,
+                        "label": (
+                            b.service.name if b.service else b.resource.name
+                        ),
+                        "start_time": b.start_time,
+                        "client_id": b.client_id,
+                        "client_name": b.client.company_name,
+                    }
+                    for b in bookings
+                ],
+                "documents": [
+                    {
+                        "id": d.id,
+                        "original_name": d.original_name,
+                        "project_id": d.project_id,
+                        "client_id": d.project.client_id,
+                    }
+                    for d in documents
+                ],
+                "invoices": [
+                    {
+                        "id": i.id,
+                        "number": i.number,
+                        "status": i.status,
+                        "client_id": i.client_id,
+                    }
+                    for i in invoices
+                ],
+                "messages": [
+                    {
+                        "id": m.id,
+                        "body": m.body[:140],
+                        "project_id": m.project_id,
+                        "client_id": m.project.client_id,
+                    }
+                    for m in messages
+                ],
+            }
+        )
 
 
 class AvailabilityView(APIView):

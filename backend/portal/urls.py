@@ -93,6 +93,7 @@ urlpatterns = [
         views.BookingCheckoutView.as_view(),
     ),
     path("stripe/webhook/", webhooks.StripeWebhookView.as_view()),
+    path("search/", views.SearchView.as_view()),
     path("", include(router.urls)),
     path("availability/", views.AvailabilityView.as_view()),
     path(

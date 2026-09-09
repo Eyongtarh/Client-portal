@@ -379,5 +379,15 @@
       "completed": "termin\u00e9",
       "on_hold": "en pause"
     }
+  },
+  "search": {
+    "placeholder": "Rechercher des clients, projets, r\u00e9servations...",
+    "noResults": "Aucun r\u00e9sultat.",
+    "clients": "Clients",
+    "projects": "Projets",
+    "bookings": "R\u00e9servations",
+    "documents": "Documents",
+    "invoices": "Factures",
+    "messages": "Messages"
   }
 }
