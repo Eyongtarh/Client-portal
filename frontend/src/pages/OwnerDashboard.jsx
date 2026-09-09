@@ -10,6 +10,7 @@ import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
 import SearchBar from "../components/SearchBar.jsx";
+import MobileNav from "../components/MobileNav.jsx";
 import api from "../lib/api";
 import applyBrandColor from "../lib/applyBrandColor";
 
@@ -213,12 +214,12 @@ export default function OwnerDashboard() {
             </label>
           )}
         </div>
-        <div className="flex items-center gap-4">
+        <MobileNav>
           <SearchBar />
           <Link
             to="/booking"
             aria-label="Manage bookings"
-            className="text-sm text-white bg-brand-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="text-sm text-white bg-brand-600 px-3 py-1.5 rounded-lg font-medium text-center transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             Booking
           </Link>
@@ -231,7 +232,7 @@ export default function OwnerDashboard() {
           >
             {t("dashboard.signOut")}
           </button>
-        </div>
+        </MobileNav>
       </header>
       {nameMsg && (
         <div className="max-w-3xl mx-auto px-8 pt-4">

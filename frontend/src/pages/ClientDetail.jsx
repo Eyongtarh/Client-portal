@@ -10,6 +10,7 @@ import api from "../lib/api";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
+import MobileNav from "../components/MobileNav.jsx";
 
 export default function ClientDetail() {
   const { t } = useTranslation();
@@ -58,13 +59,13 @@ export default function ClientDetail() {
           </h1>
           <p className="text-sm text-ink-soft">{client.contact_email}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <MobileNav>
           <ThemeToggle />
           <LanguageToggle />
-        </div>
+        </MobileNav>
       </header>
       <nav
-        className="max-w-2xl mx-auto px-8 pt-4 flex gap-1"
+        className="max-w-2xl mx-auto px-8 pt-4 flex gap-1 overflow-x-auto"
         aria-label="Client detail tabs"
       >
         {tabs.map(([key, label]) => (
@@ -75,8 +76,8 @@ export default function ClientDetail() {
             aria-label={label}
             className={
               activeTab === key
-                ? "px-4 py-2 text-sm rounded-t-lg font-medium bg-surface border border-b-0 border-line transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
-                : "px-4 py-2 text-sm rounded-t-lg font-medium text-ink-soft transition-colors hover:text-brand-700 hover:bg-surface/60 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                ? "flex-shrink-0 whitespace-nowrap px-4 py-2 text-sm rounded-t-lg font-medium bg-surface border border-b-0 border-line transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                : "flex-shrink-0 whitespace-nowrap px-4 py-2 text-sm rounded-t-lg font-medium text-ink-soft transition-colors hover:text-brand-700 hover:bg-surface/60 focus:outline-none focus:ring-2 focus:ring-brand-400"
             }
           >
             {label}
@@ -1114,7 +1115,7 @@ function InvoicesTab({ client, project }) {
                 </div>
               </div>
             ) : (
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <div>
                   <p className="font-medium text-ink">Invoice #{invoice.number}</p>
                   <p className="text-ink-soft">
