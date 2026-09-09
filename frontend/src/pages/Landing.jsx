@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import LogoMark from "../components/LogoMark.jsx";
+import MobileNav from "../components/MobileNav.jsx";
 
 const STEPS = ["step1", "step2", "step3"];
 
@@ -78,7 +79,7 @@ export default function Landing() {
             <LogoMark className="w-7 h-7" />
             Clientflow
           </span>
-          <div className="flex items-center gap-4">
+          <MobileNav>
             <ThemeToggle />
             <LanguageToggle />
             <Link
@@ -91,11 +92,11 @@ export default function Landing() {
             <Link
               to="/register"
               aria-label={t("landing.getStarted")}
-              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               {t("landing.getStarted")}
             </Link>
-          </div>
+          </MobileNav>
         </div>
       </header>
 
