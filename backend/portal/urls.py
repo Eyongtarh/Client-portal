@@ -61,6 +61,9 @@ urlpatterns = [
     path(
         "auth/change-password/", views.ChangePasswordView.as_view()
     ),
+    path(
+        "auth/delete-account/", views.DeleteAccountView.as_view()
+    ),
     path("auth/accept-invite/", views.AcceptInviteView.as_view()),
     path(
         "auth/password-reset/",

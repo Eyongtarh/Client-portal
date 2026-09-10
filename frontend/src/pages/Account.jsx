@@ -5,14 +5,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { FiArrowLeft, FiCheck } from "react-icons/fi";
+import { FiArrowLeft, FiCheck, FiTrash2 } from "react-icons/fi";
 import { useAuth } from "../lib/AuthContext.jsx";
 import SkipLink from "../components/SkipLink.jsx";
 import api from "../lib/api";
 
 export default function Account() {
   const { t } = useTranslation();
-  const { user, setUser } = useAuth();
+  const { user, setUser, logout } = useAuth();
   const [firstName, setFirstName] = useState(user.first_name || "");
   const [email, setEmail] = useState(user.email || "");
   const [profileMsg, setProfileMsg] = useState(null);
@@ -20,6 +20,10 @@ export default function Account() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMsg, setPasswordMsg] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteMsg, setDeleteMsg] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function saveProfile(e) {
     e.preventDefault();
@@ -65,6 +69,24 @@ export default function Account() {
           t("account.couldNotUpdatePassword"),
         type: "error",
       });
+    }
+  }
+
+  async function deleteAccount(e) {
+    e.preventDefault();
+    setDeleting(true);
+    setDeleteMsg(null);
+    try {
+      await api.post("/auth/delete-account/", { password: deletePassword });
+      logout();
+    } catch (err) {
+      setDeleteMsg({
+        text:
+          err.response?.data?.password?.[0] ||
+          t("account.couldNotDeleteAccount"),
+        type: "error",
+      });
+      setDeleting(false);
     }
   }
 
@@ -227,6 +249,84 @@ export default function Account() {
               {t("account.changePassword")}
             </button>
           </form>
+        </section>
+
+        <section className="bg-surface border border-red-200 rounded-2xl p-6">
+          <h2 className="font-medium text-red-700 mb-2">
+            {t("account.dangerZone")}
+          </h2>
+          <p className="text-sm text-ink-soft mb-4">
+            {t(
+              user.role === "owner"
+                ? "account.deleteAccountWarningOwner"
+                : user.role === "staff"
+                ? "account.deleteAccountWarningStaff"
+                : "account.deleteAccountWarningClient",
+            )}
+          </p>
+          {deleteMsg && (
+            <div
+              role="status"
+              className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+            >
+              {deleteMsg.text}
+            </div>
+          )}
+          {!showDeleteConfirm ? (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+            >
+              <FiTrash2
+                className="inline -mt-0.5 mr-1.5 shrink-0"
+                aria-hidden="true"
+              />
+              {t("account.deleteAccount")}
+            </button>
+          ) : (
+            <form onSubmit={deleteAccount} className="space-y-3">
+              <div>
+                <label
+                  htmlFor="account-delete-password"
+                  className="block text-xs text-ink-soft mb-1"
+                >
+                  {t("account.confirmWithPassword")}
+                </label>
+                <input
+                  id="account-delete-password"
+                  type="password"
+                  required
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={deleting}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-60"
+                >
+                  <FiTrash2
+                    className="inline -mt-0.5 mr-1.5 shrink-0"
+                    aria-hidden="true"
+                  />
+                  {t("account.confirmDeleteAccount")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeletePassword("");
+                    setDeleteMsg(null);
+                  }}
+                  className="bg-surface-2 text-ink-soft px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {t("account.cancel")}
+                </button>
+              </div>
+            </form>
+          )}
         </section>
       </main>
     </div>

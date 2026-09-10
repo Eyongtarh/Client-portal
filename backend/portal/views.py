@@ -43,6 +43,7 @@ from .serializers import (
     ClientInviteCreateSerializer,
     ClientSelfSerializer,
     ClientSerializer,
+    DeleteAccountSerializer,
     DocumentSerializer,
     InvoiceSerializer,
     MeSerializer,
@@ -133,6 +134,37 @@ class ChangePasswordView(APIView):
         )
         request.user.save(update_fields=["password"])
         return Response(status=204)
+
+
+class DeleteAccountView(APIView):
+    """POST /api/auth/delete-account/ - permanently deletes the
+    logged-in user's account and everything that hangs off it
+    (SEC-05). Requires the current password, same reasoning as
+    ChangePasswordView.
+
+    What "everything" means depends on role, purely from how the
+    schema already cascades:
+    - owner: Workspace.owner is a CASCADE OneToOne, so deleting the
+      owner deletes the whole workspace - every client, project,
+      document, invoice, message and booking in it. There's no such
+      thing as an owner without a workspace, so nothing is kept back.
+    - client: Client.user is a CASCADE OneToOne, so deleting the
+      client deletes their Client record, which cascades to their
+      own projects/invoices/documents/messages/bookings. Other
+      clients in the same workspace are untouched.
+    - staff: staff_workspace is a plain FK *from* User, so deleting
+      a staff account only removes that one user - the workspace
+      and everyone else in it are unaffected.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = DeleteAccountSerializer(
+            data=request.data, context={"user": request.user}
+        )
+        serializer.is_valid(raise_exception=True)
+        request.user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class InviteClientView(generics.CreateAPIView):

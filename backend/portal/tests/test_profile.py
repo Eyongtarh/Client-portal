@@ -3,11 +3,13 @@ own name/email via PATCH /api/auth/me/, and changing your own
 password via POST /api/auth/change-password/ (kept separate from
 plain profile fields so the current password must be verified
 first - a hijacked but still-logged-in session shouldn't be able to
-silently lock the real user out).
+silently lock the real user out). Also account deletion (SEC-05),
+which piggybacks entirely on the schema's existing cascade rules
+rather than hand-rolling what gets removed per role.
 """
 from django.test import TestCase
 
-from portal.models import User, Workspace
+from portal.models import Client, Project, User, Workspace
 from portal.tests.helpers import auth_client
 
 
@@ -102,3 +104,104 @@ class ChangePasswordTests(TestCase):
             {"current_password": "pw12345678", "new_password": "short"},
         )
         self.assertEqual(res.status_code, 400)
+
+
+class DeleteAccountTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username="owner",
+            email="owner@example.com",
+            password="pw12345678",
+            role="owner",
+        )
+        self.workspace = Workspace.objects.create(
+            owner=self.owner, name="Acme"
+        )
+        self.staff = User.objects.create_user(
+            username="staff",
+            email="staff@example.com",
+            password="pw12345678",
+            role="staff",
+            staff_workspace=self.workspace,
+        )
+        self.client_user = User.objects.create_user(
+            username="client",
+            email="client@example.com",
+            password="pw12345678",
+            role="client",
+        )
+        self.client_profile = Client.objects.create(
+            workspace=self.workspace,
+            user=self.client_user,
+            company_name="Client Co",
+            contact_email="client@example.com",
+        )
+        self.other_client_user = User.objects.create_user(
+            username="other_client",
+            email="other_client@example.com",
+            password="pw12345678",
+            role="client",
+        )
+        self.other_client_profile = Client.objects.create(
+            workspace=self.workspace,
+            user=self.other_client_user,
+            company_name="Other Co",
+            contact_email="other_client@example.com",
+        )
+
+    def test_wrong_password_is_rejected_and_nothing_is_deleted(self):
+        res = auth_client(self.client_user).post(
+            "/api/auth/delete-account/", {"password": "wrongpassword"}
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertTrue(
+            User.objects.filter(id=self.client_user.id).exists()
+        )
+
+    def test_client_deleting_their_account_only_removes_their_own_data(self):
+        Project.objects.create(
+            workspace=self.workspace,
+            client=self.client_profile,
+            name="Their project",
+        )
+        res = auth_client(self.client_user).post(
+            "/api/auth/delete-account/", {"password": "pw12345678"}
+        )
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(
+            User.objects.filter(id=self.client_user.id).exists()
+        )
+        self.assertFalse(
+            Client.objects.filter(id=self.client_profile.id).exists()
+        )
+        self.assertFalse(
+            Project.objects.filter(name="Their project").exists()
+        )
+        # the workspace, its owner, and its other client are untouched
+        self.assertTrue(Workspace.objects.filter(id=self.workspace.id).exists())
+        self.assertTrue(
+            Client.objects.filter(id=self.other_client_profile.id).exists()
+        )
+
+    def test_staff_deleting_their_account_leaves_workspace_intact(self):
+        res = auth_client(self.staff).post(
+            "/api/auth/delete-account/", {"password": "pw12345678"}
+        )
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(User.objects.filter(id=self.staff.id).exists())
+        self.assertTrue(Workspace.objects.filter(id=self.workspace.id).exists())
+        self.assertTrue(User.objects.filter(id=self.owner.id).exists())
+
+    def test_owner_deleting_their_account_deletes_the_whole_workspace(self):
+        res = auth_client(self.owner).post(
+            "/api/auth/delete-account/", {"password": "pw12345678"}
+        )
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(User.objects.filter(id=self.owner.id).exists())
+        self.assertFalse(
+            Workspace.objects.filter(id=self.workspace.id).exists()
+        )
+        self.assertFalse(
+            Client.objects.filter(id=self.client_profile.id).exists()
+        )
+        self.assertFalse(User.objects.filter(id=self.staff.id).exists())

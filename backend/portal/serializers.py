@@ -245,6 +245,20 @@ class ChangePasswordSerializer(serializers.Serializer):
         return value
 
 
+class DeleteAccountSerializer(serializers.Serializer):
+    """POST /api/auth/delete-account/ - same reasoning as
+    ChangePasswordSerializer: an irreversible action needs the
+    current password re-entered, not just an active session.
+    """
+    password = serializers.CharField(write_only=True)
+
+    def validate_password(self, value):
+        user = self.context["user"]
+        if not user.check_password(value):
+            raise serializers.ValidationError("Password is incorrect.")
+        return value
+
+
 class ClientInviteCreateSerializer(serializers.ModelSerializer):
     """Owner creates an invite for a client. Used by
     POST /api/invites/.

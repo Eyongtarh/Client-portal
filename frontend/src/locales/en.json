@@ -18,7 +18,16 @@
     "changePassword": "Change password",
     "passwordUpdated": "Password updated.",
     "couldNotUpdatePassword": "Could not update your password.",
-    "passwordsDoNotMatch": "New passwords don't match."
+    "passwordsDoNotMatch": "New passwords don't match.",
+    "dangerZone": "Danger zone",
+    "deleteAccountWarningOwner": "Deleting your account permanently deletes your entire workspace - every client, project, document, invoice, message, and booking. This cannot be undone.",
+    "deleteAccountWarningStaff": "Deleting your account removes your access to this workspace. The workspace and its data are not affected.",
+    "deleteAccountWarningClient": "Deleting your account permanently deletes your projects, documents, messages, invoices, and bookings with this workspace. This cannot be undone.",
+    "deleteAccount": "Delete account",
+    "confirmWithPassword": "Enter your password to confirm",
+    "confirmDeleteAccount": "Yes, permanently delete my account",
+    "cancel": "Cancel",
+    "couldNotDeleteAccount": "Could not delete your account."
   },
   "booking": {
     "servicesTitle": "Services",

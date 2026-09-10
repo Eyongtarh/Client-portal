@@ -18,7 +18,16 @@
     "changePassword": "Changer le mot de passe",
     "passwordUpdated": "Mot de passe mis à jour.",
     "couldNotUpdatePassword": "Impossible de mettre à jour votre mot de passe.",
-    "passwordsDoNotMatch": "Les nouveaux mots de passe ne correspondent pas."
+    "passwordsDoNotMatch": "Les nouveaux mots de passe ne correspondent pas.",
+    "dangerZone": "Zone de danger",
+    "deleteAccountWarningOwner": "La suppression de votre compte supprime définitivement tout votre espace de travail - chaque client, projet, document, facture, message et réservation. Cette action est irréversible.",
+    "deleteAccountWarningStaff": "La suppression de votre compte retire votre accès à cet espace de travail. L'espace de travail et ses données ne sont pas affectés.",
+    "deleteAccountWarningClient": "La suppression de votre compte supprime définitivement vos projets, documents, messages, factures et réservations avec cet espace de travail. Cette action est irréversible.",
+    "deleteAccount": "Supprimer le compte",
+    "confirmWithPassword": "Entrez votre mot de passe pour confirmer",
+    "confirmDeleteAccount": "Oui, supprimer définitivement mon compte",
+    "cancel": "Annuler",
+    "couldNotDeleteAccount": "Impossible de supprimer votre compte."
   },
   "booking": {
     "servicesTitle": "Services",
