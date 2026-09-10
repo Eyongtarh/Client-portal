@@ -98,3 +98,57 @@ class MessageAttachmentTests(MessageTestCase):
         message = Message.objects.get(id=res.data["id"])
         self.assertEqual(message.attachment_name, "brief.pdf")
         message.attachment.delete(save=False)
+
+
+@override_settings(STORAGES=LOCAL_STORAGE)
+class MessageAttachmentSecurityTests(MessageTestCase):
+    """SEC-03: the storage backend's own URL (permanent, unauth-
+    enticated) must never appear in an API response - only a link
+    back into this same API, which re-checks access every time.
+    """
+
+    def setUp(self):
+        super().setUp()
+        upload = SimpleUploadedFile(
+            "brief.pdf", b"%PDF-1.4 fake", content_type="application/pdf"
+        )
+        self.message = Message.objects.create(
+            project=self.project,
+            sender=self.owner,
+            body="",
+            attachment=upload,
+            attachment_name="brief.pdf",
+            attachment_size_bytes=13,
+        )
+
+    def tearDown(self):
+        self.message.attachment.delete(save=False)
+
+    def test_serialized_message_never_exposes_the_raw_storage_url(self):
+        res = auth_client(self.owner).get(
+            f"/api/messages/?project={self.project.id}"
+        )
+        entry = next(m for m in res.data if m["id"] == self.message.id)
+        self.assertNotIn("attachment", entry)
+        self.assertEqual(
+            entry["attachment_url"], f"/messages/{self.message.id}/attachment/"
+        )
+
+    def test_project_participant_can_download_the_attachment(self):
+        res = auth_client(self.client_user).get(
+            f"/api/messages/{self.message.id}/attachment/"
+        )
+        self.assertEqual(res.status_code, 200)
+
+    def test_outsider_cannot_download_the_attachment(self):
+        other_owner = User.objects.create_user(
+            username="otherowner",
+            email="otherowner@example.com",
+            password="pw12345678",
+            role="owner",
+        )
+        Workspace.objects.create(owner=other_owner, name="Other Co")
+        res = auth_client(other_owner).get(
+            f"/api/messages/{self.message.id}/attachment/"
+        )
+        self.assertEqual(res.status_code, 404)

@@ -479,44 +479,70 @@ class ProjectSerializer(serializers.ModelSerializer):
 class DocumentSerializer(serializers.ModelSerializer):
     """Read/write for a project document. `uploaded_by_name` is
     derived so the frontend doesn't need a second lookup to show
-    who uploaded a file.
+    who uploaded a file. `file` is write-only (upload input only) -
+    the storage backend's own URL is never sent to the client
+    (SEC-03): it's a permanent, unauthenticated Cloudinary link that
+    would otherwise leak into API responses/browser history forever,
+    bypassing the is_private check the moment it's copied elsewhere.
+    `file_url` instead points at DocumentViewSet.file_view, which
+    re-checks visibility (and logs the ACT-02 read receipt) on every
+    single fetch.
     """
     uploaded_by_name = serializers.SerializerMethodField()
+    file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
         fields = [
-            "id", "project", "file", "original_name", "category",
-            "is_private", "size_bytes", "uploaded_at", "uploaded_by_name",
+            "id", "project", "file", "file_url", "original_name",
+            "category", "is_private", "size_bytes", "uploaded_at",
+            "uploaded_by_name",
         ]
         read_only_fields = [
             "original_name", "size_bytes", "uploaded_at",
         ]
+        extra_kwargs = {"file": {"write_only": True}}
 
     def get_uploaded_by_name(self, obj):
         if obj.uploaded_by:
             return obj.uploaded_by.first_name
         return None
 
+    def get_file_url(self, obj):
+        # Relative, not request.build_absolute_uri() - the frontend's
+        # api client already targets its own configured API base URL,
+        # so this just needs to match the same relative-path
+        # convention every other endpoint in this API uses.
+        return f"/documents/{obj.pk}/file/"
+
 
 class MessageSerializer(serializers.ModelSerializer):
     """Includes the sender's name and role, derived so the frontend
     can render "you" vs "them" bubbles without a second lookup.
+    `attachment` is write-only for the same reason as Document.file
+    (SEC-03) - `attachment_url` points at MessageViewSet.attachment_
+    view instead, which re-checks the requester still has access to
+    this project on every fetch rather than handing out a permanent
+    unauthenticated link.
     """
     sender_name = serializers.SerializerMethodField()
     sender_role = serializers.SerializerMethodField()
+    attachment_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
         fields = [
             "id", "project", "body", "created_at",
             "sender_name", "sender_role",
-            "attachment", "attachment_name", "attachment_size_bytes",
+            "attachment", "attachment_url", "attachment_name",
+            "attachment_size_bytes",
         ]
         read_only_fields = [
             "created_at", "attachment_name", "attachment_size_bytes",
         ]
-        extra_kwargs = {"attachment": {"required": False}}
+        extra_kwargs = {
+            "attachment": {"required": False, "write_only": True},
+        }
 
     def get_sender_name(self, obj):
         if obj.sender:
@@ -527,6 +553,11 @@ class MessageSerializer(serializers.ModelSerializer):
         if obj.sender:
             return obj.sender.role
         return None
+
+    def get_attachment_url(self, obj):
+        if not obj.attachment:
+            return None
+        return f"/messages/{obj.pk}/attachment/"
 
     def validate(self, attrs):
         body = attrs.get("body", "") or (

@@ -143,6 +143,11 @@ export default function ClientPortal() {
     const url = URL.createObjectURL(res.data);
     window.open(url, "_blank");
   }
+  async function openFile(url) {
+    const res = await api.get(url, { responseType: "blob" });
+    const blobUrl = URL.createObjectURL(res.data);
+    window.open(blobUrl, "_blank");
+  }
   async function payInvoice(invoiceId) {
     setInvoiceError(null);
     try {
@@ -264,16 +269,13 @@ export default function ClientPortal() {
             <ul className="divide-y divide-line">
               {documents.map((doc) => (
                 <li key={doc.id} className="py-2 text-sm">
-                  <a
-                    href={doc.file}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => api.post(`/documents/${doc.id}/mark-viewed/`)}
+                  <button
+                    onClick={() => openFile(doc.file_url)}
                     aria-label={`Open ${doc.original_name} in a new tab`}
                     className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
                   >
                     {doc.original_name}
-                  </a>
+                  </button>
                   {doc.category && doc.category !== "other" && (
                     <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-surface-2 text-ink-soft">
                       {t(`clientPortal.category_${doc.category}`)}
@@ -446,16 +448,14 @@ export default function ClientPortal() {
                         {message.body}
                       </p>
                     )}
-                    {message.attachment && (
-                      <a
-                        href={message.attachment}
-                        target="_blank"
-                        rel="noreferrer"
+                    {message.attachment_url && (
+                      <button
+                        onClick={() => openFile(message.attachment_url)}
                         className="inline-flex items-center px-3 py-2 rounded-lg bg-brand-50 text-brand-700 text-sm font-medium hover:bg-brand-100"
                       >
                         <FiPaperclip className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                         {message.attachment_name}
-                      </a>
+                      </button>
                     )}
                   </div>
                 </div>

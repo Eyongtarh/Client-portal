@@ -4,10 +4,19 @@ invisible to the client, not just non-downloadable - and a client
 can never make their own upload private, since that would hide it
 from the very owner reviewing it.
 """
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from portal.models import Client, Document, Project, User, Workspace
 from portal.tests.helpers import auth_client
+
+LOCAL_STORAGE = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 
 class DocumentTestCase(TestCase):
@@ -111,3 +120,27 @@ class PrivateDocumentTests(DocumentTestCase):
         self.assertEqual(res.status_code, 200, res.data)
         self.public_doc.refresh_from_db()
         self.assertFalse(self.public_doc.is_private)
+
+    def test_serialized_document_never_exposes_the_raw_storage_url(self):
+        # SEC-03: the storage backend's own URL is permanent and
+        # unauthenticated - only a link back into this API (which
+        # re-checks is_private on every fetch) may ever reach the
+        # client.
+        res = auth_client(self.owner).get(
+            f"/api/documents/{self.public_doc.id}/"
+        )
+        self.assertNotIn("file", res.data)
+        self.assertEqual(
+            res.data["file_url"], f"/documents/{self.public_doc.id}/file/"
+        )
+
+    @override_settings(STORAGES=LOCAL_STORAGE)
+    def test_a_missing_underlying_file_404s_instead_of_500ing(self):
+        # public_doc's file="workspaces/1/shared.pdf" was never
+        # actually written to storage - proving the endpoint handles
+        # a legitimately vanished/corrupt storage object gracefully,
+        # not just wrong permissions.
+        res = auth_client(self.owner).get(
+            f"/api/documents/{self.public_doc.id}/file/"
+        )
+        self.assertEqual(res.status_code, 404)

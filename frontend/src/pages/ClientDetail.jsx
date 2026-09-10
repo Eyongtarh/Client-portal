@@ -639,6 +639,12 @@ function DocumentsTab({ project }) {
     load();
   }, [project.id]);
 
+  async function openFile(url) {
+    const res = await api.get(url, { responseType: "blob" });
+    const blobUrl = URL.createObjectURL(res.data);
+    window.open(blobUrl, "_blank");
+  }
+
   async function onUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -798,15 +804,13 @@ function DocumentsTab({ project }) {
             ) : (
               <div className="flex justify-between items-center gap-3">
                 <div className="min-w-0">
-                  <a
-                    href={doc.file}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    onClick={() => openFile(doc.file_url)}
                     aria-label={`Open ${doc.original_name} in a new tab`}
-                    className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded truncate"
+                    className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded truncate block"
                   >
                     {doc.original_name}
-                  </a>
+                  </button>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="text-xs px-1.5 py-0.5 rounded bg-surface-2 text-ink-soft">
                       {t(`clientDetail.category_${doc.category}`)}
@@ -891,6 +895,12 @@ function MessagesTab({ project }) {
   useEffect(() => {
     load();
   }, [project.id]);
+
+  async function openFile(url) {
+    const res = await api.get(url, { responseType: "blob" });
+    const blobUrl = URL.createObjectURL(res.data);
+    window.open(blobUrl, "_blank");
+  }
 
   async function onSend(e) {
     e.preventDefault();
@@ -1001,16 +1011,14 @@ function MessagesTab({ project }) {
                       {message.body}
                     </p>
                   )}
-                  {message.attachment && (
-                    <a
-                      href={message.attachment}
-                      target="_blank"
-                      rel="noreferrer"
+                  {message.attachment_url && (
+                    <button
+                      onClick={() => openFile(message.attachment_url)}
                       className="inline-flex items-center px-3 py-2 rounded-lg bg-brand-50 text-brand-700 text-sm font-medium hover:bg-brand-100"
                     >
                       <FiPaperclip className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                       {message.attachment_name}
-                    </a>
+                    </button>
                   )}
                   {isOwnMessage && (
                     <button

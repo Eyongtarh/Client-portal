@@ -9,7 +9,7 @@ from django.conf import settings
 from django.core import signing
 from django.core.mail import send_mail
 from django.db.models import Q
-from django.http import FileResponse, HttpResponseRedirect
+from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from reportlab.lib.pagesizes import A4
@@ -855,14 +855,24 @@ class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         else:
             serializer.save()
 
-    @action(detail=True, methods=["post"], url_path="mark-viewed")
-    def mark_viewed(self, request, pk=None):
-        """Called by the client portal right before opening a
-        document's file link (ACT-02), since that link points
-        straight at storage and never touches this API otherwise.
-        A no-op for owner/staff viewing their own workspace's files.
+    @action(detail=True, methods=["get"], url_path="file")
+    def file_view(self, request, pk=None):
+        """GET /api/documents/<id>/file/ - the only way to actually
+        fetch a document's bytes (SEC-03). get_object() re-runs the
+        same get_queryset() scoping as list/retrieve, so a private
+        document or one from another workspace 404s here exactly as
+        it would anywhere else in the API - a client can't bypass
+        DOC-06 just by holding onto a URL. Streamed through Django
+        rather than redirecting to the storage backend's own URL, so
+        that URL is never exposed to the frontend at all. Also logs
+        the ACT-02 read receipt, since this is the one place a
+        client's view of a document actually touches the API.
         """
         document = self.get_object()
+        try:
+            handle = document.file.open("rb")
+        except (OSError, IOError):
+            raise Http404
         if request.user.role == "client":
             log_activity(
                 document.project.workspace,
@@ -871,7 +881,7 @@ class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
                 document,
                 client=document.project.client,
             )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return FileResponse(handle, filename=document.original_name)
 
 
 class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
@@ -922,6 +932,23 @@ class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             recipient_list=[recipient],
             fail_silently=True,
         )
+
+    @action(detail=True, methods=["get"], url_path="attachment")
+    def attachment_view(self, request, pk=None):
+        """GET /api/messages/<id>/attachment/ - same reasoning as
+        DocumentViewSet.file_view (SEC-03): get_object() re-applies
+        this viewset's own workspace/client scoping, so the storage
+        backend's permanent unauthenticated URL is never handed to
+        the frontend for a message attachment either.
+        """
+        message = self.get_object()
+        if not message.attachment:
+            raise Http404
+        try:
+            handle = message.attachment.open("rb")
+        except (OSError, IOError):
+            raise Http404
+        return FileResponse(handle, filename=message.attachment_name)
 
 
 class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
