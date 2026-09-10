@@ -5,6 +5,16 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+  FiCheck,
+  FiCheckCircle,
+  FiDownload,
+  FiEdit2,
+  FiPlus,
+  FiSend,
+  FiTrash2,
+  FiX,
+} from "react-icons/fi";
 import { useAuth } from "../lib/AuthContext.jsx";
 import api from "../lib/api";
 import LanguageToggle from "../components/LanguageToggle.jsx";
@@ -299,6 +309,7 @@ function ProjectOverview({ project, onChange }) {
                   aria-label={t("clientDetail.save")}
                   className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.save")}
                 </button>
                 <button
@@ -306,6 +317,7 @@ function ProjectOverview({ project, onChange }) {
                   aria-label={t("clientDetail.cancel")}
                   className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.cancel")}
                 </button>
               </div>
@@ -334,6 +346,7 @@ function ProjectOverview({ project, onChange }) {
                   aria-label={`${t("clientDetail.editMilestone")} ${milestone.title}`}
                   className="bg-brand-50 text-brand-700 text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.editMilestone")}
                 </button>
                 <button
@@ -341,6 +354,7 @@ function ProjectOverview({ project, onChange }) {
                   aria-label={`${t("clientDetail.deleteMilestone")} ${milestone.title}`}
                   className="bg-red-600 text-white text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                 >
+                  <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.deleteMilestone")}
                 </button>
               </div>
@@ -363,6 +377,7 @@ function ProjectOverview({ project, onChange }) {
           aria-label={t("clientDetail.add")}
           className="bg-brand-50 text-brand-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
+          <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("clientDetail.add")}
         </button>
       </form>
@@ -386,6 +401,7 @@ function ProjectOverview({ project, onChange }) {
                   aria-label={t("clientDetail.save")}
                   className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.save")}
                 </button>
                 <button
@@ -393,6 +409,7 @@ function ProjectOverview({ project, onChange }) {
                   aria-label={t("clientDetail.cancel")}
                   className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.cancel")}
                 </button>
               </div>
@@ -421,6 +438,7 @@ function ProjectOverview({ project, onChange }) {
                   aria-label={`${t("clientDetail.editTask")} ${task.title}`}
                   className="bg-brand-50 text-brand-700 text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.editTask")}
                 </button>
                 <button
@@ -428,6 +446,7 @@ function ProjectOverview({ project, onChange }) {
                   aria-label={`${t("clientDetail.deleteTask")} ${task.title}`}
                   className="bg-red-600 text-white text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                 >
+                  <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.deleteTask")}
                 </button>
               </div>
@@ -453,6 +472,7 @@ function ProjectOverview({ project, onChange }) {
           aria-label={t("clientDetail.add")}
           className="bg-brand-50 text-brand-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
+          <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("clientDetail.add")}
         </button>
       </form>
@@ -518,6 +538,7 @@ function NewProjectForm({ clientId, onCreated }) {
         aria-label={t("clientDetail.createProject")}
         className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
       >
+        <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
         {t("clientDetail.createProject")}
       </button>
     </form>
@@ -644,6 +665,7 @@ function DocumentsTab({ project }) {
                   aria-label={t("clientDetail.save")}
                   className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.save")}
                 </button>
                 <button
@@ -651,6 +673,7 @@ function DocumentsTab({ project }) {
                   aria-label={t("clientDetail.cancel")}
                   className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.cancel")}
                 </button>
               </div>
@@ -674,6 +697,7 @@ function DocumentsTab({ project }) {
                     aria-label={`${t("clientDetail.renameDocument")} ${doc.original_name}`}
                     className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.renameDocument")}
                   </button>
                   <button
@@ -681,6 +705,7 @@ function DocumentsTab({ project }) {
                     aria-label={`${t("clientDetail.deleteDocument")} ${doc.original_name}`}
                     className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                   >
+                    <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.deleteDocument")}
                   </button>
                 </div>
@@ -801,6 +826,7 @@ function MessagesTab({ project }) {
                     aria-label={t("clientDetail.save")}
                     className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.save")}
                   </button>
                   <button
@@ -808,6 +834,7 @@ function MessagesTab({ project }) {
                     aria-label={t("clientDetail.cancel")}
                     className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.cancel")}
                   </button>
                 </div>
@@ -822,6 +849,7 @@ function MessagesTab({ project }) {
                       aria-label={t("clientDetail.editMessage")}
                       className="bg-brand-50 text-brand-700 text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                     >
+                      <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                       {t("clientDetail.editMessage")}
                     </button>
                   )}
@@ -830,6 +858,7 @@ function MessagesTab({ project }) {
                     aria-label={t("clientDetail.deleteMessage")}
                     className="bg-red-600 text-white text-xs px-2 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                   >
+                    <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.deleteMessage")}
                   </button>
                 </div>
@@ -858,6 +887,7 @@ function MessagesTab({ project }) {
           aria-label={t("clientDetail.send")}
           className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
+          <FiSend className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("clientDetail.send")}
         </button>
       </form>
@@ -1028,6 +1058,7 @@ function InvoicesTab({ client, project }) {
           aria-label={t("clientDetail.addLineItem")}
           className="text-sm text-brand-600 mb-3 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
+          <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("clientDetail.addLineItem")}
         </button>
         <div>
@@ -1035,6 +1066,7 @@ function InvoicesTab({ client, project }) {
             aria-label={t("clientDetail.createInvoice")}
             className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
+            <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("clientDetail.createInvoice")}
           </button>
         </div>
@@ -1114,6 +1146,7 @@ function InvoicesTab({ client, project }) {
                   aria-label={t("clientDetail.addLineItem")}
                   className="text-sm text-brand-600 mb-2 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
                 >
+                  <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.addLineItem")}
                 </button>
                 <div className="flex gap-2">
@@ -1122,6 +1155,7 @@ function InvoicesTab({ client, project }) {
                     aria-label={t("clientDetail.save")}
                     className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.save")}
                   </button>
                   <button
@@ -1129,6 +1163,7 @@ function InvoicesTab({ client, project }) {
                     aria-label={t("clientDetail.cancel")}
                     className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.cancel")}
                   </button>
                 </div>
@@ -1148,6 +1183,7 @@ function InvoicesTab({ client, project }) {
                       aria-label={`${t("clientDetail.markInvoicePaid")} ${invoice.number}`}
                       className="bg-green-50 text-green-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                     >
+                      <FiCheckCircle className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                       {t("clientDetail.markInvoicePaid")}
                     </button>
                   )}
@@ -1156,6 +1192,7 @@ function InvoicesTab({ client, project }) {
                     aria-label={`Download invoice ${invoice.number} as PDF`}
                     className="text-brand-700 underline transition-colors hover:text-brand-900 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
                   >
+                    <FiDownload className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.downloadPdf")}
                   </button>
                   <button
@@ -1163,6 +1200,7 @@ function InvoicesTab({ client, project }) {
                     aria-label={`${t("clientDetail.editInvoice")} ${invoice.number}`}
                     className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.editInvoice")}
                   </button>
                   <button
@@ -1170,6 +1208,7 @@ function InvoicesTab({ client, project }) {
                     aria-label={`${t("clientDetail.deleteInvoice")} ${invoice.number}`}
                     className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                   >
+                    <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.deleteInvoice")}
                   </button>
                 </div>
@@ -1264,6 +1303,7 @@ function ApprovalsTab({ project }) {
           aria-label={t("clientDetail.createApproval")}
           className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
+          <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("clientDetail.createApproval")}
         </button>
       </form>

@@ -11,6 +11,20 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+  FiCheck,
+  FiCheckCircle,
+  FiEdit2,
+  FiLogOut,
+  FiMessageCircle,
+  FiPlus,
+  FiTrash2,
+  FiUserMinus,
+  FiUserX,
+  FiX,
+  FiXCircle,
+} from "react-icons/fi";
+import { SiStripe } from "react-icons/si";
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
@@ -71,6 +85,7 @@ export default function Booking() {
             aria-label={t("dashboard.signOut")}
             className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
+            <FiLogOut className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("dashboard.signOut")}
           </button>
         </MobileNav>
@@ -397,6 +412,7 @@ function ServicesSection() {
           aria-label={t("booking.addService")}
           className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
+          <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("booking.addService")}
         </button>
       </div>
@@ -514,6 +530,7 @@ function ServicesSection() {
               onClick={disconnectStripe}
               className="text-sm text-red-600 underline transition-colors hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
             >
+              <FiXCircle className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
               {t("booking.disconnectStripe")}
             </button>
           </div>
@@ -526,6 +543,7 @@ function ServicesSection() {
               onClick={connectStripe}
               className="bg-brand-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
+              <SiStripe className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
               {t("booking.connectStripe")}
             </button>
           </div>
@@ -679,6 +697,7 @@ function ServicesSection() {
             aria-label={t("booking.createService")}
             className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
+            <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("booking.createService")}
           </button>
         </form>
@@ -757,6 +776,7 @@ function ServicesSection() {
                     aria-label={t("booking.save")}
                     className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.save")}
                   </button>
                   <button
@@ -764,6 +784,7 @@ function ServicesSection() {
                     aria-label={t("booking.cancel")}
                     className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.cancel")}
                   </button>
                 </div>
@@ -824,6 +845,7 @@ function ServicesSection() {
                       aria-label={`${t("booking.edit")} ${service.name}`}
                       className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                     >
+                      <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                       {t("booking.edit")}
                     </button>
                     <button
@@ -831,6 +853,7 @@ function ServicesSection() {
                       aria-label={`${t("booking.delete")} ${service.name}`}
                       className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                     >
+                      <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                       {t("booking.delete")}
                     </button>
                   </div>
@@ -942,6 +965,7 @@ function PaymentMethodsSection() {
           aria-expanded={showForm}
           className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
+          <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("booking.addPaymentMethod")}
         </button>
       </div>
@@ -994,6 +1018,7 @@ function PaymentMethodsSection() {
             type="submit"
             className="bg-brand-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
+            <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("booking.save")}
           </button>
         </form>
@@ -1030,12 +1055,14 @@ function PaymentMethodsSection() {
                   onClick={() => saveEdit(method.id)}
                   className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.save")}
                 </button>
                 <button
                   onClick={cancelEdit}
                   className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.cancel")}
                 </button>
               </div>
@@ -1057,6 +1084,7 @@ function PaymentMethodsSection() {
                   aria-label={`${t("booking.edit")} ${method.name}`}
                   className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.edit")}
                 </button>
                 <button
@@ -1064,6 +1092,7 @@ function PaymentMethodsSection() {
                   aria-label={`${t("booking.remove")} ${method.name}`}
                   className="text-white text-xs bg-red-600 px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                 >
+                  <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.remove")}
                 </button>
               </div>
@@ -1242,7 +1271,7 @@ function ResourcesSection() {
           aria-label={t("resources.addResource")}
           className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
-          + {t("resources.addResource")}
+          <FiPlus className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />{t("resources.addResource")}
         </button>
       </div>
 
@@ -1418,6 +1447,7 @@ function ResourcesSection() {
             aria-label={t("resources.createResource")}
             className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
+            <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("resources.createResource")}
           </button>
         </form>
@@ -1515,6 +1545,7 @@ function ResourcesSection() {
                     aria-label={t("resources.save")}
                     className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("resources.save")}
                   </button>
                   <button
@@ -1522,6 +1553,7 @@ function ResourcesSection() {
                     aria-label={t("resources.cancel")}
                     className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("resources.cancel")}
                   </button>
                 </div>
@@ -1581,6 +1613,7 @@ function ResourcesSection() {
                       aria-label={`${t("resources.edit")} ${resource.name}`}
                       className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                     >
+                      <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                       {t("resources.edit")}
                     </button>
                     <button
@@ -1588,6 +1621,7 @@ function ResourcesSection() {
                       aria-label={`${t("resources.delete")} ${resource.name}`}
                       className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                     >
+                      <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                       {t("resources.delete")}
                     </button>
                   </div>
@@ -1688,6 +1722,7 @@ function WorkingHoursSection() {
           aria-label={t("booking.addWorkingHours")}
           className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
+          <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("booking.addWorkingHours")}
         </button>
       </div>
@@ -1764,6 +1799,7 @@ function WorkingHoursSection() {
             aria-label={t("booking.saveHours")}
             className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
+            <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("booking.saveHours")}
           </button>
         </form>
@@ -1829,6 +1865,7 @@ function WorkingHoursSection() {
                   aria-label={t("booking.save")}
                   className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.save")}
                 </button>
                 <button
@@ -1836,6 +1873,7 @@ function WorkingHoursSection() {
                   aria-label={t("booking.cancel")}
                   className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.cancel")}
                 </button>
               </div>
@@ -1856,6 +1894,7 @@ function WorkingHoursSection() {
                     )} hours`}
                     className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.edit")}
                   </button>
                   <button
@@ -1865,6 +1904,7 @@ function WorkingHoursSection() {
                     )} hours`}
                     className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                   >
+                    <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.remove")}
                   </button>
                 </div>
@@ -2073,6 +2113,7 @@ function BookingsSection() {
                     aria-label={t("booking.save")}
                     className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.save")}
                   </button>
                   <button
@@ -2080,6 +2121,7 @@ function BookingsSection() {
                     aria-label={t("booking.cancel")}
                     className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.cancel")}
                   </button>
                 </div>
@@ -2104,6 +2146,7 @@ function BookingsSection() {
                         aria-label={`${t("booking.markBookingPaid")} - ${booking.client_name}`}
                         className="bg-green-50 text-green-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                       >
+                        <FiCheckCircle className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                         {t("booking.markBookingPaid")}
                       </button>
                     )}
@@ -2113,6 +2156,7 @@ function BookingsSection() {
                         aria-label={`${t("booking.edit")} booking for ${booking.client_name}`}
                         className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                       >
+                        <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                         {t("booking.edit")}
                       </button>
                     )}
@@ -2121,6 +2165,7 @@ function BookingsSection() {
                       aria-label={`Cancel booking for ${booking.client_name}`}
                       className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                     >
+                      <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                       {t("booking.cancelBooking")}
                     </button>
                   </div>
@@ -2159,6 +2204,7 @@ function BookingsSection() {
                     aria-label={`${t("booking.markNoShow")} - ${booking.client_name}`}
                     className="bg-surface-2 text-ink-soft text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiUserX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.markNoShow")}
                   </button>
                 </li>
@@ -2317,6 +2363,7 @@ function WaitlistSection() {
                   aria-label={t("booking.save")}
                   className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.save")}
                 </button>
                 <button
@@ -2324,6 +2371,7 @@ function WaitlistSection() {
                   aria-label={t("booking.cancel")}
                   className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.cancel")}
                 </button>
               </div>
@@ -2346,6 +2394,7 @@ function WaitlistSection() {
                     aria-label={`${t("booking.edit")} waitlist entry for ${entry.client_name}`}
                     className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.edit")}
                   </button>
                   <button
@@ -2353,6 +2402,7 @@ function WaitlistSection() {
                     aria-label={`Remove waitlist entry for ${entry.client_name}`}
                     className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                   >
+                    <FiUserMinus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.leaveWaitlist")}
                   </button>
                 </div>
@@ -2481,6 +2531,7 @@ function ReviewsSection() {
                     aria-label={t("booking.save")}
                     className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.save")}
                   </button>
                   <button
@@ -2488,6 +2539,7 @@ function ReviewsSection() {
                     aria-label={t("booking.cancel")}
                     className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
+                    <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.cancel")}
                   </button>
                 </div>
@@ -2499,6 +2551,7 @@ function ReviewsSection() {
                   aria-label={t("booking.respond")}
                   className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
+                  <FiMessageCircle className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.respond")}
                 </button>
                 <button
@@ -2506,6 +2559,7 @@ function ReviewsSection() {
                   aria-label={t("booking.deleteReview")}
                   className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
                 >
+                  <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.deleteReview")}
                 </button>
               </div>
