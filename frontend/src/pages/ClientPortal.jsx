@@ -13,6 +13,7 @@ import {
   FiDownload,
   FiEdit2,
   FiLogOut,
+  FiPaperclip,
   FiSend,
   FiTrash2,
   FiUpload,
@@ -65,6 +66,7 @@ export default function ClientPortal() {
   const [approvals, setApprovals] = useState([]);
   const [comments, setComments] = useState({});
   const [body, setBody] = useState("");
+  const [attachment, setAttachment] = useState(null);
   const [paymentBanner, setPaymentBanner] = useState(null);
   const [invoiceError, setInvoiceError] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -122,12 +124,16 @@ export default function ClientPortal() {
   }
   async function onSend(e) {
     e.preventDefault();
-    if (!body.trim() || !project) return;
-    await api.post("/messages/", {
-      project: project.id,
-      body,
+    if ((!body.trim() && !attachment) || !project) return;
+    const formData = new FormData();
+    formData.append("project", project.id);
+    formData.append("body", body);
+    if (attachment) formData.append("attachment", attachment);
+    await api.post("/messages/", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
     setBody("");
+    setAttachment(null);
     loadAll();
   }
   async function downloadPdf(invoiceId) {
@@ -433,9 +439,24 @@ export default function ClientPortal() {
               {messages.map((message) => (
                 <div key={message.id} className="text-sm">
                   <p className="text-xs text-ink-soft">{message.sender_name}</p>
-                  <p className="inline-block px-3 py-2 rounded-lg bg-brand-50">
-                    {message.body}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    {message.body && (
+                      <p className="inline-block px-3 py-2 rounded-lg bg-brand-50">
+                        {message.body}
+                      </p>
+                    )}
+                    {message.attachment && (
+                      <a
+                        href={message.attachment}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center px-3 py-2 rounded-lg bg-brand-50 text-brand-700 text-sm font-medium hover:bg-brand-100"
+                      >
+                        <FiPaperclip className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                        {message.attachment_name}
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
               {messages.length === 0 && (
@@ -444,6 +465,20 @@ export default function ClientPortal() {
                 </p>
               )}
             </div>
+            {attachment && (
+              <p className="text-xs text-ink-soft mb-1.5 flex items-center gap-1.5">
+                <FiPaperclip className="shrink-0" aria-hidden="true" />
+                {attachment.name}
+                <button
+                  type="button"
+                  onClick={() => setAttachment(null)}
+                  aria-label={t("clientPortal.removeAttachment")}
+                  className="text-red-600 hover:underline"
+                >
+                  {t("clientPortal.removeAttachment")}
+                </button>
+              </p>
+            )}
             <form onSubmit={onSend} className="flex gap-2">
               <label htmlFor="client-message" className="sr-only">
                 {t("clientPortal.writeMessage")}
@@ -455,6 +490,19 @@ export default function ClientPortal() {
                 placeholder={t("clientPortal.writeMessage")}
                 className="flex-1 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
               />
+              <label
+                htmlFor="client-message-attachment"
+                aria-label={t("clientPortal.attachFile")}
+                className="flex items-center px-3 py-2 bg-surface-2 text-ink-soft rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-line focus-within:ring-2 focus-within:ring-brand-400"
+              >
+                <FiPaperclip className="shrink-0" aria-hidden="true" />
+                <input
+                  id="client-message-attachment"
+                  type="file"
+                  className="sr-only"
+                  onChange={(e) => setAttachment(e.target.files[0] || null)}
+                />
+              </label>
               <button
                 aria-label={t("clientPortal.send")}
                 className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"

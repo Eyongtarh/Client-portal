@@ -780,7 +780,12 @@ class Message(models.Model):
     sender = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True
     )
-    body = models.TextField()
+    body = models.TextField(blank=True, default="")
+    attachment = models.FileField(
+        upload_to=document_upload_path, blank=True, null=True
+    )
+    attachment_name = models.CharField(max_length=255, blank=True, default="")
+    attachment_size_bytes = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -834,7 +834,12 @@ class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         return self.filter_by_query_param(qs)
 
     def perform_create(self, serializer):
-        message = serializer.save(sender=self.request.user)
+        uploaded_file = self.request.FILES.get("attachment")
+        extra = {"sender": self.request.user}
+        if uploaded_file:
+            extra["attachment_name"] = uploaded_file.name
+            extra["attachment_size_bytes"] = uploaded_file.size
+        message = serializer.save(**extra)
         project = message.project
         if self.request.user.role == "client":
             recipient = project.workspace.owner.email
@@ -842,11 +847,12 @@ class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         else:
             recipient = project.client.contact_email
             sender_label = project.workspace.name
+        body = message.body or f"Sent an attachment: {message.attachment_name}"
         send_mail(
             subject=f"New message from {sender_label}",
             message=(
                 f"{sender_label} sent a new message on \"{project.name}\":"
-                f"\n\n{message.body}\n\n"
+                f"\n\n{body}\n\n"
                 "Log in to your portal to reply."
             ),
             from_email=settings.DEFAULT_FROM_EMAIL,

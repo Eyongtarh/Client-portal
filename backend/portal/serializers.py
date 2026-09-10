@@ -497,8 +497,12 @@ class MessageSerializer(serializers.ModelSerializer):
         fields = [
             "id", "project", "body", "created_at",
             "sender_name", "sender_role",
+            "attachment", "attachment_name", "attachment_size_bytes",
         ]
-        read_only_fields = ["created_at"]
+        read_only_fields = [
+            "created_at", "attachment_name", "attachment_size_bytes",
+        ]
+        extra_kwargs = {"attachment": {"required": False}}
 
     def get_sender_name(self, obj):
         if obj.sender:
@@ -509,6 +513,19 @@ class MessageSerializer(serializers.ModelSerializer):
         if obj.sender:
             return obj.sender.role
         return None
+
+    def validate(self, attrs):
+        body = attrs.get("body", "") or (
+            self.instance.body if self.instance else ""
+        )
+        attachment = attrs.get("attachment") or (
+            self.instance.attachment if self.instance else None
+        )
+        if not body and not attachment:
+            raise serializers.ValidationError(
+                "A message needs a body or an attachment."
+            )
+        return attrs
 
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
