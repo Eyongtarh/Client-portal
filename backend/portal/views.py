@@ -810,6 +810,24 @@ class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         else:
             serializer.save()
 
+    @action(detail=True, methods=["post"], url_path="mark-viewed")
+    def mark_viewed(self, request, pk=None):
+        """Called by the client portal right before opening a
+        document's file link (ACT-02), since that link points
+        straight at storage and never touches this API otherwise.
+        A no-op for owner/staff viewing their own workspace's files.
+        """
+        document = self.get_object()
+        if request.user.role == "client":
+            log_activity(
+                document.project.workspace,
+                request.user,
+                "document_viewed",
+                document,
+                client=document.project.client,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Same tenant-scoping pattern as the other project-scoped
@@ -985,6 +1003,15 @@ class InvoicePDFView(APIView):
         else:
             qs = Invoice.objects.filter(client=user.client_profile)
         invoice = generics.get_object_or_404(qs, pk=pk)
+
+        if user.role == "client":
+            log_activity(
+                invoice.workspace,
+                user,
+                "invoice_viewed",
+                invoice,
+                client=invoice.client,
+            )
 
         hex_color = invoice.workspace.brand_color or "#2563eb"
         r = int(hex_color[1:3], 16) / 255

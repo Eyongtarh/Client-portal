@@ -268,6 +268,7 @@ export default function ClientPortal() {
                     href={doc.file}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={() => api.post(`/documents/${doc.id}/mark-viewed/`)}
                     aria-label={`Open ${doc.original_name} in a new tab`}
                     className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
                   >
