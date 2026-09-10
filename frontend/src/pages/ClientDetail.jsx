@@ -10,9 +10,11 @@ import {
   FiCheckCircle,
   FiDownload,
   FiEdit2,
+  FiLock,
   FiPlus,
   FiSend,
   FiTrash2,
+  FiUnlock,
   FiX,
 } from "react-icons/fi";
 import { useAuth } from "../lib/AuthContext.jsx";
@@ -612,10 +614,18 @@ function NewProjectForm({ clientId, onCreated }) {
   );
 }
 
+const DOCUMENT_CATEGORIES = [
+  "contract", "deliverable", "invoice", "reference", "other",
+];
+
 function DocumentsTab({ project }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isOwnerOrStaff = user.role === "owner" || user.role === "staff";
   const [documents, setDocuments] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState("other");
+  const [uploadPrivate, setUploadPrivate] = useState(false);
   const [statusMsg, setStatusMsg] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
@@ -635,14 +645,26 @@ function DocumentsTab({ project }) {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("project", project.id);
+    formData.append("category", uploadCategory);
+    if (isOwnerOrStaff) {
+      formData.append("is_private", uploadPrivate);
+    }
     try {
       await api.post("/documents/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+      setUploadPrivate(false);
       await load();
     } finally {
       setUploading(false);
     }
+  }
+
+  async function togglePrivate(doc) {
+    await api.patch(`/documents/${doc.id}/`, {
+      is_private: !doc.is_private,
+    });
+    load();
   }
 
   function startEdit(doc) {
@@ -684,21 +706,49 @@ function DocumentsTab({ project }) {
 
   return (
     <div>
-      <label
-        className="inline-block mb-4 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-brand-700 focus-within:ring-2 focus-within:ring-brand-400"
-        title={t("clientDetail.uploadDocument")}
-      >
-        {uploading
-          ? t("clientDetail.uploading")
-          : t("clientDetail.uploadDocument")}
-        <input
-          type="file"
-          className="hidden"
-          onChange={onUpload}
-          disabled={uploading}
-          aria-label={t("clientDetail.uploadDocument")}
-        />
-      </label>
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <label htmlFor="upload-category" className="sr-only">
+          {t("clientDetail.documentCategory")}
+        </label>
+        <select
+          id="upload-category"
+          value={uploadCategory}
+          onChange={(e) => setUploadCategory(e.target.value)}
+          className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+        >
+          {DOCUMENT_CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {t(`clientDetail.category_${cat}`)}
+            </option>
+          ))}
+        </select>
+        {isOwnerOrStaff && (
+          <label className="flex items-center gap-2 text-sm text-ink-soft cursor-pointer">
+            <input
+              type="checkbox"
+              checked={uploadPrivate}
+              onChange={(e) => setUploadPrivate(e.target.checked)}
+              className="rounded"
+            />
+            {t("clientDetail.uploadAsPrivate")}
+          </label>
+        )}
+        <label
+          className="inline-block bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-brand-700 focus-within:ring-2 focus-within:ring-brand-400"
+          title={t("clientDetail.uploadDocument")}
+        >
+          {uploading
+            ? t("clientDetail.uploading")
+            : t("clientDetail.uploadDocument")}
+          <input
+            type="file"
+            className="hidden"
+            onChange={onUpload}
+            disabled={uploading}
+            aria-label={t("clientDetail.uploadDocument")}
+          />
+        </label>
+      </div>
 
       {statusMsg && (
         <div
@@ -746,19 +796,52 @@ function DocumentsTab({ project }) {
               </div>
             ) : (
               <div className="flex justify-between items-center gap-3">
-                <a
-                  href={doc.file}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={`Open ${doc.original_name} in a new tab`}
-                  className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded truncate"
-                >
-                  {doc.original_name}
-                </a>
+                <div className="min-w-0">
+                  <a
+                    href={doc.file}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open ${doc.original_name} in a new tab`}
+                    className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded truncate"
+                  >
+                    {doc.original_name}
+                  </a>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-surface-2 text-ink-soft">
+                      {t(`clientDetail.category_${doc.category}`)}
+                    </span>
+                    {doc.is_private && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1">
+                        <FiLock size={11} aria-hidden="true" />
+                        {t("clientDetail.private")}
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-ink-soft">
                     {(doc.size_bytes / 1024).toFixed(0)} KB
                   </span>
+                  {isOwnerOrStaff && (
+                    <button
+                      onClick={() => togglePrivate(doc)}
+                      aria-label={`${
+                        doc.is_private
+                          ? t("clientDetail.makePublic")
+                          : t("clientDetail.makePrivate")
+                      } ${doc.original_name}`}
+                      className="bg-surface-2 text-ink-soft text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      {doc.is_private ? (
+                        <FiUnlock className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />
+                      ) : (
+                        <FiLock className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />
+                      )}
+                      {doc.is_private
+                        ? t("clientDetail.makePublic")
+                        : t("clientDetail.makePrivate")}
+                    </button>
+                  )}
                   <button
                     onClick={() => startEdit(doc)}
                     aria-label={`${t("clientDetail.renameDocument")} ${doc.original_name}`}

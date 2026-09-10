@@ -472,8 +472,8 @@ class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = [
-            "id", "project", "file", "original_name",
-            "size_bytes", "uploaded_at", "uploaded_by_name",
+            "id", "project", "file", "original_name", "category",
+            "is_private", "size_bytes", "uploaded_at", "uploaded_by_name",
         ]
         read_only_fields = [
             "original_name", "size_bytes", "uploaded_at",

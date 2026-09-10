@@ -736,8 +736,15 @@ def document_upload_path(instance, filename):
 
 class Document(models.Model):
     """A file attached to a project - visible to both the owner and
-    the project's client.
+    the project's client, unless marked private (DOC-06).
     """
+    class Category(models.TextChoices):
+        CONTRACT = "contract", "Contract"
+        DELIVERABLE = "deliverable", "Deliverable"
+        INVOICE = "invoice", "Invoice"
+        REFERENCE = "reference", "Reference"
+        OTHER = "other", "Other"
+
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name="documents"
     )
@@ -747,6 +754,16 @@ class Document(models.Model):
     file = models.FileField(upload_to=document_upload_path)
     original_name = models.CharField(max_length=255)
     size_bytes = models.PositiveIntegerField(default=0)
+    category = models.CharField(
+        max_length=20, choices=Category.choices, default=Category.OTHER,
+    )
+    is_private = models.BooleanField(
+        default=False,
+        help_text="Owner/staff-only visibility (DOC-06) - hidden from "
+        "the client entirely, not just non-downloadable. Only owner/"
+        "staff can set this; a client's own uploads are always "
+        "visible to the workspace (see DocumentViewSet).",
+    )
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -759,7 +759,12 @@ class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Same tenant-scoping pattern as MilestoneViewSet. On create,
     we capture who uploaded it and the file's size automatically -
     the client never has to send those. ?project=<id> narrows to
-    one project.
+    one project, ?category=<contract|deliverable|invoice|reference|
+    other> narrows by category (DOC-04). A document marked private
+    (DOC-06) is hidden from the client entirely - only owner/staff
+    can set is_private, and it's always forced False for a
+    client's own upload, since a client hiding a file from the
+    owner reviewing it would defeat the point.
     """
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
@@ -774,17 +779,23 @@ class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             )
         else:
             qs = Document.objects.filter(
-                project__client=user.client_profile
+                project__client=user.client_profile, is_private=False
             )
+        category = self.request.query_params.get("category")
+        if category:
+            qs = qs.filter(category=category)
         return self.filter_by_query_param(qs)
 
     def perform_create(self, serializer):
         uploaded_file = self.request.FILES.get("file")
-        document = serializer.save(
-            uploaded_by=self.request.user,
-            original_name=uploaded_file.name if uploaded_file else "",
-            size_bytes=uploaded_file.size if uploaded_file else 0,
-        )
+        extra = {
+            "uploaded_by": self.request.user,
+            "original_name": uploaded_file.name if uploaded_file else "",
+            "size_bytes": uploaded_file.size if uploaded_file else 0,
+        }
+        if self.request.user.role == "client":
+            extra["is_private"] = False
+        document = serializer.save(**extra)
         log_activity(
             document.project.workspace,
             self.request.user,
@@ -792,6 +803,12 @@ class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             document,
             client=document.project.client,
         )
+
+    def perform_update(self, serializer):
+        if self.request.user.role == "client":
+            serializer.save(is_private=False)
+        else:
+            serializer.save()
 
 
 class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):

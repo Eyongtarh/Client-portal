@@ -15,6 +15,7 @@ import {
   FiLogOut,
   FiSend,
   FiTrash2,
+  FiUpload,
   FiUser,
   FiUserMinus,
   FiUserPlus,
@@ -67,6 +68,7 @@ export default function ClientPortal() {
   const [paymentBanner, setPaymentBanner] = useState(null);
   const [invoiceError, setInvoiceError] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [docUploading, setDocUploading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -102,6 +104,22 @@ export default function ClientPortal() {
   useEffect(() => {
     loadAll();
   }, []);
+  async function onUploadDocument(e) {
+    const file = e.target.files[0];
+    if (!file || !project) return;
+    setDocUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("project", project.id);
+    try {
+      await api.post("/documents/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      await loadAll();
+    } finally {
+      setDocUploading(false);
+    }
+  }
   async function onSend(e) {
     e.preventDefault();
     if (!body.trim() || !project) return;
@@ -216,7 +234,27 @@ export default function ClientPortal() {
         )}
         {project && (
           <section className="bg-surface border border-line rounded-2xl p-6">
-            <h3 className="font-medium mb-3 text-ink">{t("clientPortal.documents")}</h3>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-medium text-ink">
+                {t("clientPortal.documents")}
+              </h3>
+              <label
+                className="inline-flex items-center gap-1.5 text-sm text-brand-600 underline cursor-pointer transition-colors hover:text-brand-800 focus-within:ring-2 focus-within:ring-brand-400 rounded"
+                title={t("clientPortal.uploadDocument")}
+              >
+                <FiUpload aria-hidden="true" size={14} />
+                {docUploading
+                  ? t("clientPortal.uploading")
+                  : t("clientPortal.uploadDocument")}
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={onUploadDocument}
+                  disabled={docUploading}
+                  aria-label={t("clientPortal.uploadDocument")}
+                />
+              </label>
+            </div>
             <ul className="divide-y divide-line">
               {documents.map((doc) => (
                 <li key={doc.id} className="py-2 text-sm">
@@ -229,6 +267,11 @@ export default function ClientPortal() {
                   >
                     {doc.original_name}
                   </a>
+                  {doc.category && doc.category !== "other" && (
+                    <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-surface-2 text-ink-soft">
+                      {t(`clientPortal.category_${doc.category}`)}
+                    </span>
+                  )}
                 </li>
               ))}
               {documents.length === 0 && (
