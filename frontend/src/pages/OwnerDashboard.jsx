@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  FiAlertTriangle,
   FiArchive,
   FiCalendar,
   FiFolder,
@@ -649,6 +650,26 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
       ? null
       : plan.max_team_members;
 
+  // Warn once usage reaches 80% of a limit (LIMIT-02), well before
+  // the hard block in InviteClientView/TeamInviteView kicks in at
+  // 100% - the point is to give the owner time to upgrade instead
+  // of finding out mid-invite.
+  const nearingLimits = [];
+  if (clientLimit !== null && workspace.client_count / clientLimit >= 0.8) {
+    nearingLimits.push({
+      key: "clients",
+      used: workspace.client_count,
+      limit: clientLimit,
+    });
+  }
+  if (teamLimit !== null && workspace.team_member_count / teamLimit >= 0.8) {
+    nearingLimits.push({
+      key: "teamMembers",
+      used: workspace.team_member_count,
+      limit: teamLimit,
+    });
+  }
+
   return (
     <section>
       <div className="flex justify-between items-center mb-6">
@@ -678,6 +699,34 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
           }
         >
           {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
+        </div>
+      )}
+
+      {nearingLimits.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {nearingLimits.map((item) => (
+            <div
+              key={item.key}
+              role="status"
+              className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-3 flex items-center justify-between gap-3"
+            >
+              <span>
+                <FiAlertTriangle className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                {t(`subscription.nearingLimit_${item.key}`, {
+                  used: item.used,
+                  limit: item.limit,
+                })}
+              </span>
+              {isOwner && (
+                <button
+                  onClick={() => setShowPlans(true)}
+                  className="text-amber-800 underline font-medium shrink-0"
+                >
+                  {t("subscription.changePlan")}
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

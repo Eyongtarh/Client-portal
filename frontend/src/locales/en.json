@@ -424,6 +424,8 @@
     "clientsUsed": "Clients",
     "teamMembersUsed": "Team members",
     "unlimited": "Unlimited",
+    "nearingLimit_clients": "You're using {{used}} of {{limit}} clients on your plan.",
+    "nearingLimit_teamMembers": "You're using {{used}} of {{limit}} team members on your plan.",
     "changePlan": "Change plan",
     "switchTo": "Switch to",
     "planChanged": "Plan updated.",

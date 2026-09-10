@@ -424,6 +424,8 @@
     "clientsUsed": "Clients",
     "teamMembersUsed": "Membres de l'\u00e9quipe",
     "unlimited": "Illimit\u00e9",
+    "nearingLimit_clients": "Vous utilisez {{used}} client(s) sur {{limit}} inclus dans votre forfait.",
+    "nearingLimit_teamMembers": "Vous utilisez {{used}} membre(s) d'\u00e9quipe sur {{limit}} inclus dans votre forfait.",
     "changePlan": "Changer de forfait",
     "switchTo": "Passer \u00e0",
     "planChanged": "Forfait mis \u00e0 jour.",
