@@ -47,6 +47,9 @@ router.register(
     "resources", views.ResourceViewSet, basename="resource"
 )
 router.register(
+    "payment-methods", views.PaymentMethodViewSet, basename="paymentmethod"
+)
+router.register(
     "activities", views.ActivityViewSet, basename="activity"
 )
 

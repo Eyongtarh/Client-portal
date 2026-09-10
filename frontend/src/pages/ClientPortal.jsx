@@ -50,6 +50,7 @@ export default function ClientPortal() {
   const [body, setBody] = useState("");
   const [paymentBanner, setPaymentBanner] = useState(null);
   const [invoiceError, setInvoiceError] = useState(null);
+  const [paymentMethods, setPaymentMethods] = useState([]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -58,6 +59,10 @@ export default function ClientPortal() {
       setPaymentBanner(payment);
       window.history.replaceState({}, "", window.location.pathname);
     }
+  }, []);
+
+  useEffect(() => {
+    api.get("/payment-methods/").then((res) => setPaymentMethods(res.data));
   }, []);
 
   async function loadAll() {
@@ -255,6 +260,25 @@ export default function ClientPortal() {
                 </p>
               )}
             </ul>
+            {paymentMethods.length > 0 &&
+              invoices.some((inv) => inv.status !== "paid") && (
+                <div className="mt-4 pt-3 border-t border-line">
+                  <p className="text-xs font-medium text-ink-soft mb-2">
+                    {t("clientPortal.otherWaysToPay")}
+                  </p>
+                  <ul className="space-y-2">
+                    {paymentMethods.map((method) => (
+                      <li key={method.id} className="text-xs">
+                        <span className="font-medium">{method.name}</span>
+                        {": "}
+                        <span className="text-ink-soft whitespace-pre-wrap">
+                          {method.account_details}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
           </section>
         )}
         {project && (
@@ -462,6 +486,7 @@ function BookingSection() {
   const [editWaitlistService, setEditWaitlistService] = useState("");
   const [editWaitlistDate, setEditWaitlistDate] = useState("");
   const [editWaitlistTime, setEditWaitlistTime] = useState("");
+  const [paymentMethods, setPaymentMethods] = useState([]);
 
   async function loadServices() {
     const res = await api.get("/services/");
@@ -486,6 +511,7 @@ function BookingSection() {
     loadResources();
     loadMyBookings();
     loadMyWaitlist();
+    api.get("/payment-methods/").then((res) => setPaymentMethods(res.data));
   }, []);
 
   async function loadSlots() {
@@ -1264,6 +1290,15 @@ function BookingSection() {
                     </button>
                   </div>
                 </div>
+                {booking.payment_status === "pending" &&
+                  paymentMethods.length > 0 && (
+                    <p className="text-xs text-ink-soft mt-1">
+                      {t("clientPortal.otherWaysToPay")}{" "}
+                      {paymentMethods
+                        .map((m) => `${m.name}: ${m.account_details}`)
+                        .join(" · ")}
+                    </p>
+                  )}
                 {booking.series && (
                   <div className="flex justify-between items-center mt-1">
                     <span className="text-xs text-ink-soft">

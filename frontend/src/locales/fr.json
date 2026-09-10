@@ -139,7 +139,26 @@
     "disconnectStripe": "D\u00e9connecter",
     "confirmDisconnectStripe": "D\u00e9connecter votre compte Stripe ? Vos clients ne pourront plus payer en ligne tant que vous ne le reconnectez pas.",
     "stripeConnectSuccess": "Compte Stripe connect\u00e9. Vous recevrez d\u00e9sormais les paiements des clients directement.",
-    "stripeConnectError": "Impossible de connecter votre compte Stripe. Veuillez r\u00e9essayer."
+    "stripeConnectError": "Impossible de connecter votre compte Stripe. Veuillez r\u00e9essayer.",
+    "manualPaymentMethods": "Moyens de paiement manuels",
+    "manualPaymentMethodsHint": "Pour les clients qui vous paient directement (ex. Mobile Money) plut\u00f4t que par carte. Vous devrez marquer ces paiements comme re\u00e7us vous-m\u00eame une fois confirm\u00e9s.",
+    "addPaymentMethod": "+ Ajouter un moyen de paiement",
+    "paymentMethodName": "Nom du moyen de paiement",
+    "paymentMethodNamePlaceholder": "ex. MTN Mobile Money",
+    "paymentMethodDetails": "D\u00e9tails du compte",
+    "paymentMethodDetailsPlaceholder": "ex. +237 6XX XXX XXX, nom du compte",
+    "noPaymentMethods": "Aucun moyen de paiement manuel ajout\u00e9 pour le moment.",
+    "paymentMethodAdded": "Moyen de paiement ajout\u00e9.",
+    "couldNotAddPaymentMethod": "Impossible d'ajouter ce moyen de paiement.",
+    "paymentMethodUpdated": "Moyen de paiement mis \u00e0 jour.",
+    "couldNotUpdatePaymentMethod": "Impossible de mettre \u00e0 jour ce moyen de paiement.",
+    "paymentMethodDeleted": "Moyen de paiement supprim\u00e9.",
+    "couldNotDeletePaymentMethod": "Impossible de supprimer ce moyen de paiement.",
+    "confirmDeletePaymentMethod": "Supprimer ce moyen de paiement ?",
+    "markBookingPaid": "Marquer comme pay\u00e9",
+    "confirmMarkBookingPaid": "Marquer cette r\u00e9servation comme pay\u00e9e ? \u00c0 faire uniquement apr\u00e8s avoir confirm\u00e9 la r\u00e9ception du paiement.",
+    "bookingMarkedPaid": "R\u00e9servation marqu\u00e9e comme pay\u00e9e.",
+    "couldNotMarkBookingPaid": "Impossible de marquer cette r\u00e9servation comme pay\u00e9e."
   },
   "team": {
     "teamTitle": "\u00c9quipe",
@@ -308,6 +327,10 @@
     "invoiceDeleted": "Facture supprim\u00e9e.",
     "couldNotUpdateInvoice": "Impossible de mettre \u00e0 jour la facture.",
     "couldNotDeleteInvoice": "Impossible de supprimer la facture.",
+    "markInvoicePaid": "Marquer comme pay\u00e9e",
+    "confirmMarkInvoicePaid": "Marquer cette facture comme pay\u00e9e ? \u00c0 faire uniquement apr\u00e8s avoir confirm\u00e9 la r\u00e9ception du paiement.",
+    "invoiceMarkedPaid": "Facture marqu\u00e9e comme pay\u00e9e.",
+    "couldNotMarkInvoicePaid": "Impossible de marquer cette facture comme pay\u00e9e.",
     "editMilestone": "Modifier",
     "deleteMilestone": "Supprimer",
     "confirmDeleteMilestone": "Supprimer cette \u00e9tape\u00a0?",
@@ -343,7 +366,8 @@
     "payNow": "Payer maintenant",
     "paymentSuccess": "Paiement r\u00e9ussi. Merci !",
     "paymentCancelled": "Le paiement a \u00e9t\u00e9 annul\u00e9 - rien n'a \u00e9t\u00e9 d\u00e9bit\u00e9.",
-    "paymentFailed": "Impossible de lancer le paiement. Veuillez r\u00e9essayer."
+    "paymentFailed": "Impossible de lancer le paiement. Veuillez r\u00e9essayer.",
+    "otherWaysToPay": "Ou payez directement :"
   },
   "subscription": {
     "planTitle": "Forfait et utilisation",

@@ -462,6 +462,35 @@ class Resource(models.Model):
         return self.name
 
 
+class PaymentMethod(models.Model):
+    """A manual, offline way for clients to pay this workspace
+    directly (e.g. Mobile Money, Orange Money, bank transfer) -
+    for workspaces in countries Stripe Connect doesn't support
+    payouts to. Purely informational: the client sends money
+    themselves outside the app, and the owner/staff then marks the
+    invoice or booking paid by hand (see InvoiceViewSet.mark_paid
+    and BookingViewSet.mark_paid) - there's no automated
+    confirmation, so this is never a substitute for a real webhook
+    where one is available (i.e. card payments via Stripe Connect).
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="payment_methods"
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="e.g. \"MTN Mobile Money\", \"Orange Money\", "
+        "\"Bank transfer\".",
+    )
+    account_details = models.TextField(
+        help_text="Whatever the client needs to send money directly - "
+        "phone number, account number, account holder name, etc.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.workspace.name})"
+
+
 class WorkingHours(models.Model):
     """One weekly recurring availability window per workspace.
     Multiple rows can exist for the same weekday (e.g. a lunch

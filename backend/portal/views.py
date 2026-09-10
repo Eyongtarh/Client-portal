@@ -27,8 +27,9 @@ from .payments import create_checkout_session
 from .permissions import IsOwnerOrStaffForWrite
 from .models import (
     Activity, Approval, Booking, Client, Document, Invoice, Message,
-    Milestone, Project, RecurringSeries, Resource, Review, Service,
-    SubscriptionPlan, Task, User, WaitlistEntry, WorkingHours, Workspace,
+    Milestone, PaymentMethod, Project, RecurringSeries, Resource, Review,
+    Service, SubscriptionPlan, Task, User, WaitlistEntry, WorkingHours,
+    Workspace,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -46,6 +47,7 @@ from .serializers import (
     MessageSerializer,
     MilestoneSerializer,
     PasswordResetConfirmSerializer,
+    PaymentMethodSerializer,
     PasswordResetRequestSerializer,
     ProjectSerializer,
     RecurringSeriesCreateSerializer,
@@ -851,7 +853,18 @@ class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         old_status = serializer.instance.status
-        invoice = serializer.save()
+        extra = {}
+        if (
+            serializer.validated_data.get("status") == "paid"
+            and old_status != "paid"
+            and not serializer.instance.paid_at
+        ):
+            # Covers marking an invoice paid manually (e.g. a Mobile
+            # Money transfer the owner confirmed by hand) - a Stripe
+            # payment never reaches this path at all, since
+            # webhooks._mark_invoice_paid updates the row directly.
+            extra["paid_at"] = timezone.now()
+        invoice = serializer.save(**extra)
         if invoice.status == old_status:
             return
         if invoice.status == "sent":
@@ -1144,6 +1157,29 @@ class ResourceViewSet(viewsets.ModelViewSet):
         serializer.save(workspace=self.request.user.get_workspace())
 
 
+class PaymentMethodViewSet(viewsets.ModelViewSet):
+    """Manual, offline payment methods (Mobile Money, bank transfer,
+    etc.) a workspace publishes for clients who can't pay by card
+    via Stripe - see PaymentMethod. Owner/staff manage the list;
+    clients get read-only access so they can see how to pay.
+    """
+    serializer_class = PaymentMethodSerializer
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ("owner", "staff"):
+            return PaymentMethod.objects.filter(
+                workspace=user.get_workspace()
+            )
+        return PaymentMethod.objects.filter(
+            workspace=user.client_profile.workspace
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(workspace=self.request.user.get_workspace())
+
+
 class WorkingHoursViewSet(viewsets.ModelViewSet):
     """Owners and staff manage their weekly hours; clients get
     read-only access (used to render available days before
@@ -1363,6 +1399,42 @@ class BookingViewSet(viewsets.ModelViewSet):
             booking.workspace,
             request.user,
             "booking_no_show",
+            booking,
+            client=booking.client,
+        )
+        return Response(BookingSerializer(booking).data)
+
+    @action(detail=True, methods=["post"], url_path="mark-paid")
+    def mark_paid(self, request, pk=None):
+        """POST /api/bookings/<id>/mark-paid/ - owner/staff confirms
+        a manual, offline payment (e.g. Mobile Money) was received
+        for a booking with a pending deposit/full payment.
+        payment_status is otherwise read-only, normally set only by
+        webhooks._mark_booking_paid for card payments Stripe itself
+        confirmed - this is the equivalent path for payments Stripe
+        never sees.
+        """
+        if request.user.role not in ("owner", "staff"):
+            raise PermissionDenied(
+                "Only the owner or team can mark a booking as paid."
+            )
+        booking = generics.get_object_or_404(
+            Booking.objects.filter(
+                workspace=request.user.get_workspace()
+            ),
+            pk=pk,
+        )
+        if booking.payment_status != "pending":
+            raise ValidationError(
+                "Only a booking with a pending payment can be "
+                "marked paid."
+            )
+        booking.payment_status = "paid"
+        booking.save(update_fields=["payment_status"])
+        log_activity(
+            booking.workspace,
+            request.user,
+            "booking_payment_received",
             booking,
             client=booking.client,
         )

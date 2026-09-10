@@ -3,9 +3,9 @@ from decimal import Decimal
 from .currencies import VALID_CURRENCIES
 from .models import (
     Activity, Approval, Client, ClientInvite, Document, Invoice,
-    InvoiceItem, Message, Milestone, Project, RecurringSeries,
-    Resource, Review, Service, SubscriptionPlan, Task, TeamInvite,
-    User, WaitlistEntry, WorkingHours, Booking, Workspace,
+    InvoiceItem, Message, Milestone, PaymentMethod, Project,
+    RecurringSeries, Resource, Review, Service, SubscriptionPlan, Task,
+    TeamInvite, User, WaitlistEntry, WorkingHours, Booking, Workspace,
 )
 from rest_framework import serializers
 from django.utils import timezone
@@ -577,6 +577,15 @@ class ResourceSerializer(serializers.ModelSerializer):
                 "Duration must be at least 1 minute."
             )
         return value
+
+
+class PaymentMethodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentMethod
+        fields = [
+            "id", "workspace", "name", "account_details", "created_at",
+        ]
+        read_only_fields = ["workspace", "created_at"]
 
 
 class WorkingHoursSerializer(serializers.ModelSerializer):

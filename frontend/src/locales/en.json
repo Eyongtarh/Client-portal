@@ -139,7 +139,26 @@
     "disconnectStripe": "Disconnect",
     "confirmDisconnectStripe": "Disconnect your Stripe account? Clients won't be able to pay online until you reconnect.",
     "stripeConnectSuccess": "Stripe account connected. You'll now receive client payments directly.",
-    "stripeConnectError": "Couldn't connect your Stripe account. Please try again."
+    "stripeConnectError": "Couldn't connect your Stripe account. Please try again.",
+    "manualPaymentMethods": "Manual payment methods",
+    "manualPaymentMethodsHint": "For clients who pay you directly (e.g. Mobile Money) instead of by card. You'll need to mark those payments as paid yourself once you've confirmed you received them.",
+    "addPaymentMethod": "+ Add payment method",
+    "paymentMethodName": "Payment method name",
+    "paymentMethodNamePlaceholder": "e.g. MTN Mobile Money",
+    "paymentMethodDetails": "Account details",
+    "paymentMethodDetailsPlaceholder": "e.g. +237 6XX XXX XXX, account name",
+    "noPaymentMethods": "No manual payment methods added yet.",
+    "paymentMethodAdded": "Payment method added.",
+    "couldNotAddPaymentMethod": "Could not add this payment method.",
+    "paymentMethodUpdated": "Payment method updated.",
+    "couldNotUpdatePaymentMethod": "Could not update this payment method.",
+    "paymentMethodDeleted": "Payment method removed.",
+    "couldNotDeletePaymentMethod": "Could not remove this payment method.",
+    "confirmDeletePaymentMethod": "Remove this payment method?",
+    "markBookingPaid": "Mark as paid",
+    "confirmMarkBookingPaid": "Mark this booking as paid? Only do this once you've confirmed you received the payment.",
+    "bookingMarkedPaid": "Booking marked as paid.",
+    "couldNotMarkBookingPaid": "Could not mark this booking as paid."
   },
   "team": {
     "teamTitle": "Team",
@@ -308,6 +327,10 @@
     "invoiceDeleted": "Invoice deleted.",
     "couldNotUpdateInvoice": "Could not update invoice.",
     "couldNotDeleteInvoice": "Could not delete invoice.",
+    "markInvoicePaid": "Mark as paid",
+    "confirmMarkInvoicePaid": "Mark this invoice as paid? Only do this once you've confirmed you received the payment.",
+    "invoiceMarkedPaid": "Invoice marked as paid.",
+    "couldNotMarkInvoicePaid": "Could not mark this invoice as paid.",
     "editMilestone": "Edit",
     "deleteMilestone": "Delete",
     "confirmDeleteMilestone": "Delete this milestone?",
@@ -343,7 +366,8 @@
     "payNow": "Pay now",
     "paymentSuccess": "Payment successful. Thank you!",
     "paymentCancelled": "Payment was cancelled - nothing was charged.",
-    "paymentFailed": "Could not start payment. Please try again."
+    "paymentFailed": "Could not start payment. Please try again.",
+    "otherWaysToPay": "Or pay directly:"
   },
   "subscription": {
     "planTitle": "Plan & Usage",

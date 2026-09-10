@@ -962,6 +962,23 @@ function InvoicesTab({ client, project }) {
     }
   }
 
+  async function markInvoicePaid(invoiceId) {
+    if (!window.confirm(t("clientDetail.confirmMarkInvoicePaid"))) return;
+    try {
+      await api.patch(`/invoices/${invoiceId}/`, { status: "paid" });
+      setStatusMsg({
+        key: "clientDetail.invoiceMarkedPaid",
+        type: "success",
+      });
+      load();
+    } catch {
+      setStatusMsg({
+        key: "clientDetail.couldNotMarkInvoicePaid",
+        type: "error",
+      });
+    }
+  }
+
   return (
     <div>
       <form
@@ -1125,6 +1142,15 @@ function InvoicesTab({ client, project }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  {invoice.status !== "paid" && (
+                    <button
+                      onClick={() => markInvoicePaid(invoice.id)}
+                      aria-label={`${t("clientDetail.markInvoicePaid")} ${invoice.number}`}
+                      className="bg-green-50 text-green-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      {t("clientDetail.markInvoicePaid")}
+                    </button>
+                  )}
                   <button
                     onClick={() => downloadPdf(invoice.id)}
                     aria-label={`Download invoice ${invoice.number} as PDF`}

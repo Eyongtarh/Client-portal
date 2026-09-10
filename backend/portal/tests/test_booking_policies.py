@@ -251,3 +251,74 @@ class NoShowActionTests(BookingPolicyTestCase):
             f"/api/bookings/{self.booking.id}/mark-no-show/"
         )
         self.assertEqual(res.status_code, 404)
+
+
+class MarkPaidActionTests(BookingPolicyTestCase):
+    """Owner/staff confirming a manual (e.g. Mobile Money) payment -
+    the offline equivalent of webhooks._mark_booking_paid, for
+    workspaces Stripe Connect can't pay out to (BOOK-72/73).
+    """
+    def setUp(self):
+        super().setUp()
+        service = Service.objects.create(
+            workspace=self.workspace,
+            name="Session",
+            duration_minutes=60,
+            price=Decimal("80.00"),
+            payment_requirement="deposit",
+            deposit_percent=50,
+        )
+        self.booking = Booking.objects.create(
+            workspace=self.workspace,
+            service=service,
+            client=self.client_profile,
+            start_time=timezone.now() + timedelta(days=1),
+            end_time=timezone.now() + timedelta(days=1, hours=1),
+            payment_status="pending",
+            payment_amount=Decimal("40.00"),
+        )
+
+    def test_owner_can_mark_paid(self):
+        res = auth_client(self.owner).post(
+            f"/api/bookings/{self.booking.id}/mark-paid/"
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data["payment_status"], "paid")
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.payment_status, "paid")
+
+    def test_staff_can_mark_paid(self):
+        res = auth_client(self.staff).post(
+            f"/api/bookings/{self.booking.id}/mark-paid/"
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+
+    def test_client_cannot_mark_paid(self):
+        res = auth_client(self.client_user).post(
+            f"/api/bookings/{self.booking.id}/mark-paid/"
+        )
+        self.assertEqual(res.status_code, 403)
+        self.booking.refresh_from_db()
+        self.assertEqual(self.booking.payment_status, "pending")
+
+    def test_cannot_mark_paid_twice(self):
+        auth_client(self.owner).post(
+            f"/api/bookings/{self.booking.id}/mark-paid/"
+        )
+        res = auth_client(self.owner).post(
+            f"/api/bookings/{self.booking.id}/mark-paid/"
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_other_workspace_owner_cannot_mark_paid(self):
+        other_owner = User.objects.create_user(
+            username="otherowner2",
+            email="otherowner2@example.com",
+            password="pw12345678",
+            role="owner",
+        )
+        Workspace.objects.create(owner=other_owner, name="Other Co 2")
+        res = auth_client(other_owner).post(
+            f"/api/bookings/{self.booking.id}/mark-paid/"
+        )
+        self.assertEqual(res.status_code, 404)

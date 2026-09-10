@@ -215,6 +215,45 @@ class CheckoutBlockedWithoutConnectedAccountTests(PaymentTestCase):
         self.assertEqual(res.status_code, 400)
 
 
+class InvoiceManualMarkPaidTests(PaymentTestCase):
+    """Owner marking an invoice paid by hand (e.g. a Mobile Money
+    transfer they confirmed themselves) via a plain PATCH - status
+    is a writable InvoiceSerializer field for owner/staff, unlike
+    Booking.payment_status which needs the dedicated mark-paid
+    action instead (see MarkPaidActionTests).
+    """
+    def _invoice(self, amount="30.00"):
+        invoice = Invoice.objects.create(
+            workspace=self.workspace,
+            client=self.client_profile,
+            number="INV-MANUAL-1",
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice, description="Work", amount=Decimal(amount)
+        )
+        return invoice
+
+    def test_owner_marking_paid_stamps_paid_at(self):
+        invoice = self._invoice()
+        self.assertIsNone(invoice.paid_at)
+        res = auth_client(self.owner).patch(
+            f"/api/invoices/{invoice.id}/", {"status": "paid"}
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.status, "paid")
+        self.assertIsNotNone(invoice.paid_at)
+
+    def test_client_cannot_mark_own_invoice_paid(self):
+        invoice = self._invoice()
+        res = auth_client(self.client_user).patch(
+            f"/api/invoices/{invoice.id}/", {"status": "paid"}
+        )
+        self.assertEqual(res.status_code, 403)
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.status, "draft")
+
+
 @override_settings(STRIPE_SECRET_KEY="sk_test_fake")
 class BookingCheckoutTests(PaymentTestCase):
     def _pending_booking(self):
