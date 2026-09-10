@@ -5,6 +5,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+  FiArchive,
+  FiCalendar,
+  FiLogOut,
+  FiRotateCcw,
+  FiUser,
+} from "react-icons/fi";
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
@@ -31,11 +38,27 @@ export default function OwnerDashboard() {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState("");
   const [nameMsg, setNameMsg] = useState(null);
+  const [showArchived, setShowArchived] = useState(false);
   const isOwner = user.role === "owner";
 
-  async function loadClients() {
-    const res = await api.get("/clients/");
+  async function loadClients(archived = showArchived) {
+    const res = await api.get(
+      `/clients/${archived ? "?archived=true" : ""}`
+    );
     setClients(res.data);
+  }
+
+  async function toggleArchived(e) {
+    const next = e.target.checked;
+    setShowArchived(next);
+    loadClients(next);
+  }
+
+  async function archiveClient(e, clientId, isArchived) {
+    e.preventDefault();
+    e.stopPropagation();
+    await api.patch(`/clients/${clientId}/`, { is_archived: !isArchived });
+    loadClients();
   }
   async function loadWorkspace() {
     const res = await api.get("/workspace/");
@@ -223,6 +246,7 @@ export default function OwnerDashboard() {
             aria-label="Manage bookings"
             className="text-sm text-white bg-brand-600 px-3 py-1.5 rounded-lg font-medium text-center transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
+            <FiCalendar className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             Booking
           </Link>
           <ThemeToggle />
@@ -232,6 +256,7 @@ export default function OwnerDashboard() {
             aria-label={t("account.title")}
             className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
+            <FiUser className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("account.title")}
           </Link>
           <button
@@ -239,6 +264,7 @@ export default function OwnerDashboard() {
             aria-label={t("dashboard.signOut")}
             className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
+            <FiLogOut className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("dashboard.signOut")}
           </button>
         </MobileNav>
@@ -346,21 +372,66 @@ export default function OwnerDashboard() {
               </button>
             </form>
           )}
+          <label className="flex items-center gap-2 mb-3 text-sm text-ink-soft cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={toggleArchived}
+              className="rounded"
+            />
+            {t("dashboard.showArchivedClients")}
+          </label>
           <div className="space-y-3">
             {clients.map((client) => (
               <Link
                 key={client.id}
                 to={`/clients/${client.id}`}
                 aria-label={`View ${client.company_name}`}
-                className="block bg-surface border border-line rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="flex justify-between items-center bg-surface border border-line rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
-                <p className="font-medium text-ink">{client.company_name}</p>
-                <p className="text-sm text-ink-soft">{client.contact_email}</p>
+                <div>
+                  <p className="font-medium text-ink">
+                    {client.company_name}
+                  </p>
+                  <p className="text-sm text-ink-soft">
+                    {client.contact_email}
+                  </p>
+                </div>
+                {isOwner && (
+                  <button
+                    onClick={(e) =>
+                      archiveClient(e, client.id, client.is_archived)
+                    }
+                    aria-label={`${
+                      client.is_archived
+                        ? t("dashboard.unarchiveClient")
+                        : t("dashboard.archiveClient")
+                    } ${client.company_name}`}
+                    className="shrink-0 bg-surface-2 text-ink-soft text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {client.is_archived ? (
+                      <FiRotateCcw
+                        className="inline -mt-0.5 mr-1 shrink-0"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <FiArchive
+                        className="inline -mt-0.5 mr-1 shrink-0"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {client.is_archived
+                      ? t("dashboard.unarchiveClient")
+                      : t("dashboard.archiveClient")}
+                  </button>
+                )}
               </Link>
             ))}
             {clients.length === 0 && (
               <p className="text-ink-soft text-sm">
-                {t("dashboard.noClients")}
+                {showArchived
+                  ? t("dashboard.noArchivedClients")
+                  : t("dashboard.noClients")}
               </p>
             )}
           </div>

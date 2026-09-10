@@ -279,7 +279,11 @@
     "signOut": "Sign out",
     "editWorkspaceName": "Edit workspace name",
     "workspaceNameUpdated": "Workspace name updated.",
-    "couldNotUpdateWorkspaceName": "Could not update workspace name."
+    "couldNotUpdateWorkspaceName": "Could not update workspace name.",
+    "showArchivedClients": "Show archived clients",
+    "archiveClient": "Archive",
+    "unarchiveClient": "Unarchive",
+    "noArchivedClients": "No archived clients."
   },
   "clientDetail": {
     "allClients": "All clients",
@@ -313,6 +317,11 @@
     "createInvoice": "Create invoice",
     "downloadPdf": "Download PDF",
     "noInvoices": "No invoices yet.",
+    "tabNotes": "Notes",
+    "notesHint": "Private notes and preferences about this client - only you and your team can see these.",
+    "notesPlaceholder": "e.g. prefers morning appointments, allergic to fragrance products...",
+    "notesUpdated": "Notes updated.",
+    "couldNotUpdateNotes": "Could not update notes.",
     "tabApprovals": "Approvals",
     "newApproval": "New approval request",
     "approvalTitle": "Title",

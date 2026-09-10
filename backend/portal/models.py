@@ -162,6 +162,17 @@ class Client(models.Model):
     )
     company_name = models.CharField(max_length=255)
     contact_email = models.EmailField()
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Owner/staff-only notes and preferences about this "
+        "client (CLIENT-05) - never exposed to the client themselves.",
+    )
+    is_archived = models.BooleanField(
+        default=False,
+        help_text="Hides an inactive client from the default list "
+        "(CLIENT-04) without deleting their history.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

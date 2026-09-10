@@ -41,6 +41,7 @@ from .serializers import (
     ChangePasswordSerializer,
     ChangePlanSerializer,
     ClientInviteCreateSerializer,
+    ClientSelfSerializer,
     ClientSerializer,
     DocumentSerializer,
     InvoiceSerializer,
@@ -1138,15 +1139,30 @@ class BookingCheckoutView(APIView):
 
 class ClientViewSet(viewsets.ModelViewSet):
     """Same tenant-scoping pattern as the other workspace-scoped
-    viewsets.
+    viewsets. Write access is owner/staff only - a client has no
+    legitimate reason to edit their own company_name/notes/archived
+    status via this endpoint. By default, archived clients (CLIENT-
+    04) are hidden from the list; ?archived=true shows only those.
     """
-    serializer_class = ClientSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
+
+    def get_serializer_class(self):
+        if self.request.user.role == "client":
+            return ClientSelfSerializer
+        return ClientSerializer
 
     def get_queryset(self):
         user = self.request.user
         if user.role in ("owner", "staff"):
-            return Client.objects.filter(workspace=user.get_workspace())
+            qs = Client.objects.filter(workspace=user.get_workspace())
+            # Archiving only hides a client from the default list -
+            # their detail page, projects, invoices etc. must stay
+            # reachable by ID, or "archive" would behave like delete.
+            if self.action != "list":
+                return qs
+            if self.request.query_params.get("archived") == "true":
+                return qs.filter(is_archived=True)
+            return qs.filter(is_archived=False)
         return Client.objects.filter(id=user.client_profile.id)
 
 

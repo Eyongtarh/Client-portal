@@ -279,7 +279,11 @@
     "signOut": "D\u00e9connexion",
     "editWorkspaceName": "Modifier le nom de l'espace de travail",
     "workspaceNameUpdated": "Nom de l'espace de travail mis \u00e0 jour.",
-    "couldNotUpdateWorkspaceName": "Impossible de mettre \u00e0 jour le nom de l'espace de travail."
+    "couldNotUpdateWorkspaceName": "Impossible de mettre \u00e0 jour le nom de l'espace de travail.",
+    "showArchivedClients": "Afficher les clients archiv\u00e9s",
+    "archiveClient": "Archiver",
+    "unarchiveClient": "D\u00e9sarchiver",
+    "noArchivedClients": "Aucun client archiv\u00e9."
   },
   "clientDetail": {
     "allClients": "Tous les clients",
@@ -313,6 +317,11 @@
     "createInvoice": "Cr\u00e9er la facture",
     "downloadPdf": "T\u00e9l\u00e9charger le PDF",
     "noInvoices": "Aucune facture pour le moment.",
+    "tabNotes": "Notes",
+    "notesHint": "Notes privées et préférences concernant ce client - seuls vous et votre équipe pouvez les voir.",
+    "notesPlaceholder": "ex. préfère les rendez-vous le matin, allergique aux parfums...",
+    "notesUpdated": "Notes mises à jour.",
+    "couldNotUpdateNotes": "Impossible de mettre à jour les notes.",
     "tabApprovals": "Approbations",
     "newApproval": "Nouvelle demande d'approbation",
     "approvalTitle": "Titre",

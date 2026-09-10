@@ -41,13 +41,29 @@ class ActivitySerializer(serializers.ModelSerializer):
 
 
 class ClientSerializer(serializers.ModelSerializer):
+    """Owner/staff view - includes `notes` (CLIENT-05) and
+    `is_archived` (CLIENT-04). Never used for the client's own view
+    of themselves - see ClientSelfSerializer - since notes are
+    meant to stay private to the workspace side.
+    """
     class Meta:
         model = Client
         fields = [
-            "id", "workspace", "company_name",
-            "contact_email", "created_at",
+            "id", "workspace", "company_name", "contact_email",
+            "notes", "is_archived", "created_at",
         ]
         read_only_fields = ["workspace"]
+
+
+class ClientSelfSerializer(serializers.ModelSerializer):
+    """What a client sees of their own Client record - deliberately
+    excludes `notes` (workspace-private) and `is_archived` (not
+    the client's concern).
+    """
+    class Meta:
+        model = Client
+        fields = ["id", "workspace", "company_name", "contact_email"]
+        read_only_fields = fields
 
 
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
