@@ -550,7 +550,10 @@ class ProjectViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     """Owners and staff manage their workspace's projects; clients
     see only their own project(s). ?client=<id> narrows the list to
     one client's project(s) - used by the client-detail page.
-    ?status=<active|completed|on_hold> narrows by status (SEARCH-02).
+    ?status=<active|completed|on_hold>, ?deadline_after=<YYYY-MM-DD>
+    and ?deadline_before=<YYYY-MM-DD> narrow by status and deadline
+    (SEARCH-02). A malformed date is ignored, same as an invalid
+    ?client=.
     """
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
@@ -567,6 +570,16 @@ class ProjectViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         status_param = self.request.query_params.get("status")
         if status_param:
             qs = qs.filter(status=status_param)
+        deadline_after = parse_date(
+            self.request.query_params.get("deadline_after", "")
+        )
+        if deadline_after:
+            qs = qs.filter(deadline__gte=deadline_after)
+        deadline_before = parse_date(
+            self.request.query_params.get("deadline_before", "")
+        )
+        if deadline_before:
+            qs = qs.filter(deadline__lte=deadline_before)
         return qs
 
     def perform_create(self, serializer):

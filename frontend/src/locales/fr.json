@@ -276,6 +276,7 @@
     "sendInvite": "Envoyer l'invitation",
     "sending": "Envoi...",
     "noClients": "Aucun client pour le moment.",
+    "projects": "Projets",
     "signOut": "D\u00e9connexion",
     "editWorkspaceName": "Modifier le nom de l'espace de travail",
     "workspaceNameUpdated": "Nom de l'espace de travail mis \u00e0 jour.",
@@ -504,5 +505,16 @@
     "documents": "Documents",
     "invoices": "Factures",
     "messages": "Messages"
+  },
+  "projects": {
+    "filterClient": "Client",
+    "allClients": "Tous les clients",
+    "filterStatus": "Statut",
+    "allStatuses": "Tous les statuts",
+    "deadlineAfter": "Échéance après",
+    "deadlineBefore": "Échéance avant",
+    "deadline": "Échéance {{date}}",
+    "noDeadline": "Aucune échéance",
+    "noProjects": "Aucun projet ne correspond à ces filtres."
   }
 }

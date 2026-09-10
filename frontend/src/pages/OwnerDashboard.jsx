@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import {
   FiArchive,
   FiCalendar,
+  FiFolder,
   FiLogOut,
   FiRotateCcw,
   FiUser,
@@ -241,6 +242,14 @@ export default function OwnerDashboard() {
         </div>
         <MobileNav>
           <SearchBar />
+          <Link
+            to="/projects"
+            aria-label={t("dashboard.projects")}
+            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
+            <FiFolder className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+            {t("dashboard.projects")}
+          </Link>
           <Link
             to="/booking"
             aria-label="Manage bookings"

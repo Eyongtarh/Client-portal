@@ -115,6 +115,41 @@ class ProjectStatusFilterTests(SearchTestCase):
         res = auth_client(self.owner).get("/api/projects/?status=completed")
         self.assertEqual([p["name"] for p in res.data], ["Done one"])
 
+    def test_filters_projects_by_deadline_range(self):
+        Project.objects.create(
+            workspace=self.workspace,
+            client=self.client_profile,
+            name="Due soon",
+            deadline="2026-01-15",
+        )
+        Project.objects.create(
+            workspace=self.workspace,
+            client=self.client_profile,
+            name="Due later",
+            deadline="2026-03-01",
+        )
+        res = auth_client(self.owner).get(
+            "/api/projects/?deadline_after=2026-02-01"
+        )
+        self.assertEqual([p["name"] for p in res.data], ["Due later"])
+
+        res = auth_client(self.owner).get(
+            "/api/projects/?deadline_before=2026-02-01"
+        )
+        self.assertEqual([p["name"] for p in res.data], ["Due soon"])
+
+    def test_malformed_deadline_is_ignored_not_500(self):
+        Project.objects.create(
+            workspace=self.workspace,
+            client=self.client_profile,
+            name="Only one",
+        )
+        res = auth_client(self.owner).get(
+            "/api/projects/?deadline_after=not-a-date"
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 1)
+
 
 class InvoiceFilterTests(SearchTestCase):
     def test_filters_invoices_by_status_and_due_date(self):
