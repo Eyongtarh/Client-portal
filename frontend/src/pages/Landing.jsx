@@ -4,6 +4,16 @@
 // dashboard instead.
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+  FiBriefcase,
+  FiCalendar,
+  FiCheckCircle,
+  FiCreditCard,
+  FiFileText,
+  FiMessageSquare,
+  FiTag,
+  FiUsers,
+} from "react-icons/fi";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import LogoMark from "../components/LogoMark.jsx";
@@ -13,60 +23,15 @@ import SkipLink from "../components/SkipLink.jsx";
 const STEPS = ["step1", "step2", "step3"];
 
 const FEATURES = [
-  ["featureProjectsTitle", "featureProjectsBody", "briefcase"],
-  ["featureBookingsTitle", "featureBookingsBody", "calendar"],
-  ["featureInvoicesTitle", "featureInvoicesBody", "card"],
-  ["featureApprovalsTitle", "featureApprovalsBody", "check"],
-  ["featureDocsTitle", "featureDocsBody", "document"],
-  ["featureMessagesTitle", "featureMessagesBody", "chat"],
-  ["featureTeamTitle", "featureTeamBody", "team"],
-  ["featureBrandingTitle", "featureBrandingBody", "brand"],
+  ["featureProjectsTitle", "featureProjectsBody", FiBriefcase],
+  ["featureBookingsTitle", "featureBookingsBody", FiCalendar],
+  ["featureInvoicesTitle", "featureInvoicesBody", FiCreditCard],
+  ["featureApprovalsTitle", "featureApprovalsBody", FiCheckCircle],
+  ["featureDocsTitle", "featureDocsBody", FiFileText],
+  ["featureMessagesTitle", "featureMessagesBody", FiMessageSquare],
+  ["featureTeamTitle", "featureTeamBody", FiUsers],
+  ["featureBrandingTitle", "featureBrandingBody", FiTag],
 ];
-
-const ICONS = {
-  briefcase: (
-    <path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z M8 6V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1 M3 12h18" />
-  ),
-  document: (
-    <path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z M14 3v5h5 M9 13h6 M9 17h6" />
-  ),
-  chat: (
-    <path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
-  ),
-  card: (
-    <path d="M3 7a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Z M3 11h18 M7 15h4" />
-  ),
-  calendar: (
-    <path d="M8 3v4M16 3v4M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
-  ),
-  check: (
-    <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M8 12.5l2.5 2.5L16 9" />
-  ),
-  team: (
-    <path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5 M17 11a2.5 2.5 0 1 0 0-5 M16 14.3c2.3.5 4 2.3 4 5.2" />
-  ),
-  brand: (
-    <path d="M12 2H5a1 1 0 0 0-1 1v7l10.5 10.5a1 1 0 0 0 1.4 0l6.6-6.6a1 1 0 0 0 0-1.4L12 2Z M7.5 6.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z" />
-  ),
-};
-
-function FeatureIcon({ name }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width="22"
-      height="22"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {ICONS[name]}
-    </svg>
-  );
-}
 
 export default function Landing() {
   const { t } = useTranslation();
@@ -149,14 +114,14 @@ export default function Landing() {
         </section>
 
         <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 pb-16">
-          {FEATURES.map(([titleKey, bodyKey, icon], i) => (
+          {FEATURES.map(([titleKey, bodyKey, Icon], i) => (
             <div
               key={titleKey}
               className="animate-rise group bg-surface border border-line rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg"
               style={{ animationDelay: `${0.1 + i * 0.05}s` }}
             >
               <div className="w-10 h-10 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center mb-4 transition-colors group-hover:bg-brand-200">
-                <FeatureIcon name={icon} />
+                <Icon aria-hidden="true" size={22} />
               </div>
               <h3 className="font-semibold text-ink mb-1.5">
                 {t(`landing.${titleKey}`)}
