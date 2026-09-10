@@ -11,6 +11,14 @@
    workspace's brand_color (see applyBrandColor.js). */
 
 :root {
+  /* Tells the browser which palette to use for native UI it draws
+     itself - form control chrome (date/time picker icons, checkbox
+     ticks, scrollbars) and default text-selection color. Without
+     this, those stay light-themed even under data-theme="dark",
+     which is why the date input's calendar icon was invisible
+     (dark icon glyph on our dark canvas). */
+  color-scheme: light;
+
   /* Space-separated (modern rgb() syntax), not comma-separated -
      required so rgb(var(--brand-rgb) / <alpha>) is valid CSS
      anywhere this token is used with transparency (glow/aurora
@@ -30,6 +38,8 @@
 }
 
 :root[data-theme="dark"] {
+  color-scheme: dark;
+
   --canvas: 7 9 15;
   --surface: 16 19 28;
   --surface-2: 23 27 39;
