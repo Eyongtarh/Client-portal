@@ -27,6 +27,17 @@ function formatDuration(minutes) {
   return `${minutes} min`;
 }
 
+// Checkout endpoints raise DRF ValidationError with a plain
+// string (e.g. "Online payments aren't configured for this
+// workspace yet."), which DRF serializes as a one-item array
+// rather than {detail: ...}.
+function checkoutErrorMessage(err) {
+  const data = err.response?.data;
+  if (Array.isArray(data) && typeof data[0] === "string") return data[0];
+  if (typeof data?.detail === "string") return data.detail;
+  return null;
+}
+
 export default function ClientPortal() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
@@ -38,6 +49,7 @@ export default function ClientPortal() {
   const [comments, setComments] = useState({});
   const [body, setBody] = useState("");
   const [paymentBanner, setPaymentBanner] = useState(null);
+  const [invoiceError, setInvoiceError] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -87,8 +99,13 @@ export default function ClientPortal() {
     window.open(url, "_blank");
   }
   async function payInvoice(invoiceId) {
-    const res = await api.post(`/invoices/${invoiceId}/checkout/`);
-    window.location.href = res.data.url;
+    setInvoiceError(null);
+    try {
+      const res = await api.post(`/invoices/${invoiceId}/checkout/`);
+      window.location.href = res.data.url;
+    } catch (err) {
+      setInvoiceError(checkoutErrorMessage(err) || t("clientPortal.paymentFailed"));
+    }
   }
   async function decide(approvalId, decisionStatus) {
     await api.post(`/approvals/${approvalId}/decide/`, {
@@ -195,6 +212,14 @@ export default function ClientPortal() {
         {project && (
           <section className="bg-surface border border-line rounded-2xl p-6">
             <h3 className="font-medium mb-3 text-ink">{t("clientPortal.invoices")}</h3>
+            {invoiceError && (
+              <div
+                role="alert"
+                className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+              >
+                {invoiceError}
+              </div>
+            )}
             <ul className="divide-y divide-line">
               {invoices.map((invoice) => (
                 <li
@@ -552,8 +577,15 @@ function BookingSection() {
   }
 
   async function payForBooking(bookingId) {
-    const res = await api.post(`/bookings/${bookingId}/checkout/`);
-    window.location.href = res.data.url;
+    try {
+      const res = await api.post(`/bookings/${bookingId}/checkout/`);
+      window.location.href = res.data.url;
+    } catch (err) {
+      setStatusMsg({
+        raw: checkoutErrorMessage(err) || t("booking.paymentFailed"),
+        type: "error",
+      });
+    }
   }
 
   function startEditMine(booking) {

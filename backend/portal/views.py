@@ -1,12 +1,15 @@
 import io
+import logging
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 import stripe
 from django.conf import settings
+from django.core import signing
 from django.core.mail import send_mail
 from django.db.models import Q
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponseRedirect
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from reportlab.lib.pagesizes import A4
@@ -19,12 +22,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .activity import log as log_activity
+from .currencies import COUNTRIES
 from .payments import create_checkout_session
 from .permissions import IsOwnerOrStaffForWrite
 from .models import (
     Activity, Approval, Booking, Client, Document, Invoice, Message,
     Milestone, Project, RecurringSeries, Resource, Review, Service,
-    SubscriptionPlan, Task, User, WaitlistEntry, WorkingHours,
+    SubscriptionPlan, Task, User, WaitlistEntry, WorkingHours, Workspace,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -58,6 +62,8 @@ from .serializers import (
     WorkingHoursSerializer,
     WorkspaceSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -283,6 +289,144 @@ class WorkspaceUpdateView(generics.RetrieveUpdateAPIView):
                 "Only the owner can update the workspace."
             )
         return super().update(request, *args, **kwargs)
+
+
+class CountriesView(APIView):
+    """GET /api/countries/ - the country -> currency list backing the
+    owner's "Country" picker in workspace settings (COUNTRIES in
+    portal.currencies is the single source of truth this and
+    WorkspaceSerializer.validate_currency both read from, so the
+    dropdown and the server-side check can never drift apart).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(
+            [
+                {"code": code, "name": name, "currency": currency}
+                for code, name, currency in COUNTRIES
+            ]
+        )
+
+
+def _stripe_connect_redirect_uri(request):
+    return request.build_absolute_uri(
+        "/api/workspace/stripe/connect/callback/"
+    )
+
+
+class WorkspaceStripeConnectStartView(APIView):
+    """GET /api/workspace/stripe/connect/ - owner starts linking their
+    own Stripe account (Connect, Standard) so client payments go to
+    them directly instead of the platform's account. Returns the
+    Stripe-hosted OAuth authorize URL to redirect the browser to;
+    `state` is a signed, time-limited token carrying the workspace id
+    so WorkspaceStripeConnectCallbackView can trust it without the
+    browser's plain GET redirect from Stripe carrying an auth header.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the owner can connect a Stripe account."
+            )
+        if not settings.STRIPE_CONNECT_CLIENT_ID:
+            raise ValidationError(
+                "Stripe Connect isn't configured for this deployment yet."
+            )
+        workspace = request.user.get_workspace()
+        state = signing.dumps({"workspace_id": workspace.id})
+        params = {
+            "response_type": "code",
+            "client_id": settings.STRIPE_CONNECT_CLIENT_ID,
+            "scope": "read_write",
+            "redirect_uri": _stripe_connect_redirect_uri(request),
+            "state": state,
+        }
+        url = (
+            "https://connect.stripe.com/oauth/authorize?"
+            + urlencode(params)
+        )
+        return Response({"url": url})
+
+
+class WorkspaceStripeConnectCallbackView(APIView):
+    """GET /api/workspace/stripe/connect/callback/ - Stripe redirects
+    the owner's browser here after they approve (or deny) connecting
+    their account. Plain browser navigation carries no Authorization
+    header, so this identifies the workspace from the signed `state`
+    round-tripped through Stripe rather than from request auth, and
+    always ends by redirecting to the frontend (never returns JSON -
+    there's no one to show it to).
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        frontend = f"{settings.FRONTEND_URL}/booking"
+        error = request.query_params.get("error")
+        code = request.query_params.get("code")
+        state = request.query_params.get("state")
+        if error or not code or not state:
+            return HttpResponseRedirect(
+                f"{frontend}?stripe_connect=error"
+            )
+        try:
+            payload = signing.loads(state, max_age=600)
+            workspace = Workspace.objects.get(pk=payload["workspace_id"])
+        except (signing.BadSignature, Workspace.DoesNotExist, KeyError):
+            return HttpResponseRedirect(
+                f"{frontend}?stripe_connect=error"
+            )
+        try:
+            token = stripe.OAuth.token(
+                grant_type="authorization_code", code=code
+            )
+        except stripe.error.StripeError:
+            logger.exception(
+                "Stripe Connect OAuth token exchange failed for "
+                "workspace %s",
+                workspace.id,
+            )
+            return HttpResponseRedirect(
+                f"{frontend}?stripe_connect=error"
+            )
+        workspace.stripe_account_id = token["stripe_user_id"]
+        workspace.save(update_fields=["stripe_account_id"])
+        return HttpResponseRedirect(f"{frontend}?stripe_connect=success")
+
+
+class WorkspaceStripeConnectDisconnectView(APIView):
+    """POST /api/workspace/stripe/connect/disconnect/ - owner unlinks
+    their Stripe account. Client payments are blocked (checkout
+    raises a clean error) until they connect one again.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the owner can disconnect a Stripe account."
+            )
+        workspace = request.user.get_workspace()
+        if workspace.stripe_account_id:
+            try:
+                stripe.OAuth.deauthorize(
+                    client_id=settings.STRIPE_CONNECT_CLIENT_ID,
+                    stripe_user_id=workspace.stripe_account_id,
+                )
+            except stripe.error.StripeError:
+                # Already revoked on Stripe's side, or Connect isn't
+                # configured here anymore either way - our own record
+                # is what matters, so still clear it below.
+                logger.exception(
+                    "Stripe Connect deauthorize failed for workspace %s",
+                    workspace.id,
+                )
+            workspace.stripe_account_id = ""
+            workspace.save(update_fields=["stripe_account_id"])
+        return Response(WorkspaceSerializer(workspace).data)
 
 
 class ChangePlanView(APIView):
@@ -856,6 +1000,11 @@ class InvoiceCheckoutView(APIView):
             raise ValidationError("This invoice is already paid.")
         if invoice.total <= 0:
             raise ValidationError("This invoice has no amount due.")
+        if not invoice.workspace.stripe_account_id:
+            raise ValidationError(
+                "This business hasn't connected a payment account yet. "
+                "Please contact them directly to pay this invoice."
+            )
         try:
             session = create_checkout_session(
                 amount=invoice.total,
@@ -865,9 +1014,22 @@ class InvoiceCheckoutView(APIView):
                 cancel_url=f"{settings.FRONTEND_URL}/?payment=cancelled",
                 metadata={"type": "invoice", "invoice_id": str(invoice.id)},
                 customer_email=user.email,
+                stripe_account=invoice.workspace.stripe_account_id,
             )
-        except stripe.error.StripeError as exc:
-            raise ValidationError(str(exc))
+        except stripe.error.StripeError:
+            # Errors here are Stripe rejecting how the business set up
+            # this charge (e.g. an invalid workspace currency) - never
+            # something the paying client can fix, so don't hand them
+            # Stripe's internal error text. Log it for the business to
+            # investigate instead.
+            logger.exception(
+                "Stripe checkout session creation failed for invoice %s",
+                invoice.id,
+            )
+            raise ValidationError(
+                "We couldn't start the payment for this invoice. "
+                "Please contact the business to fix this."
+            )
         invoice.stripe_checkout_session_id = session.id
         invoice.save(update_fields=["stripe_checkout_session_id"])
         return Response({"url": session.url})
@@ -893,6 +1055,11 @@ class BookingCheckoutView(APIView):
         )
         if booking.payment_status != "pending":
             raise ValidationError("This booking has no pending payment.")
+        if not booking.workspace.stripe_account_id:
+            raise ValidationError(
+                "This business hasn't connected a payment account yet. "
+                "Please contact them directly to pay for this booking."
+            )
         booked_name = (
             booking.service.name if booking.service else booking.resource.name
         )
@@ -905,9 +1072,17 @@ class BookingCheckoutView(APIView):
                 cancel_url=f"{settings.FRONTEND_URL}/?payment=cancelled",
                 metadata={"type": "booking", "booking_id": str(booking.id)},
                 customer_email=user.email,
+                stripe_account=booking.workspace.stripe_account_id,
             )
-        except stripe.error.StripeError as exc:
-            raise ValidationError(str(exc))
+        except stripe.error.StripeError:
+            logger.exception(
+                "Stripe checkout session creation failed for booking %s",
+                booking.id,
+            )
+            raise ValidationError(
+                "We couldn't start the payment for this booking. "
+                "Please contact the business to fix this."
+            )
         booking.stripe_checkout_session_id = session.id
         booking.save(update_fields=["stripe_checkout_session_id"])
         return Response({"url": session.url})

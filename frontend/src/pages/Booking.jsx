@@ -1,5 +1,5 @@
 // Owner's booking management page: create, edit, and delete
-// services (with a photo, description, free-text workspace
+// services (with a photo, description, a country-driven workspace
 // currency, timezone, max per slot capacity, and duration in
 // minutes or hours), set weekly working hours (with edit and
 // remove), see upcoming bookings (with cancel confirmation,
@@ -173,7 +173,8 @@ function ServicesSection() {
   const { t } = useTranslation();
   const [services, setServices] = useState([]);
   const [workspace, setWorkspace] = useState(null);
-  const [currency, setCurrency] = useState("");
+  const [countries, setCountries] = useState([]);
+  const [countryValue, setCountryValue] = useState("");
   const [timezoneValue, setTimezoneValue] = useState("UTC");
   const [reminderHours, setReminderHours] = useState("24");
   const [showForm, setShowForm] = useState(false);
@@ -199,6 +200,7 @@ function ServicesSection() {
   const [editNoticeHours, setEditNoticeHours] = useState("24");
   const [editFeePercent, setEditFeePercent] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
+  const [stripeConnectBanner, setStripeConnectBanner] = useState(null);
 
   async function load() {
     const res = await api.get("/services/");
@@ -207,18 +209,59 @@ function ServicesSection() {
   async function loadWorkspace() {
     const res = await api.get("/workspace/");
     setWorkspace(res.data);
-    setCurrency(res.data.currency);
+    setCountryValue(res.data.country || "");
     setTimezoneValue(res.data.timezone);
     setReminderHours(String(res.data.reminder_hours_before ?? "24"));
+  }
+  async function loadCountries() {
+    const res = await api.get("/countries/");
+    setCountries(res.data);
   }
   useEffect(() => {
     load();
     loadWorkspace();
+    loadCountries();
+    const params = new URLSearchParams(window.location.search);
+    const stripeConnect = params.get("stripe_connect");
+    if (stripeConnect === "success" || stripeConnect === "error") {
+      setStripeConnectBanner(stripeConnect);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
-  async function onCurrencyBlur() {
-    if (!currency || currency === workspace?.currency) return;
-    const res = await api.patch("/workspace/", { currency });
+  async function connectStripe() {
+    try {
+      const res = await api.get("/workspace/stripe/connect/");
+      window.location.href = res.data.url;
+    } catch (err) {
+      setStatusMsg({
+        raw:
+          err.response?.data?.[0] || t("booking.stripeConnectError"),
+        type: "error",
+      });
+    }
+  }
+
+  async function disconnectStripe() {
+    if (!window.confirm(t("booking.confirmDisconnectStripe"))) return;
+    try {
+      const res = await api.post("/workspace/stripe/connect/disconnect/");
+      setWorkspace(res.data);
+    } catch {
+      setStatusMsg({ raw: t("booking.stripeConnectError"), type: "error" });
+    }
+  }
+
+  async function onCountryChange(e) {
+    const code = e.target.value;
+    setCountryValue(code);
+    if (!code) return;
+    const match = countries.find((c) => c.code === code);
+    if (!match) return;
+    const res = await api.patch("/workspace/", {
+      country: code,
+      currency: match.currency,
+    });
     setWorkspace(res.data);
   }
 
@@ -374,33 +417,29 @@ function ServicesSection() {
       <div className="flex flex-wrap gap-4 mb-4">
         <div>
           <label
-            htmlFor="workspace-currency"
+            htmlFor="workspace-country"
             className="block text-xs text-ink-soft mb-1"
           >
-            {t("booking.currencyLabel")}
+            {t("booking.countryLabel")}
           </label>
-          <input
-            id="workspace-currency"
-            list="currency-suggestions"
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value.toUpperCase())}
-            onBlur={onCurrencyBlur}
-            maxLength={5}
-            placeholder={workspace?.currency || "EUR"}
-            className="w-24 px-3 py-2 bg-canvas border border-line rounded-lg text-sm uppercase transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
-          />
-          <datalist id="currency-suggestions">
-            <option value="EUR" />
-            <option value="USD" />
-            <option value="GBP" />
-            <option value="SEK" />
-            <option value="NOK" />
-            <option value="DKK" />
-            <option value="CHF" />
-            <option value="CAD" />
-            <option value="AUD" />
-            <option value="XAF" />
-          </datalist>
+          <select
+            id="workspace-country"
+            value={countryValue}
+            onChange={onCountryChange}
+            className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          >
+            <option value="">{t("booking.selectCountry")}</option>
+            {countries.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {workspace?.currency && (
+            <p className="text-xs text-ink-soft mt-1">
+              {t("booking.currencySetTo", { currency: workspace.currency })}
+            </p>
+          )}
         </div>
 
         <div>
@@ -446,6 +485,51 @@ function ServicesSection() {
             className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
           />
         </div>
+      </div>
+
+      <div className="border border-line rounded-lg p-4 mb-4">
+        <h3 className="text-sm font-medium mb-1">
+          {t("booking.paymentsTitle")}
+        </h3>
+        {stripeConnectBanner && (
+          <div
+            role="status"
+            className={
+              stripeConnectBanner === "success"
+                ? "mb-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+                : "mb-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+            }
+          >
+            {stripeConnectBanner === "success"
+              ? t("booking.stripeConnectSuccess")
+              : t("booking.stripeConnectError")}
+          </div>
+        )}
+        {workspace?.stripe_connected ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-ink-soft">
+              {t("booking.stripeConnected")}
+            </p>
+            <button
+              onClick={disconnectStripe}
+              className="text-sm text-red-600 underline transition-colors hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            >
+              {t("booking.disconnectStripe")}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-ink-soft">
+              {t("booking.stripeNotConnected")}
+            </p>
+            <button
+              onClick={connectStripe}
+              className="bg-brand-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              {t("booking.connectStripe")}
+            </button>
+          </div>
+        )}
       </div>
 
       {showForm && (
@@ -559,7 +643,7 @@ function ServicesSection() {
             <input
               id="service-price"
               type="number"
-              placeholder={`Price (${currency || "EUR"}, optional)`}
+              placeholder={`Price (${workspace?.currency || "EUR"}, optional)`}
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               className="flex-1 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
@@ -633,7 +717,7 @@ function ServicesSection() {
                   <input
                     id={`edit-price-${service.id}`}
                     type="number"
-                    placeholder={`Price (${currency})`}
+                    placeholder={`Price (${workspace?.currency})`}
                     value={editPrice}
                     onChange={(e) => setEditPrice(e.target.value)}
                     className="flex-1 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
@@ -716,7 +800,8 @@ function ServicesSection() {
                   <span className="font-medium">{service.name}</span>
                   {" \u00b7 "}
                   {formatDuration(service.duration_minutes)}
-                  {service.price && ` \u00b7 ${service.price} ${currency}`}
+                  {service.price &&
+                    ` \u00b7 ${service.price} ${workspace?.currency}`}
                   {service.capacity > 1 &&
                     ` \u00b7 up to ${service.capacity} per slot`}
                   {service.resource_names &&

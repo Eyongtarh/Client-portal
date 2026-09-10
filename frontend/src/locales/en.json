@@ -41,7 +41,9 @@
     "cancelThisOne": "Cancel this one",
     "cancelWholeSeries": "Cancel whole series",
     "partOfSeries": "Part of a recurring series",
-    "currencyLabel": "Currency (e.g. EUR, USD, SEK)",
+    "countryLabel": "Country",
+    "selectCountry": "Select your country",
+    "currencySetTo": "Currency: {{currency}}",
     "timezoneLabel": "Timezone",
     "edit": "Edit",
     "delete": "Delete",
@@ -128,7 +130,16 @@
     "policyFullPaymentRequired": "Full payment ({{amount}} {{currency}}) is required to secure this booking.",
     "policyCancellationFee": "Cancelling within {{hours}} hours of the appointment incurs a {{percent}}% late-cancellation fee.",
     "payNow": "Pay now",
-    "reminderHoursLabel": "Reminder timing (hours before)"
+    "reminderHoursLabel": "Reminder timing (hours before)",
+    "paymentFailed": "Could not start payment. Please try again.",
+    "paymentsTitle": "Payments",
+    "stripeConnected": "Connected to Stripe - client payments go to your account.",
+    "stripeNotConnected": "Connect Stripe to get paid online by your clients.",
+    "connectStripe": "Connect with Stripe",
+    "disconnectStripe": "Disconnect",
+    "confirmDisconnectStripe": "Disconnect your Stripe account? Clients won't be able to pay online until you reconnect.",
+    "stripeConnectSuccess": "Stripe account connected. You'll now receive client payments directly.",
+    "stripeConnectError": "Couldn't connect your Stripe account. Please try again."
   },
   "team": {
     "teamTitle": "Team",
@@ -331,7 +342,8 @@
     "commentPlaceholder": "Add a comment (optional)...",
     "payNow": "Pay now",
     "paymentSuccess": "Payment successful. Thank you!",
-    "paymentCancelled": "Payment was cancelled - nothing was charged."
+    "paymentCancelled": "Payment was cancelled - nothing was charged.",
+    "paymentFailed": "Could not start payment. Please try again."
   },
   "subscription": {
     "planTitle": "Plan & Usage",

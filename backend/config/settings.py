@@ -177,5 +177,24 @@ FRONTEND_URL = config(
     "FRONTEND_URL", default="http://localhost:5173"
 )
 
+# Heroku's router terminates TLS and forwards plain HTTP internally,
+# so without this Django (and anything building an absolute URL from
+# the request, e.g. the Stripe Connect OAuth redirect_uri) sees every
+# request as http:// even in production.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
+
+# Stripe Connect (Standard accounts) - lets each workspace owner link
+# their own Stripe account so client payments go straight to them
+# instead of the platform's account. STRIPE_CONNECT_CLIENT_ID is the
+# platform's OAuth client id (starts "ca_", from Dashboard > Settings
+# > Connect). STRIPE_CONNECT_WEBHOOK_SECRET verifies events from a
+# SEPARATE webhook endpoint subscribed to "events on connected
+# accounts" - direct-charge events on a connected account are not
+# delivered to the platform's own STRIPE_WEBHOOK_SECRET endpoint.
+STRIPE_CONNECT_CLIENT_ID = config("STRIPE_CONNECT_CLIENT_ID", default="")
+STRIPE_CONNECT_WEBHOOK_SECRET = config(
+    "STRIPE_CONNECT_WEBHOOK_SECRET", default=""
+)

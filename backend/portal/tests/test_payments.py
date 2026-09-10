@@ -50,7 +50,9 @@ class PaymentTestCase(TestCase):
             role="owner",
         )
         self.workspace = Workspace.objects.create(
-            owner=self.owner, name="Acme"
+            owner=self.owner,
+            name="Acme",
+            stripe_account_id="acct_connected_test",
         )
         self.client_user = User.objects.create_user(
             username="client",
@@ -159,6 +161,56 @@ class InvoiceCheckoutNotConfiguredTests(PaymentTestCase):
         )
         res = auth_client(self.client_user).post(
             f"/api/invoices/{invoice.id}/checkout/"
+        )
+        self.assertEqual(res.status_code, 400)
+
+
+@override_settings(STRIPE_SECRET_KEY="sk_test_fake")
+class CheckoutBlockedWithoutConnectedAccountTests(PaymentTestCase):
+    """A workspace whose owner hasn't gone through Stripe Connect
+    yet has no stripe_account_id - checkout must refuse rather than
+    charge into the platform's own Stripe account (or, before this
+    field existed, fail confusingly at Stripe with no clear reason).
+    """
+    def setUp(self):
+        super().setUp()
+        self.workspace.stripe_account_id = ""
+        self.workspace.save()
+
+    def test_invoice_checkout_blocked_without_connected_account(self):
+        invoice = Invoice.objects.create(
+            workspace=self.workspace,
+            client=self.client_profile,
+            number="INV-1",
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice, description="Work", amount=Decimal("50.00")
+        )
+        res = auth_client(self.client_user).post(
+            f"/api/invoices/{invoice.id}/checkout/"
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_booking_checkout_blocked_without_connected_account(self):
+        service = Service.objects.create(
+            workspace=self.workspace,
+            name="Consult",
+            duration_minutes=60,
+            price=Decimal("100.00"),
+            payment_requirement="deposit",
+            deposit_percent=50,
+        )
+        booking = Booking.objects.create(
+            workspace=self.workspace,
+            service=service,
+            client=self.client_profile,
+            start_time=timezone.now() + timezone.timedelta(days=1),
+            end_time=timezone.now() + timezone.timedelta(days=1, hours=1),
+            payment_status="pending",
+            payment_amount=Decimal("50.00"),
+        )
+        res = auth_client(self.client_user).post(
+            f"/api/bookings/{booking.id}/checkout/"
         )
         self.assertEqual(res.status_code, 400)
 

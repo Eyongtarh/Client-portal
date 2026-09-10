@@ -71,6 +71,19 @@ urlpatterns = [
         "workspace/change-plan/",
         views.ChangePlanView.as_view(),
     ),
+    path(
+        "workspace/stripe/connect/",
+        views.WorkspaceStripeConnectStartView.as_view(),
+    ),
+    path(
+        "workspace/stripe/connect/callback/",
+        views.WorkspaceStripeConnectCallbackView.as_view(),
+    ),
+    path(
+        "workspace/stripe/connect/disconnect/",
+        views.WorkspaceStripeConnectDisconnectView.as_view(),
+    ),
+    path("countries/", views.CountriesView.as_view()),
     path("invites/", views.InviteClientView.as_view()),
     path(
         "approvals/<int:pk>/decide/",
@@ -93,6 +106,10 @@ urlpatterns = [
         views.BookingCheckoutView.as_view(),
     ),
     path("stripe/webhook/", webhooks.StripeWebhookView.as_view()),
+    path(
+        "stripe/connect-webhook/",
+        webhooks.StripeConnectWebhookView.as_view(),
+    ),
     path("search/", views.SearchView.as_view()),
     path("", include(router.urls)),
     path("availability/", views.AvailabilityView.as_view()),

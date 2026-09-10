@@ -66,6 +66,14 @@ class Workspace(models.Model):
         upload_to=logo_upload_path, null=True, blank=True
     )
     currency = models.CharField(max_length=5, default="EUR")
+    country = models.CharField(
+        max_length=2,
+        blank=True,
+        default="",
+        help_text="ISO 3166-1 alpha-2 code driving the currency "
+        "picker (see portal.currencies) - blank for workspaces "
+        "created before this field existed.",
+    )
     timezone = models.CharField(max_length=50, default="UTC")
     brand_color = models.CharField(
         max_length=7,
@@ -83,6 +91,17 @@ class Workspace(models.Model):
         null=True,
         blank=True,
         related_name="workspaces",
+    )
+    stripe_account_id = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        help_text="Connected Stripe Standard account (acct_...) this "
+        "workspace's owner linked via OAuth (see views.WorkspaceStripe"
+        "ConnectCallbackView). Client checkout sessions are created "
+        "directly on this account so payments land in the owner's own "
+        "Stripe balance, not the platform's. Blank means the owner "
+        "hasn't connected one yet - checkout is blocked until they do.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

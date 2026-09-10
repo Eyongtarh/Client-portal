@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from .currencies import VALID_CURRENCIES
 from .models import (
     Activity, Approval, Client, ClientInvite, Document, Invoice,
     InvoiceItem, Message, Milestone, Project, RecurringSeries,
@@ -67,13 +68,14 @@ class WorkspaceSerializer(serializers.ModelSerializer):
     plan = SubscriptionPlanSerializer(read_only=True)
     client_count = serializers.SerializerMethodField()
     team_member_count = serializers.SerializerMethodField()
+    stripe_connected = serializers.SerializerMethodField()
 
     class Meta:
         model = Workspace
         fields = [
-            "id", "name", "slug", "logo", "currency", "timezone",
+            "id", "name", "slug", "logo", "currency", "country", "timezone",
             "brand_color", "reminder_hours_before", "plan", "client_count",
-            "team_member_count",
+            "team_member_count", "stripe_connected",
         ]
         read_only_fields = ["id", "slug"]
 
@@ -83,11 +85,32 @@ class WorkspaceSerializer(serializers.ModelSerializer):
     def get_team_member_count(self, obj):
         return obj.team_members.count()
 
+    def get_stripe_connected(self, obj):
+        # stripe_account_id itself is never exposed to the frontend -
+        # it's an internal Stripe identifier, not something any UI
+        # needs to display or send back.
+        return bool(obj.stripe_account_id)
+
     def validate_brand_color(self, value):
         import re
         if not re.match(r"^#[0-9A-Fa-f]{6}$", value):
             raise serializers.ValidationError(
                 "Must be a hex color like #2563eb."
+            )
+        return value
+
+    def validate_currency(self, value):
+        # Free-typed currencies (e.g. "FCFA" instead of the real ISO
+        # code "XAF") are exactly what let a workspace end up with a
+        # value Stripe rejects at checkout - after every client's
+        # payment silently failed. The frontend now sets this from a
+        # Country picker (see portal.currencies), so anything outside
+        # that same whitelist is rejected here too.
+        value = value.upper()
+        if value not in VALID_CURRENCIES:
+            raise serializers.ValidationError(
+                f"'{value}' isn't a supported currency. Please pick "
+                "your country instead of typing a currency code."
             )
         return value
 

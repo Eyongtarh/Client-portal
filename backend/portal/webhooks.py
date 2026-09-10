@@ -1,10 +1,20 @@
-"""The Stripe webhook endpoint. This is the ONLY place a booking or
+"""The Stripe webhook endpoints. This is the ONLY place a booking or
 invoice is ever marked paid - never the checkout-session-creation
 views, and never anything the client's own browser reports, since
 either of those would let a client just claim they paid without
-Stripe ever having charged them. A plain Django View (not DRF) on
+Stripe ever having charged them. Plain Django Views (not DRF) on
 purpose: signature verification needs the exact raw request body,
 and DRF's request parsing can get in the way of that.
+
+There are two endpoints because Stripe delivers events from two
+different places, each needing its own registered webhook + signing
+secret in the Dashboard:
+- StripeWebhookView: events on the platform's own account.
+- StripeConnectWebhookView: events on a connected account (a direct
+  charge created with `stripe_account=...` in payments.py, once a
+  workspace owner has linked their own Stripe account via Connect -
+  see views.WorkspaceStripeConnect*). A checkout paid through a
+  connected account is NEVER reported to the platform endpoint.
 """
 import stripe
 from django.conf import settings
@@ -17,6 +27,15 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .activity import log as log_activity
 from .models import Booking, Invoice
+
+
+def _handle_checkout_completed(session):
+    metadata = session.get("metadata") or {}
+    payment_intent_id = session.get("payment_intent") or ""
+    if metadata.get("type") == "invoice":
+        _mark_invoice_paid(metadata.get("invoice_id"), payment_intent_id)
+    elif metadata.get("type") == "booking":
+        _mark_booking_paid(metadata.get("booking_id"), payment_intent_id)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -36,17 +55,30 @@ class StripeWebhookView(View):
             # object here, not a dict - it supports [] access but not
             # .get(), so convert once up front rather than sprinkle
             # [] vs .get() inconsistently below.
-            session = event["data"]["object"].to_dict()
-            metadata = session.get("metadata") or {}
-            payment_intent_id = session.get("payment_intent") or ""
-            if metadata.get("type") == "invoice":
-                _mark_invoice_paid(
-                    metadata.get("invoice_id"), payment_intent_id
-                )
-            elif metadata.get("type") == "booking":
-                _mark_booking_paid(
-                    metadata.get("booking_id"), payment_intent_id
-                )
+            _handle_checkout_completed(event["data"]["object"].to_dict())
+
+        return HttpResponse(status=200)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class StripeConnectWebhookView(View):
+    """Same as StripeWebhookView, but for events on connected
+    accounts - registered in the Dashboard as a webhook endpoint
+    subscribed to "events on connected accounts" rather than "your
+    account", with its own signing secret.
+    """
+    def post(self, request):
+        try:
+            event = stripe.Webhook.construct_event(
+                request.body,
+                request.META.get("HTTP_STRIPE_SIGNATURE", ""),
+                settings.STRIPE_CONNECT_WEBHOOK_SECRET,
+            )
+        except (ValueError, stripe.error.SignatureVerificationError):
+            return HttpResponseBadRequest("Invalid payload or signature.")
+
+        if event["type"] == "checkout.session.completed":
+            _handle_checkout_completed(event["data"]["object"].to_dict())
 
         return HttpResponse(status=200)
 

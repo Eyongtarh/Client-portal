@@ -13,7 +13,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 def create_checkout_session(
     *, amount, currency, description, success_url, cancel_url, metadata,
-    customer_email=None,
+    customer_email=None, stripe_account=None,
 ):
     """Creates a one-off Stripe Checkout Session for `amount` (a
     Decimal in the workspace's major currency unit, e.g. euros not
@@ -21,6 +21,14 @@ def create_checkout_session(
     rest of the app already formats and stores money). Raises
     stripe.error.StripeError on failure; the caller turns that into
     a clean 400 rather than a 500.
+
+    `stripe_account`, when given (a workspace's connected Standard
+    account id), creates the session directly ON that account - a
+    Stripe Connect "direct charge". The money goes straight to the
+    connected account's own balance, never through the platform's;
+    Stripe also routes the resulting events to a separate Connect
+    webhook subscription rather than the platform's own, which is
+    why there are two webhook views/secrets (see webhooks.py).
     """
     return stripe.checkout.Session.create(
         mode="payment",
@@ -38,4 +46,5 @@ def create_checkout_session(
         cancel_url=cancel_url,
         metadata=metadata,
         customer_email=customer_email,
+        stripe_account=stripe_account,
     )
