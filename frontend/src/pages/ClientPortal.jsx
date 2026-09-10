@@ -3,6 +3,7 @@
 // appointment booking (including weekly-repeating bookings and
 // a waitlist for full slots).
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   FiAlertCircle,
@@ -14,6 +15,7 @@ import {
   FiLogOut,
   FiSend,
   FiTrash2,
+  FiUser,
   FiUserMinus,
   FiUserPlus,
   FiX,
@@ -147,6 +149,14 @@ export default function ClientPortal() {
         <MobileNav>
           <ThemeToggle />
           <LanguageToggle />
+          <Link
+            to="/account"
+            aria-label={t("account.title")}
+            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
+            <FiUser className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+            {t("account.title")}
+          </Link>
           <button
             onClick={logout}
             aria-label={t("dashboard.signOut")}

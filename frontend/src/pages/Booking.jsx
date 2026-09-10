@@ -19,6 +19,7 @@ import {
   FiMessageCircle,
   FiPlus,
   FiTrash2,
+  FiUser,
   FiUserMinus,
   FiUserX,
   FiX,
@@ -80,6 +81,14 @@ export default function Booking() {
         <MobileNav>
           <ThemeToggle />
           <LanguageToggle />
+          <Link
+            to="/account"
+            aria-label={t("account.title")}
+            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
+            <FiUser className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+            {t("account.title")}
+          </Link>
           <button
             onClick={logout}
             aria-label={t("dashboard.signOut")}

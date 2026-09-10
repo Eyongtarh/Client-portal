@@ -16,6 +16,7 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import Landing from "./pages/Landing.jsx";
 import Booking from "./pages/Booking.jsx";
+import Account from "./pages/Account.jsx";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -58,6 +59,10 @@ export default function App() {
         element={
           isOwnerOrStaff ? <Booking /> : <Navigate to="/login" replace />
         }
+      />
+      <Route
+        path="/account"
+        element={user ? <Account /> : <Navigate to="/login" replace />}
       />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />

@@ -2,6 +2,24 @@
   "common": {
     "skipToContent": "Passer au contenu principal"
   },
+  "account": {
+    "title": "Mon compte",
+    "backToDashboard": "Retour au tableau de bord",
+    "profileSection": "Profil",
+    "name": "Nom",
+    "email": "E-mail",
+    "saveProfile": "Enregistrer",
+    "profileUpdated": "Profil mis à jour.",
+    "couldNotUpdateProfile": "Impossible de mettre à jour votre profil.",
+    "passwordSection": "Mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le nouveau mot de passe",
+    "changePassword": "Changer le mot de passe",
+    "passwordUpdated": "Mot de passe mis à jour.",
+    "couldNotUpdatePassword": "Impossible de mettre à jour votre mot de passe.",
+    "passwordsDoNotMatch": "Les nouveaux mots de passe ne correspondent pas."
+  },
   "booking": {
     "servicesTitle": "Services",
     "addService": "+ Ajouter un service",

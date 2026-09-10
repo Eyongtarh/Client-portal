@@ -2,6 +2,24 @@
   "common": {
     "skipToContent": "Skip to main content"
   },
+  "account": {
+    "title": "My account",
+    "backToDashboard": "Back to dashboard",
+    "profileSection": "Profile",
+    "name": "Name",
+    "email": "Email",
+    "saveProfile": "Save",
+    "profileUpdated": "Profile updated.",
+    "couldNotUpdateProfile": "Could not update your profile.",
+    "passwordSection": "Password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "changePassword": "Change password",
+    "passwordUpdated": "Password updated.",
+    "couldNotUpdatePassword": "Could not update your password.",
+    "passwordsDoNotMatch": "New passwords don't match."
+  },
   "booking": {
     "servicesTitle": "Services",
     "addService": "+ Add service",

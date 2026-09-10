@@ -186,6 +186,49 @@ class MeSerializer(serializers.ModelSerializer):
         fields = ["id", "email", "username", "first_name", "role"]
 
 
+class MeUpdateSerializer(serializers.ModelSerializer):
+    """PATCH /api/auth/me/ - self-service profile editing (AUTH-05,
+    PORTAL-04). Deliberately excludes username/role/password - a
+    changed username would break login by email vs username
+    consistency elsewhere, role changes are an owner-only action
+    on team members (not self-service), and password changes go
+    through ChangePasswordSerializer instead so the current
+    password can be verified first.
+    """
+
+    class Meta:
+        model = User
+        fields = ["first_name", "email"]
+
+    def validate_email(self, value):
+        if (
+            User.objects.filter(email__iexact=value)
+            .exclude(pk=self.instance.pk)
+            .exists()
+        ):
+            raise serializers.ValidationError(
+                "An account with this email already exists."
+            )
+        return value
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """POST /api/auth/change-password/ - requires the current
+    password so a hijacked, still-logged-in session can't be used
+    to lock the real owner out by silently swapping the password.
+    """
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_current_password(self, value):
+        user = self.context["user"]
+        if not user.check_password(value):
+            raise serializers.ValidationError(
+                "Current password is incorrect."
+            )
+        return value
+
+
 class ClientInviteCreateSerializer(serializers.ModelSerializer):
     """Owner creates an invite for a client. Used by
     POST /api/invites/.

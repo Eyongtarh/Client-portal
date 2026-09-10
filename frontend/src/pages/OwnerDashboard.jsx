@@ -227,6 +227,13 @@ export default function OwnerDashboard() {
           </Link>
           <ThemeToggle />
           <LanguageToggle />
+          <Link
+            to="/account"
+            aria-label={t("account.title")}
+            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
+            {t("account.title")}
+          </Link>
           <button
             onClick={logout}
             aria-label={t("dashboard.signOut")}

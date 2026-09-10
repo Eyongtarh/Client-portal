@@ -38,12 +38,14 @@ from .serializers import (
     ApprovalDecisionSerializer,
     ApprovalSerializer,
     BookingSerializer,
+    ChangePasswordSerializer,
     ChangePlanSerializer,
     ClientInviteCreateSerializer,
     ClientSerializer,
     DocumentSerializer,
     InvoiceSerializer,
     MeSerializer,
+    MeUpdateSerializer,
     MessageSerializer,
     MilestoneSerializer,
     PasswordResetConfirmSerializer,
@@ -82,12 +84,25 @@ class RegisterView(generics.CreateAPIView):
 
 
 class MeView(APIView):
-    """GET /api/auth/me/ - who is currently logged in."""
+    """GET /api/auth/me/ - who is currently logged in.
+    PATCH /api/auth/me/ - self-service profile editing (AUTH-05,
+    PORTAL-04): name and email only, see MeUpdateSerializer.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        data = MeSerializer(request.user).data
-        user = request.user
+        return Response(self._data(request.user))
+
+    def patch(self, request):
+        serializer = MeUpdateSerializer(
+            request.user, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(self._data(request.user))
+
+    def _data(self, user):
+        data = MeSerializer(user).data
         if user.role in ("owner", "staff"):
             workspace = user.get_workspace()
             data["workspace_id"] = workspace.id
@@ -96,7 +111,27 @@ class MeView(APIView):
             client = user.client_profile
             data["client_id"] = client.id
             data["company_name"] = client.company_name
-        return Response(data)
+        return data
+
+
+class ChangePasswordView(APIView):
+    """POST /api/auth/change-password/ - self-service password
+    change while logged in (AUTH-05, PORTAL-04), distinct from the
+    forgot-password email flow (PasswordReset*View) used when
+    logged out.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data, context={"user": request.user}
+        )
+        serializer.is_valid(raise_exception=True)
+        request.user.set_password(
+            serializer.validated_data["new_password"]
+        )
+        request.user.save(update_fields=["password"])
+        return Response(status=204)
 
 
 class InviteClientView(generics.CreateAPIView):
