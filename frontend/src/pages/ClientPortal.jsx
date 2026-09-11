@@ -29,6 +29,7 @@ import {
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
+import NotificationBell from "../components/NotificationBell.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
 import MobileNav from "../components/MobileNav.jsx";
 import SkipLink from "../components/SkipLink.jsx";
@@ -180,6 +181,7 @@ export default function ClientPortal() {
           </p>
         </div>
         <MobileNav>
+          <NotificationBell />
           <ThemeToggle />
           <LanguageToggle />
           <Link

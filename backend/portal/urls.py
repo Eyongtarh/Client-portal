@@ -129,6 +129,10 @@ urlpatterns = [
         "booking-analytics/",
         views.BookingAnalyticsView.as_view(),
     ),
+    path(
+        "notification-preferences/",
+        views.NotificationPreferencesView.as_view(),
+    ),
     path("stripe/webhook/", webhooks.StripeWebhookView.as_view()),
     path(
         "stripe/connect-webhook/",

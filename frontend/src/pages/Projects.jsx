@@ -10,6 +10,7 @@ import { FiFolder, FiLogOut, FiUser } from "react-icons/fi";
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
+import NotificationBell from "../components/NotificationBell.jsx";
 import MobileNav from "../components/MobileNav.jsx";
 import SkipLink from "../components/SkipLink.jsx";
 import api from "../lib/api";
@@ -65,6 +66,7 @@ export default function Projects() {
           </h1>
         </div>
         <MobileNav>
+          <NotificationBell />
           <ThemeToggle />
           <LanguageToggle />
           <Link

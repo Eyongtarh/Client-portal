@@ -18,6 +18,7 @@ import {
 import { useAuth } from "../lib/AuthContext.jsx";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
+import NotificationBell from "../components/NotificationBell.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
 import SearchBar from "../components/SearchBar.jsx";
 import MobileNav from "../components/MobileNav.jsx";
@@ -273,6 +274,7 @@ export default function OwnerDashboard() {
             <FiCalendar className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             Booking
           </Link>
+          <NotificationBell />
           <ThemeToggle />
           <LanguageToggle />
           <Link

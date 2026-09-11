@@ -5,6 +5,36 @@ create() calls scattered around with slightly different shapes.
 """
 from .models import Activity
 
+# The notification categories a user can mute (NOTIF-01/02) - each
+# maps to the verb codes that belong to it. A verb with no category
+# here (e.g. team/client-membership events) is never muted; it's
+# not one of the notification types NOTIF-01 lists, so there's
+# nothing for a preference to turn off.
+NOTIFICATION_CATEGORIES = {
+    "messages": ["message_sent"],
+    "documents": ["document_uploaded"],
+    "invoices": ["invoice_created", "invoice_sent"],
+    "payments": ["invoice_paid", "booking_payment_received"],
+    "bookings": [
+        "booking_created", "booking_cancelled", "booking_cancelled_late",
+        "booking_no_show",
+    ],
+    "approvals": [
+        "approval_requested", "approval_approved",
+        "approval_changes_requested",
+    ],
+    "projects": [
+        "project_created", "project_status_changed", "milestone_completed",
+        "task_completed",
+    ],
+}
+
+VERB_TO_CATEGORY = {
+    verb: category
+    for category, verbs in NOTIFICATION_CATEGORIES.items()
+    for verb in verbs
+}
+
 
 def log(workspace, actor, verb, obj, client=None, metadata=None):
     """Records one audit-trail entry.

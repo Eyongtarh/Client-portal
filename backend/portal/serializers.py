@@ -22,15 +22,17 @@ class ActivitySerializer(serializers.ModelSerializer):
     """actor_name resolves to whichever label makes sense for who
     performed the action - a client's company name, or a staff/
     owner's first name/email - so the frontend never has to know
-    the difference.
+    the difference. is_read is per the requesting user (NOTIF-01),
+    not a global flag - see Activity.read_by.
     """
     actor_name = serializers.SerializerMethodField()
+    is_read = serializers.SerializerMethodField()
 
     class Meta:
         model = Activity
         fields = [
             "id", "verb", "target_type", "target_id", "target_repr",
-            "actor_name", "client", "metadata", "created_at",
+            "actor_name", "client", "metadata", "created_at", "is_read",
         ]
 
     def get_actor_name(self, obj):
@@ -40,6 +42,10 @@ class ActivitySerializer(serializers.ModelSerializer):
             client = getattr(obj.actor, "client_profile", None)
             return client.company_name if client else obj.actor.email
         return obj.actor.first_name or obj.actor.email
+
+    def get_is_read(self, obj):
+        user = self.context.get("request").user
+        return obj.read_by.filter(pk=user.pk).exists()
 
 
 class ClientSerializer(serializers.ModelSerializer):

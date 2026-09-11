@@ -27,7 +27,23 @@
     "confirmWithPassword": "Entrez votre mot de passe pour confirmer",
     "confirmDeleteAccount": "Oui, supprimer définitivement mon compte",
     "cancel": "Annuler",
-    "couldNotDeleteAccount": "Impossible de supprimer votre compte."
+    "couldNotDeleteAccount": "Impossible de supprimer votre compte.",
+    "notificationsSection": "Notifications",
+    "notificationsDescription": "Choisissez quelles activités vous notifient dans la cloche en haut de la page. Cela n'affecte jamais l'historique complet des activités, seulement ce qui vous notifie.",
+    "notificationCategories": {
+      "messages": "Messages",
+      "documents": "Documents",
+      "invoices": "Factures",
+      "payments": "Paiements",
+      "bookings": "Réservations",
+      "approvals": "Approbations",
+      "projects": "Mises à jour de projet"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Tout marquer comme lu",
+    "empty": "Aucune notification pour le moment."
   },
   "booking": {
     "servicesTitle": "Services",
@@ -589,7 +605,8 @@
       "booking_cancelled": "{{actor}} a annul\u00e9 {{target}}",
       "review_submitted": "{{actor}} a laiss\u00e9 un avis sur {{target}}",
       "review_responded": "{{actor}} a r\u00e9pondu \u00e0 un avis sur {{target}}",
-      "booking_payment_received": "Paiement re\u00e7u pour {{target}}"
+      "booking_payment_received": "Paiement re\u00e7u pour {{target}}",
+      "message_sent": "{{actor}} a envoy\u00e9 un nouveau message"
     },
     "statuses": {
       "active": "actif",

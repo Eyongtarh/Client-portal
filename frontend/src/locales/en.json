@@ -27,7 +27,23 @@
     "confirmWithPassword": "Enter your password to confirm",
     "confirmDeleteAccount": "Yes, permanently delete my account",
     "cancel": "Cancel",
-    "couldNotDeleteAccount": "Could not delete your account."
+    "couldNotDeleteAccount": "Could not delete your account.",
+    "notificationsSection": "Notifications",
+    "notificationsDescription": "Choose which activity notifies you in the bell at the top of the page. This never affects the full activity history, only what pings you.",
+    "notificationCategories": {
+      "messages": "Messages",
+      "documents": "Documents",
+      "invoices": "Invoices",
+      "payments": "Payments",
+      "bookings": "Bookings",
+      "approvals": "Approvals",
+      "projects": "Project updates"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications yet."
   },
   "booking": {
     "servicesTitle": "Services",
@@ -589,7 +605,8 @@
       "booking_cancelled": "{{actor}} cancelled {{target}}",
       "review_submitted": "{{actor}} left a review on {{target}}",
       "review_responded": "{{actor}} responded to a review on {{target}}",
-      "booking_payment_received": "Payment received for {{target}}"
+      "booking_payment_received": "Payment received for {{target}}",
+      "message_sent": "{{actor}} sent a new message"
     },
     "statuses": {
       "active": "active",

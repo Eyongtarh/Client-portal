@@ -2,7 +2,7 @@
 // owners, staff, and clients alike - the fields and actions are
 // identical regardless of role, so this is one page rather than
 // duplicating the form into every dashboard.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FiArrowLeft, FiCheck, FiTrash2 } from "react-icons/fi";
@@ -24,6 +24,25 @@ export default function Account() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteMsg, setDeleteMsg] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [mutedCategories, setMutedCategories] = useState([]);
+
+  useEffect(() => {
+    api.get("/notification-preferences/").then((res) => {
+      setAvailableCategories(res.data.available_categories);
+      setMutedCategories(res.data.muted_categories);
+    });
+  }, []);
+
+  async function toggleCategory(category) {
+    const next = mutedCategories.includes(category)
+      ? mutedCategories.filter((c) => c !== category)
+      : [...mutedCategories, category];
+    setMutedCategories(next);
+    await api.patch("/notification-preferences/", {
+      muted_categories: next,
+    });
+  }
 
   async function saveProfile(e) {
     e.preventDefault();
@@ -249,6 +268,38 @@ export default function Account() {
               {t("account.changePassword")}
             </button>
           </form>
+        </section>
+
+        <section className="bg-surface border border-line rounded-2xl p-6">
+          <h2 className="font-medium text-ink mb-1">
+            {t("account.notificationsSection")}
+          </h2>
+          <p className="text-sm text-ink-soft mb-4">
+            {t("account.notificationsDescription")}
+          </p>
+          <div className="space-y-2">
+            {availableCategories.map((category) => (
+              <label
+                key={category}
+                className="flex items-center justify-between gap-3 py-1.5 cursor-pointer"
+              >
+                <span className="text-sm text-ink">
+                  {t(`account.notificationCategories.${category}`, {
+                    defaultValue: category,
+                  })}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={!mutedCategories.includes(category)}
+                  onChange={() => toggleCategory(category)}
+                  aria-label={t(`account.notificationCategories.${category}`, {
+                    defaultValue: category,
+                  })}
+                  className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                />
+              </label>
+            ))}
+          </div>
         </section>
 
         <section className="bg-surface border border-red-200 rounded-2xl p-6">

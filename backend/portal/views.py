@@ -25,7 +25,9 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .activity import log as log_activity
+from .activity import (
+    NOTIFICATION_CATEGORIES, VERB_TO_CATEGORY, log as log_activity,
+)
 from .calendar_invite import build_ics
 from .currencies import COUNTRIES
 from .payments import create_checkout_session
@@ -936,6 +938,13 @@ class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         else:
             recipient = project.client.contact_email
             sender_label = project.workspace.name
+        log_activity(
+            project.workspace,
+            self.request.user,
+            "message_sent",
+            message,
+            client=project.client,
+        )
         body = message.body or f"Sent an attachment: {message.attachment_name}"
         send_mail(
             subject=f"New message from {sender_label}",
@@ -2052,13 +2061,35 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
     client via ?client=<id>, used on the client detail page);
     clients see only events scoped to their own client relationship
     - workspace-internal events (team management, etc.) never reach
-    them. Read-only: entries are only ever written internally via
-    portal.activity.log().
+    them. Read-only via the base list/retrieve: entries are only
+    ever written internally via portal.activity.log().
+
+    The notification bell (NOTIF-01/02) reuses this same feed and
+    scoping rather than a separate endpoint: ?for_notifications=true
+    additionally drops any category the user has muted (see
+    portal.activity.VERB_TO_CATEGORY), and ?unread_only=true drops
+    anything already in that user's own read_by. Three actions back
+    the bell's interactions: unread-count, mark-read (one entry),
+    and mark-all-read (every entry currently visible to it).
     """
     serializer_class = ActivitySerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
+    def _muted_verbs(self, user):
+        muted = user.muted_notification_categories
+        if not muted:
+            return []
+        return [
+            verb
+            for verb, category in VERB_TO_CATEGORY.items()
+            if category in muted
+        ]
+
+    def _scoped_queryset(self):
+        """Role/client-tenant scoping only, unsliced - the shared
+        foundation every action below filters further before
+        deciding for itself whether (and how) to slice or count it.
+        """
         user = self.request.user
         if user.role in ("owner", "staff"):
             qs = Activity.objects.filter(workspace=user.get_workspace())
@@ -2070,7 +2101,80 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
                 workspace=user.client_profile.workspace,
                 client=user.client_profile,
             )
-        return qs[:100]
+        return qs
+
+    def get_queryset(self):
+        # Deliberately unsliced: get_object() (mark-read, retrieve)
+        # calls .get() on this, and Django can't filter/get a query
+        # once a slice has been taken - the [:100] cap on the list
+        # response happens in list() instead, after get_object()'s
+        # concerns no longer apply.
+        qs = self._scoped_queryset()
+        params = self.request.query_params
+        if params.get("for_notifications") == "true":
+            qs = qs.exclude(verb__in=self._muted_verbs(self.request.user))
+        if params.get("unread_only") == "true":
+            qs = qs.exclude(read_by=self.request.user)
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())[:100]
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="unread-count")
+    def unread_count(self, request):
+        qs = self._scoped_queryset().exclude(
+            verb__in=self._muted_verbs(request.user)
+        )
+        count = qs.exclude(read_by=request.user).count()
+        return Response({"count": count})
+
+    @action(detail=True, methods=["post"], url_path="mark-read")
+    def mark_read(self, request, pk=None):
+        activity = self.get_object()
+        activity.read_by.add(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["post"], url_path="mark-all-read")
+    def mark_all_read(self, request):
+        qs = self._scoped_queryset().exclude(
+            verb__in=self._muted_verbs(request.user)
+        )
+        for activity in qs:
+            activity.read_by.add(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class NotificationPreferencesView(APIView):
+    """GET/PATCH /api/notification-preferences/ - which notification
+    categories (NOTIF-02) the current user has muted in their own
+    notification bell. available_categories always lists every
+    known category so the frontend never has to hardcode that list.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            "available_categories": sorted(NOTIFICATION_CATEGORIES.keys()),
+            "muted_categories": request.user.muted_notification_categories,
+        })
+
+    def patch(self, request):
+        muted = request.data.get("muted_categories")
+        if not isinstance(muted, list) or not all(
+            c in NOTIFICATION_CATEGORIES for c in muted
+        ):
+            raise ValidationError(
+                "muted_categories must be a list drawn from "
+                f"{sorted(NOTIFICATION_CATEGORIES.keys())}."
+            )
+        request.user.muted_notification_categories = muted
+        request.user.save(update_fields=["muted_notification_categories"])
+        return Response({
+            "available_categories": sorted(NOTIFICATION_CATEGORIES.keys()),
+            "muted_categories": muted,
+        })
 
 
 class SearchView(APIView):

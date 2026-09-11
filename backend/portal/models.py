@@ -26,6 +26,14 @@ class User(AbstractUser):
         blank=True,
         related_name="team_members",
     )
+    muted_notification_categories = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="NOTIF-02: which notification categories (see "
+        "portal.activity.NOTIFICATION_CATEGORIES) this user has "
+        "turned off in their notification bell. Empty = notified "
+        "about everything.",
+    )
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
@@ -1083,6 +1091,15 @@ class Activity(models.Model):
     target_repr = models.CharField(max_length=255)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    read_by = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="read_activities",
+        help_text="NOTIF-01: who has already seen this entry in their "
+        "notification bell. Per-viewer, since a workspace can have "
+        "several staff - one reading it shouldn't mark it read for "
+        "everyone else.",
+    )
 
     class Meta:
         ordering = ["-created_at"]

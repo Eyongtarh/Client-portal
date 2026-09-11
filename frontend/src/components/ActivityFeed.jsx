@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import api from "../lib/api";
+import { describeActivity, formatActivityWhen } from "../lib/activityText";
 
 export default function ActivityFeed({ clientId }) {
   const { t, i18n } = useTranslation();
@@ -29,29 +30,6 @@ export default function ActivityFeed({ clientId }) {
     };
   }, [clientId]);
 
-  function describe(entry) {
-    const actor = entry.actor_name || t("activity.systemActor");
-    const target = entry.target_repr;
-    const status = entry.metadata?.status
-      ? t(`activity.statuses.${entry.metadata.status}`, {
-          defaultValue: entry.metadata.status,
-        })
-      : undefined;
-    return t(`activity.verbs.${entry.verb}`, {
-      actor,
-      target,
-      status,
-      defaultValue: `${actor} - ${entry.verb} - ${target}`,
-    });
-  }
-
-  function formatWhen(iso) {
-    return new Date(iso).toLocaleString(i18n.language, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  }
-
   return (
     <section>
       <h2 className="text-xl font-semibold mb-6 text-ink">
@@ -68,9 +46,9 @@ export default function ActivityFeed({ clientId }) {
               key={entry.id}
               className="bg-surface border border-line rounded-2xl p-4"
             >
-              <p className="text-sm text-ink">{describe(entry)}</p>
+              <p className="text-sm text-ink">{describeActivity(entry, t)}</p>
               <p className="text-xs text-ink-soft mt-1">
-                {formatWhen(entry.created_at)}
+                {formatActivityWhen(entry.created_at, i18n.language)}
               </p>
             </li>
           ))}
