@@ -103,6 +103,7 @@ export default function Booking() {
         <ServicesSection />
         <ResourcesSection />
         <WorkingHoursSection />
+        <BlockedTimeSection />
         <BookingsSection />
         <WaitlistSection />
         <ReviewsSection />
@@ -193,6 +194,114 @@ function PolicyFields({
   );
 }
 
+// Prep/recovery buffers, notice window, advance-booking window, and
+// daily/weekly caps (BOOK-13..16) - a second policy block alongside
+// PolicyFields since these govern *when* a slot exists at all,
+// rather than payment/cancellation terms for a slot that already
+// does.
+function SchedulingRuleFields({
+  idPrefix,
+  bufferBefore,
+  setBufferBefore,
+  bufferAfter,
+  setBufferAfter,
+  minNoticeHours,
+  setMinNoticeHours,
+  maxAdvanceDays,
+  setMaxAdvanceDays,
+  maxPerDay,
+  setMaxPerDay,
+  maxPerWeek,
+  setMaxPerWeek,
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="border border-line rounded-lg p-3 mb-2 space-y-2">
+      <p className="text-xs font-medium text-ink-soft">
+        {t("booking.schedulingRulesTitle")}
+      </p>
+      <div className="flex gap-2 flex-wrap">
+        <label htmlFor={`${idPrefix}-buffer-before`} className="sr-only">
+          {t("booking.bufferBeforeMinutes")}
+        </label>
+        <input
+          id={`${idPrefix}-buffer-before`}
+          type="number"
+          min="0"
+          placeholder={t("booking.bufferBeforeMinutes")}
+          value={bufferBefore}
+          onChange={(e) => setBufferBefore(e.target.value)}
+          className="w-36 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <label htmlFor={`${idPrefix}-buffer-after`} className="sr-only">
+          {t("booking.bufferAfterMinutes")}
+        </label>
+        <input
+          id={`${idPrefix}-buffer-after`}
+          type="number"
+          min="0"
+          placeholder={t("booking.bufferAfterMinutes")}
+          value={bufferAfter}
+          onChange={(e) => setBufferAfter(e.target.value)}
+          className="w-36 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        <label htmlFor={`${idPrefix}-min-notice`} className="sr-only">
+          {t("booking.minNoticeHours")}
+        </label>
+        <input
+          id={`${idPrefix}-min-notice`}
+          type="number"
+          min="0"
+          placeholder={t("booking.minNoticeHours")}
+          value={minNoticeHours}
+          onChange={(e) => setMinNoticeHours(e.target.value)}
+          className="w-36 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <label htmlFor={`${idPrefix}-max-advance`} className="sr-only">
+          {t("booking.maxAdvanceDays")}
+        </label>
+        <input
+          id={`${idPrefix}-max-advance`}
+          type="number"
+          min="0"
+          placeholder={t("booking.maxAdvanceDays")}
+          value={maxAdvanceDays}
+          onChange={(e) => setMaxAdvanceDays(e.target.value)}
+          className="w-36 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        <label htmlFor={`${idPrefix}-max-per-day`} className="sr-only">
+          {t("booking.maxBookingsPerDay")}
+        </label>
+        <input
+          id={`${idPrefix}-max-per-day`}
+          type="number"
+          min="0"
+          placeholder={t("booking.maxBookingsPerDay")}
+          value={maxPerDay}
+          onChange={(e) => setMaxPerDay(e.target.value)}
+          className="w-36 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+        <label htmlFor={`${idPrefix}-max-per-week`} className="sr-only">
+          {t("booking.maxBookingsPerWeek")}
+        </label>
+        <input
+          id={`${idPrefix}-max-per-week`}
+          type="number"
+          min="0"
+          placeholder={t("booking.maxBookingsPerWeek")}
+          value={maxPerWeek}
+          onChange={(e) => setMaxPerWeek(e.target.value)}
+          className="w-36 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+        />
+      </div>
+    </div>
+  );
+}
+
 function ServicesSection() {
   const { t } = useTranslation();
   const [services, setServices] = useState([]);
@@ -220,6 +329,12 @@ function ServicesSection() {
   const [isOnline, setIsOnline] = useState(false);
   const [meetingLink, setMeetingLink] = useState("");
   const [instructions, setInstructions] = useState("");
+  const [bufferBefore, setBufferBefore] = useState("");
+  const [bufferAfter, setBufferAfter] = useState("");
+  const [minNoticeHours, setMinNoticeHours] = useState("");
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState("");
+  const [maxPerDay, setMaxPerDay] = useState("");
+  const [maxPerWeek, setMaxPerWeek] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -234,6 +349,12 @@ function ServicesSection() {
   const [editIsOnline, setEditIsOnline] = useState(false);
   const [editMeetingLink, setEditMeetingLink] = useState("");
   const [editInstructions, setEditInstructions] = useState("");
+  const [editBufferBefore, setEditBufferBefore] = useState("");
+  const [editBufferAfter, setEditBufferAfter] = useState("");
+  const [editMinNoticeHours, setEditMinNoticeHours] = useState("");
+  const [editMaxAdvanceDays, setEditMaxAdvanceDays] = useState("");
+  const [editMaxPerDay, setEditMaxPerDay] = useState("");
+  const [editMaxPerWeek, setEditMaxPerWeek] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
   const [stripeConnectBanner, setStripeConnectBanner] = useState(null);
 
@@ -345,6 +466,12 @@ function ServicesSection() {
       is_online: isOnline,
       meeting_link: isOnline ? meetingLink : "",
       instructions,
+      buffer_before_minutes: bufferBefore || 0,
+      buffer_after_minutes: bufferAfter || 0,
+      min_notice_hours: minNoticeHours || 0,
+      max_advance_days: maxAdvanceDays || null,
+      max_bookings_per_day: maxPerDay || null,
+      max_bookings_per_week: maxPerWeek || null,
     });
     if (newPhoto) {
       const formData = new FormData();
@@ -370,6 +497,12 @@ function ServicesSection() {
     setIsOnline(false);
     setMeetingLink("");
     setInstructions("");
+    setBufferBefore("");
+    setBufferAfter("");
+    setMinNoticeHours("");
+    setMaxAdvanceDays("");
+    setMaxPerDay("");
+    setMaxPerWeek("");
     setShowForm(false);
     setStatusMsg({ key: "booking.serviceCreated", type: "success" });
     load();
@@ -400,6 +533,12 @@ function ServicesSection() {
     setEditIsOnline(service.is_online || false);
     setEditMeetingLink(service.meeting_link || "");
     setEditInstructions(service.instructions || "");
+    setEditBufferBefore(String(service.buffer_before_minutes ?? ""));
+    setEditBufferAfter(String(service.buffer_after_minutes ?? ""));
+    setEditMinNoticeHours(String(service.min_notice_hours ?? ""));
+    setEditMaxAdvanceDays(service.max_advance_days ?? "");
+    setEditMaxPerDay(service.max_bookings_per_day ?? "");
+    setEditMaxPerWeek(service.max_bookings_per_week ?? "");
   }
 
   function cancelEdit() {
@@ -424,6 +563,12 @@ function ServicesSection() {
       is_online: editIsOnline,
       meeting_link: editIsOnline ? editMeetingLink : "",
       instructions: editInstructions,
+      buffer_before_minutes: editBufferBefore || 0,
+      buffer_after_minutes: editBufferAfter || 0,
+      min_notice_hours: editMinNoticeHours || 0,
+      max_advance_days: editMaxAdvanceDays || null,
+      max_bookings_per_day: editMaxPerDay || null,
+      max_bookings_per_week: editMaxPerWeek || null,
     });
     setEditingId(null);
     setStatusMsg({ key: "booking.serviceUpdated", type: "success" });
@@ -791,6 +936,21 @@ function ServicesSection() {
             feePercent={feePercent}
             setFeePercent={setFeePercent}
           />
+          <SchedulingRuleFields
+            idPrefix="new-service"
+            bufferBefore={bufferBefore}
+            setBufferBefore={setBufferBefore}
+            bufferAfter={bufferAfter}
+            setBufferAfter={setBufferAfter}
+            minNoticeHours={minNoticeHours}
+            setMinNoticeHours={setMinNoticeHours}
+            maxAdvanceDays={maxAdvanceDays}
+            setMaxAdvanceDays={setMaxAdvanceDays}
+            maxPerDay={maxPerDay}
+            setMaxPerDay={setMaxPerDay}
+            maxPerWeek={maxPerWeek}
+            setMaxPerWeek={setMaxPerWeek}
+          />
           {teamMembers.length > 0 && (
             <fieldset className="mb-2">
               <legend className="text-xs text-ink-soft mb-1">
@@ -946,6 +1106,21 @@ function ServicesSection() {
                   setNoticeHours={setEditNoticeHours}
                   feePercent={editFeePercent}
                   setFeePercent={setEditFeePercent}
+                />
+                <SchedulingRuleFields
+                  idPrefix={`edit-service-${service.id}`}
+                  bufferBefore={editBufferBefore}
+                  setBufferBefore={setEditBufferBefore}
+                  bufferAfter={editBufferAfter}
+                  setBufferAfter={setEditBufferAfter}
+                  minNoticeHours={editMinNoticeHours}
+                  setMinNoticeHours={setEditMinNoticeHours}
+                  maxAdvanceDays={editMaxAdvanceDays}
+                  setMaxAdvanceDays={setEditMaxAdvanceDays}
+                  maxPerDay={editMaxPerDay}
+                  setMaxPerDay={setEditMaxPerDay}
+                  maxPerWeek={editMaxPerWeek}
+                  setMaxPerWeek={setEditMaxPerWeek}
                 />
                 {teamMembers.length > 0 && (
                   <fieldset className="mb-2">
@@ -2186,6 +2361,343 @@ function WorkingHoursSection() {
         ))}
         {hours.length === 0 && (
           <p className="text-ink-soft text-sm">{t("booking.noWorkingHours")}</p>
+        )}
+      </ul>
+    </section>
+  );
+}
+
+// Holidays (BOOK-11, no staff set - blocks the whole workspace) and
+// specific blocks (BOOK-12, staff set - blocks only that person),
+// both the same BlockedTime row under the hood.
+function BlockedTimeSection() {
+  const { t } = useTranslation();
+  const [blockedTimes, setBlockedTimes] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("00:00");
+  const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("23:59");
+  const [staffId, setStaffId] = useState("");
+  const [reason, setReason] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editStartTime, setEditStartTime] = useState("00:00");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [editEndTime, setEditEndTime] = useState("23:59");
+  const [editStaffId, setEditStaffId] = useState("");
+  const [editReason, setEditReason] = useState("");
+  const [statusMsg, setStatusMsg] = useState(null);
+
+  async function load() {
+    const res = await api.get("/blocked-times/");
+    setBlockedTimes(res.data);
+  }
+  async function loadTeamMembers() {
+    const res = await api.get("/team/");
+    setTeamMembers(res.data);
+  }
+  useEffect(() => {
+    load();
+    loadTeamMembers();
+  }, []);
+
+  async function onCreate(e) {
+    e.preventDefault();
+    await api.post("/blocked-times/", {
+      start_time: new Date(`${startDate}T${startTime}:00`).toISOString(),
+      end_time: new Date(`${endDate}T${endTime}:00`).toISOString(),
+      staff: staffId || null,
+      reason,
+    });
+    setShowForm(false);
+    setStartDate("");
+    setStartTime("00:00");
+    setEndDate("");
+    setEndTime("23:59");
+    setStaffId("");
+    setReason("");
+    setStatusMsg({ key: "booking.blockedTimeAdded", type: "success" });
+    load();
+  }
+
+  function startEdit(entry) {
+    const start = new Date(entry.start_time);
+    const end = new Date(entry.end_time);
+    setEditingId(entry.id);
+    setEditStartDate(start.toISOString().slice(0, 10));
+    setEditStartTime(start.toTimeString().slice(0, 5));
+    setEditEndDate(end.toISOString().slice(0, 10));
+    setEditEndTime(end.toTimeString().slice(0, 5));
+    setEditStaffId(entry.staff ? String(entry.staff) : "");
+    setEditReason(entry.reason || "");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(entryId) {
+    await api.patch(`/blocked-times/${entryId}/`, {
+      start_time: new Date(
+        `${editStartDate}T${editStartTime}:00`,
+      ).toISOString(),
+      end_time: new Date(`${editEndDate}T${editEndTime}:00`).toISOString(),
+      staff: editStaffId || null,
+      reason: editReason,
+    });
+    setEditingId(null);
+    setStatusMsg({ key: "booking.blockedTimeUpdated", type: "success" });
+    load();
+  }
+
+  async function deleteBlockedTime(entryId) {
+    if (!window.confirm(t("booking.confirmRemoveBlockedTime"))) return;
+    await api.delete(`/blocked-times/${entryId}/`);
+    setStatusMsg({ key: "booking.blockedTimeRemoved", type: "error" });
+    load();
+  }
+
+  return (
+    <section className="bg-surface border border-line rounded-2xl p-6">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="font-medium text-ink">{t("booking.blockedTimesTitle")}</h2>
+        <button
+          onClick={() => {
+            setShowForm(!showForm);
+            setStatusMsg(null);
+          }}
+          aria-expanded={showForm}
+          aria-label={t("booking.addBlockedTime")}
+          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+        >
+          <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+          {t("booking.addBlockedTime")}
+        </button>
+      </div>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {t(statusMsg.key)}
+        </div>
+      )}
+
+      {showForm && (
+        <form
+          onSubmit={onCreate}
+          className="border border-line rounded-lg p-4 mb-4 flex flex-wrap gap-2 items-end"
+        >
+          <div>
+            <label htmlFor="bt-reason" className="block text-xs text-ink-soft mb-1">
+              {t("booking.blockedTimeReason")}
+            </label>
+            <input
+              id="bt-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+          </div>
+          <div>
+            <label htmlFor="bt-start-date" className="block text-xs text-ink-soft mb-1">
+              {t("booking.blockedTimeStart")}
+            </label>
+            <div className="flex gap-1">
+              <input
+                id="bt-start-date"
+                type="date"
+                required
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+              <input
+                type="time"
+                aria-label={t("booking.startTime")}
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="bt-end-date" className="block text-xs text-ink-soft mb-1">
+              {t("booking.blockedTimeEnd")}
+            </label>
+            <div className="flex gap-1">
+              <input
+                id="bt-end-date"
+                type="date"
+                required
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+              <input
+                type="time"
+                aria-label={t("booking.endTime")}
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+            </div>
+          </div>
+          {teamMembers.length > 0 && (
+            <div>
+              <label htmlFor="bt-staff" className="block text-xs text-ink-soft mb-1">
+                {t("booking.blockedTimeForStaff")}
+              </label>
+              <select
+                id="bt-staff"
+                value={staffId}
+                onChange={(e) => setStaffId(e.target.value)}
+                className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                <option value="">{t("booking.wholeWorkspace")}</option>
+                {teamMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.first_name || member.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            aria-label={t("booking.saveBlockedTime")}
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+            {t("booking.saveBlockedTime")}
+          </button>
+        </form>
+      )}
+
+      <ul className="divide-y divide-line">
+        {blockedTimes.map((entry) => (
+          <li key={entry.id} className="py-2 text-sm">
+            {editingId === entry.id ? (
+              <div className="border border-brand-200 rounded-lg p-3 flex flex-wrap gap-2 items-end">
+                <div>
+                  <label
+                    htmlFor={`edit-bt-reason-${entry.id}`}
+                    className="block text-xs text-ink-soft mb-1"
+                  >
+                    {t("booking.blockedTimeReason")}
+                  </label>
+                  <input
+                    id={`edit-bt-reason-${entry.id}`}
+                    value={editReason}
+                    onChange={(e) => setEditReason(e.target.value)}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    type="date"
+                    aria-label={t("booking.blockedTimeStart")}
+                    value={editStartDate}
+                    onChange={(e) => setEditStartDate(e.target.value)}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                  <input
+                    type="time"
+                    aria-label={t("booking.startTime")}
+                    value={editStartTime}
+                    onChange={(e) => setEditStartTime(e.target.value)}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+                <div className="flex gap-1">
+                  <input
+                    type="date"
+                    aria-label={t("booking.blockedTimeEnd")}
+                    value={editEndDate}
+                    onChange={(e) => setEditEndDate(e.target.value)}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                  <input
+                    type="time"
+                    aria-label={t("booking.endTime")}
+                    value={editEndTime}
+                    onChange={(e) => setEditEndTime(e.target.value)}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+                {teamMembers.length > 0 && (
+                  <select
+                    aria-label={t("booking.blockedTimeForStaff")}
+                    value={editStaffId}
+                    onChange={(e) => setEditStaffId(e.target.value)}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    <option value="">{t("booking.wholeWorkspace")}</option>
+                    {teamMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.first_name || member.email}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  onClick={() => saveEdit(entry.id)}
+                  aria-label={t("booking.save")}
+                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                  {t("booking.save")}
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  aria-label={t("booking.cancel")}
+                  className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                  {t("booking.cancel")}
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center">
+                <span>
+                  {entry.reason || t("booking.blockedTimesTitle")}
+                  {" · "}
+                  {new Date(entry.start_time).toLocaleString()}
+                  {" – "}
+                  {new Date(entry.end_time).toLocaleString()}
+                  {" · "}
+                  {entry.staff_name || t("booking.wholeWorkspace")}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startEdit(entry)}
+                    aria-label={t("booking.edit")}
+                    className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                    {t("booking.edit")}
+                  </button>
+                  <button
+                    onClick={() => deleteBlockedTime(entry.id)}
+                    aria-label={t("booking.remove")}
+                    className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  >
+                    <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                    {t("booking.remove")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+        {blockedTimes.length === 0 && (
+          <p className="text-ink-soft text-sm">{t("booking.noBlockedTimes")}</p>
         )}
       </ul>
     </section>

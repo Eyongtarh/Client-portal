@@ -26,10 +26,10 @@ from .currencies import COUNTRIES
 from .payments import create_checkout_session
 from .permissions import IsOwnerOrStaffForWrite
 from .models import (
-    Activity, Approval, Booking, Client, Document, Invoice, Message,
-    Milestone, PaymentMethod, Project, RecurringSeries, Resource, Review,
-    Service, SubscriptionPlan, Task, User, WaitlistEntry, WorkingHours,
-    Workspace,
+    Activity, Approval, BlockedTime, Booking, Client, Document, Invoice,
+    Message, Milestone, PaymentMethod, Project, RecurringSeries, Resource,
+    Review, Service, SubscriptionPlan, Task, User, WaitlistEntry,
+    WorkingHours, Workspace,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -37,6 +37,7 @@ from .serializers import (
     ActivitySerializer,
     ApprovalDecisionSerializer,
     ApprovalSerializer,
+    BlockedTimeSerializer,
     BookingSerializer,
     ChangePasswordSerializer,
     ChangePlanSerializer,
@@ -1392,6 +1393,28 @@ class WorkingHoursViewSet(viewsets.ModelViewSet):
         serializer.save(workspace=self.request.user.get_workspace())
 
 
+class BlockedTimeViewSet(viewsets.ModelViewSet):
+    """Owners and staff manage holidays (BOOK-11, staff left blank)
+    and specific blocks (BOOK-12, usually staff set); clients get
+    read-only access, same reasoning as WorkingHoursViewSet.
+    """
+    serializer_class = BlockedTimeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ("owner", "staff"):
+            return BlockedTime.objects.filter(
+                workspace=user.get_workspace()
+            )
+        return BlockedTime.objects.filter(
+            workspace=user.client_profile.workspace
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(workspace=self.request.user.get_workspace())
+
+
 class BookingViewSet(viewsets.ModelViewSet):
     """Owners and staff see/manage every booking in their
     workspace; clients see only their own and can only ever
@@ -2003,6 +2026,14 @@ class AvailabilityView(APIView):
     default entirely, and the capacity/conflict check only counts
     that team member's own bookings for this service, not everyone
     else's. 400s if that team member doesn't perform this service.
+    Also applies the service's own booking rules (BOOK-11..16): a
+    date beyond max_advance_days, or whose daily/weekly booking cap
+    is already reached, returns no slots at all; buffer_before/
+    buffer_after_minutes pad every existing booking's occupied
+    window so a new one can't land in another's prep/recovery time;
+    min_notice_hours excludes slots too soon from now; and any
+    overlapping BlockedTime (a holiday, staff blank, or a specific
+    block, staff set) removes that slot regardless of working hours.
 
     Resource mode: a resource booking is direct and not tied to
     staff time, so slots cover the FULL 24-hour day (not limited
@@ -2101,6 +2132,35 @@ class AvailabilityView(APIView):
             Service, pk=service_id, workspace=workspace
         )
 
+        if service.max_advance_days is not None:
+            latest = now_local.date() + timedelta(
+                days=service.max_advance_days
+            )
+            if target_date > latest:
+                return Response({"date": date_str, "slots": []})
+
+        if service.max_bookings_per_day is not None:
+            day_count = Booking.objects.filter(
+                workspace=workspace,
+                service=service,
+                status="confirmed",
+                start_time__date=target_date,
+            ).count()
+            if day_count >= service.max_bookings_per_day:
+                return Response({"date": date_str, "slots": []})
+        if service.max_bookings_per_week is not None:
+            week_start = target_date - timedelta(days=target_date.weekday())
+            week_end = week_start + timedelta(days=7)
+            week_count = Booking.objects.filter(
+                workspace=workspace,
+                service=service,
+                status="confirmed",
+                start_time__date__gte=week_start,
+                start_time__date__lt=week_end,
+            ).count()
+            if week_count >= service.max_bookings_per_week:
+                return Response({"date": date_str, "slots": []})
+
         staff_member = None
         staff_id = request.query_params.get("staff")
         if staff_id:
@@ -2144,6 +2204,27 @@ class AvailabilityView(APIView):
         if staff_member:
             existing = existing.filter(staff=staff_member)
 
+        # A holiday (staff blank) always applies; a specific block
+        # (staff set) only applies when browsing that staff member's
+        # own availability - it never affects anyone else's calendar.
+        blocked_qs = BlockedTime.objects.filter(
+            workspace=workspace,
+            start_time__lt=day_end_local,
+            end_time__gt=day_start_local,
+        )
+        blocked_qs = (
+            blocked_qs.filter(Q(staff__isnull=True) | Q(staff=staff_member))
+            if staff_member
+            else blocked_qs.filter(staff__isnull=True)
+        )
+        blocked_windows = [
+            (
+                b.start_time.astimezone(tz).replace(tzinfo=None),
+                b.end_time.astimezone(tz).replace(tzinfo=None),
+            )
+            for b in blocked_qs
+        ]
+
         resources = list(service.resources.all())
         resource_bookings = {}
         for resource in resources:
@@ -2168,19 +2249,32 @@ class AvailabilityView(APIView):
             window_end = datetime.combine(
                 target_date, window.end_time
             )
+            # An existing booking's own buffer_before/buffer_after
+            # (BOOK-13) widens ITS window - nothing may start in the
+            # buffer_before zone right before it or end in the
+            # buffer_after zone right after it (see the identical
+            # reasoning in BookingSerializer.validate()).
+            buffer_before = timedelta(
+                minutes=service.buffer_before_minutes
+            )
+            buffer_after = timedelta(minutes=service.buffer_after_minutes)
             while cursor + slot_length <= window_end:
                 slot_end = cursor + slot_length
                 overlap_count = sum(
                     1
                     for b in existing
-                    if cursor
-                    < b.end_time.astimezone(tz).replace(tzinfo=None)
-                    and slot_end
-                    > b.start_time.astimezone(tz).replace(
-                        tzinfo=None
-                    )
+                    if b.start_time.astimezone(tz).replace(tzinfo=None)
+                    < slot_end + buffer_before
+                    and b.end_time.astimezone(tz).replace(tzinfo=None)
+                    > cursor - buffer_after
                 )
-                in_the_past = cursor < now_local
+                too_soon = cursor < now_local + timedelta(
+                    hours=service.min_notice_hours
+                )
+                is_blocked = any(
+                    cursor < b_end and slot_end > b_start
+                    for b_start, b_end in blocked_windows
+                )
                 is_full = overlap_count >= service.capacity
 
                 resource_full = False
@@ -2201,7 +2295,12 @@ class AvailabilityView(APIView):
                         resource_full = True
                         break
 
-                if not is_full and not in_the_past and not resource_full:
+                if (
+                    not is_full
+                    and not too_soon
+                    and not resource_full
+                    and not is_blocked
+                ):
                     slots.append(cursor.strftime("%H:%M"))
                 cursor += slot_length
 

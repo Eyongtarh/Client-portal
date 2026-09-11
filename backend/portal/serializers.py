@@ -2,12 +2,13 @@ from decimal import Decimal
 
 from .currencies import VALID_CURRENCIES
 from .models import (
-    Activity, Approval, Client, ClientInvite, Document, Invoice,
-    InvoiceItem, Message, Milestone, PaymentMethod, Project,
+    Activity, Approval, BlockedTime, Client, ClientInvite, Document,
+    Invoice, InvoiceItem, Message, Milestone, PaymentMethod, Project,
     RecurringSeries, Resource, Review, Service, SubscriptionPlan, Task,
     TeamInvite, User, WaitlistEntry, WorkingHours, Booking, Workspace,
 )
 from rest_framework import serializers
+from django.db.models import Q
 from django.utils import timezone
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
@@ -662,6 +663,9 @@ class ServiceSerializer(serializers.ModelSerializer):
             "resource_names", "staff", "staff_names",
             "payment_requirement", "deposit_percent",
             "cancellation_notice_hours", "late_cancellation_fee_percent",
+            "buffer_before_minutes", "buffer_after_minutes",
+            "min_notice_hours", "max_advance_days",
+            "max_bookings_per_day", "max_bookings_per_week",
         ]
         read_only_fields = ["workspace"]
 
@@ -787,6 +791,55 @@ class WorkingHoursSerializer(serializers.ModelSerializer):
                 "workspace."
             )
         return value
+
+
+class BlockedTimeSerializer(serializers.ModelSerializer):
+    """A holiday (BOOK-11, staff left blank) or a specific block
+    (BOOK-12, usually staff set) - AvailabilityView and booking
+    creation both treat any overlapping row as fully unavailable,
+    regardless of working hours.
+    """
+    staff_name = serializers.SerializerMethodField()
+    staff = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(role="staff"),
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = BlockedTime
+        fields = [
+            "id", "workspace", "staff", "staff_name", "start_time",
+            "end_time", "reason", "created_at",
+        ]
+        read_only_fields = ["workspace", "created_at"]
+
+    def get_staff_name(self, obj):
+        return obj.staff.first_name if obj.staff else None
+
+    def validate_staff(self, value):
+        if value is None:
+            return value
+        workspace = self.context["request"].user.get_workspace()
+        if value.staff_workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only block time for a team member in your own "
+                "workspace."
+            )
+        return value
+
+    def validate(self, attrs):
+        start = attrs.get(
+            "start_time", self.instance.start_time if self.instance else None
+        )
+        end = attrs.get(
+            "end_time", self.instance.end_time if self.instance else None
+        )
+        if start and end and end <= start:
+            raise serializers.ValidationError(
+                "End time must be after start time."
+            )
+        return attrs
 
 
 class BookingSerializer(serializers.ModelSerializer):
@@ -964,6 +1017,81 @@ class BookingSerializer(serializers.ModelSerializer):
             attrs["end_time"] = start + timedelta(
                 minutes=service.duration_minutes
             )
+            end = attrs["end_time"]
+
+            # Notice window, advance-booking window, holidays/blocked
+            # time, and daily/weekly caps (BOOK-14/15/11/12/16) only
+            # need re-checking when start_time is actually being set
+            # (a fresh booking, or an explicit reschedule) - re-
+            # running them against an unchanged, now-historical
+            # start_time on an unrelated status update (e.g. marking
+            # an old booking completed) would fail for no reason.
+            if not self.instance or "start_time" in attrs:
+                if start < timezone.now() + timedelta(
+                    hours=service.min_notice_hours
+                ):
+                    raise serializers.ValidationError(
+                        f"This service requires at least "
+                        f"{service.min_notice_hours} hour(s) notice."
+                    )
+                if service.max_advance_days is not None:
+                    latest = timezone.now().date() + timedelta(
+                        days=service.max_advance_days
+                    )
+                    if start.date() > latest:
+                        raise serializers.ValidationError(
+                            "This service can only be booked up to "
+                            f"{service.max_advance_days} day(s) in "
+                            "advance."
+                        )
+
+                blocked = BlockedTime.objects.filter(
+                    workspace=service.workspace,
+                    start_time__lt=end,
+                    end_time__gt=start,
+                )
+                blocked = blocked.filter(
+                    Q(staff__isnull=True) | Q(staff=staff)
+                ) if staff else blocked.filter(staff__isnull=True)
+                if blocked.exists():
+                    raise serializers.ValidationError(
+                        "This time is unavailable."
+                    )
+
+                if service.max_bookings_per_day is not None:
+                    day_count = Booking.objects.filter(
+                        workspace=service.workspace,
+                        service=service,
+                        status="confirmed",
+                        start_time__date=start.date(),
+                    ).exclude(
+                        pk=self.instance.pk if self.instance else None
+                    ).count()
+                    if day_count >= service.max_bookings_per_day:
+                        raise serializers.ValidationError(
+                            "This service has reached its maximum "
+                            "bookings for that day."
+                        )
+                if service.max_bookings_per_week is not None:
+                    week_start = start.date() - timedelta(
+                        days=start.weekday()
+                    )
+                    week_end = week_start + timedelta(days=7)
+                    week_count = Booking.objects.filter(
+                        workspace=service.workspace,
+                        service=service,
+                        status="confirmed",
+                        start_time__date__gte=week_start,
+                        start_time__date__lt=week_end,
+                    ).exclude(
+                        pk=self.instance.pk if self.instance else None
+                    ).count()
+                    if week_count >= service.max_bookings_per_week:
+                        raise serializers.ValidationError(
+                            "This service has reached its maximum "
+                            "bookings for that week."
+                        )
+
             if (
                 not self.instance
                 and service.payment_requirement != "none"
@@ -978,12 +1106,21 @@ class BookingSerializer(serializers.ModelSerializer):
                     service.price * percent / 100
                 ).quantize(Decimal("0.01"))
                 attrs["payment_status"] = "pending"
+            # An existing booking's own buffer_before/buffer_after
+            # (BOOK-13) widens the window nothing else may start in
+            # before it or end in after it - so a new booking that
+            # starts too soon before, or would still be running too
+            # close after, an existing one is rejected.
+            buffer_before = timedelta(
+                minutes=service.buffer_before_minutes
+            )
+            buffer_after = timedelta(minutes=service.buffer_after_minutes)
             overlapping = Booking.objects.filter(
                 workspace=service.workspace,
                 service=service,
                 status="confirmed",
-                start_time__lt=attrs["end_time"],
-                end_time__gt=start,
+                start_time__lt=attrs["end_time"] + buffer_before,
+                end_time__gt=start - buffer_after,
             )
             if self.instance:
                 overlapping = overlapping.exclude(pk=self.instance.pk)

@@ -460,9 +460,78 @@ class Service(models.Model):
         "no-show fee when cancelled inside the notice window. "
         "Blank = no fee - any deposit paid is simply refundable.",
     )
+    buffer_before_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Prep time required before this service starts "
+        "(BOOK-13) - blocks the slot immediately prior to a booking, "
+        "even if it would otherwise fit.",
+    )
+    buffer_after_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Recovery time required after this service ends "
+        "(BOOK-13) - blocks the slot immediately after a booking.",
+    )
+    min_notice_hours = models.PositiveIntegerField(
+        default=0,
+        help_text="How many hours in advance a booking must be made "
+        "(BOOK-14). 0 = bookable right up to the start time.",
+    )
+    max_advance_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Furthest in the future this service can be "
+        "booked (BOOK-15). Blank = no limit.",
+    )
+    max_bookings_per_day = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Caps total confirmed bookings of this service on "
+        "any single day (BOOK-16), regardless of who's assigned. "
+        "Blank = no limit.",
+    )
+    max_bookings_per_week = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Caps total confirmed bookings of this service "
+        "within any calendar week (BOOK-16, Monday-Sunday). Blank = "
+        "no limit.",
+    )
 
     def __str__(self):
         return self.name
+
+
+class BlockedTime(models.Model):
+    """An unavailable window that overrides working hours entirely -
+    a holiday (BOOK-11) is just one that spans a whole day and has
+    no staff set (blocks the entire workspace); a specific block
+    (BOOK-12, e.g. a dentist appointment) is the same model with a
+    narrower window and, usually, a staff member set so it only
+    blocks that person.
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="blocked_times"
+    )
+    staff = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="blocked_times",
+        limit_choices_to={"role": "staff"},
+        help_text="Blank blocks the whole workspace (a holiday); set "
+        "to block only that team member's own calendar.",
+    )
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    reason = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["start_time"]
+
+    def __str__(self):
+        return self.reason or f"Blocked {self.start_time} - {self.end_time}"
 
 
 def resource_photo_upload_path(instance, filename):

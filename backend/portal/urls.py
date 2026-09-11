@@ -29,6 +29,9 @@ router.register(
     "working-hours", views.WorkingHoursViewSet, basename="workinghours"
 )
 router.register(
+    "blocked-times", views.BlockedTimeViewSet, basename="blockedtime"
+)
+router.register(
     "bookings", views.BookingViewSet, basename="booking"
 )
 router.register(
