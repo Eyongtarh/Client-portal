@@ -80,6 +80,7 @@
     "delete": "Delete",
     "save": "Save",
     "cancel": "Cancel",
+    "addToCalendar": "Add to calendar",
     "descriptionOptional": "Description (optional)",
     "addPhotoOptional": "Add photo (optional)",
     "changePhoto": "Change photo",

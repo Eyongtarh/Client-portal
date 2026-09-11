@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  FiCalendar,
   FiCheck,
   FiCheckCircle,
   FiCopy,
@@ -2899,6 +2900,14 @@ function BookingsSection() {
     load();
   }
 
+  async function downloadIcs(bookingId) {
+    const res = await api.get(`/bookings/${bookingId}/ics/`, {
+      responseType: "blob",
+    });
+    const url = URL.createObjectURL(res.data);
+    window.open(url, "_blank");
+  }
+
   async function markNoShow(bookingId) {
     if (!window.confirm(t("booking.confirmMarkNoShow"))) return;
     await api.post(`/bookings/${bookingId}/mark-no-show/`);
@@ -3107,6 +3116,14 @@ function BookingsSection() {
                         {t("booking.edit")}
                       </button>
                     )}
+                    <button
+                      onClick={() => downloadIcs(booking.id)}
+                      aria-label={`${t("booking.addToCalendar")} - ${booking.client_name}`}
+                      className="bg-surface-2 text-ink text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      <FiCalendar className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                      {t("booking.addToCalendar")}
+                    </button>
                     <button
                       onClick={() => cancel(booking.id)}
                       aria-label={`Cancel booking for ${booking.client_name}`}

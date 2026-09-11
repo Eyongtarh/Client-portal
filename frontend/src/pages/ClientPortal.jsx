@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   FiAlertCircle,
+  FiCalendar,
   FiCheck,
   FiCheckCircle,
   FiCreditCard,
@@ -732,6 +733,14 @@ function BookingSection() {
     });
     setStatusMsg({ key: "booking.bookingCancelledMsg", type: "error" });
     loadMyBookings();
+  }
+
+  async function downloadIcs(bookingId) {
+    const res = await api.get(`/bookings/${bookingId}/ics/`, {
+      responseType: "blob",
+    });
+    const url = URL.createObjectURL(res.data);
+    window.open(url, "_blank");
   }
 
   async function payForBooking(bookingId) {
@@ -1478,6 +1487,14 @@ function BookingSection() {
                         {t("booking.edit")}
                       </button>
                     )}
+                    <button
+                      onClick={() => downloadIcs(booking.id)}
+                      aria-label={`${t("booking.addToCalendar")} - ${booking.service_name || booking.resource_name}`}
+                      className="bg-surface-2 text-ink text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      <FiCalendar className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                      {t("booking.addToCalendar")}
+                    </button>
                     <button
                       onClick={() => cancelMine(booking.id)}
                       aria-label={`Cancel booking for ${booking.service_name || booking.resource_name}`}

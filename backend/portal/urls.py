@@ -117,6 +117,10 @@ urlpatterns = [
         "bookings/<int:pk>/checkout/",
         views.BookingCheckoutView.as_view(),
     ),
+    path(
+        "bookings/<int:pk>/ics/",
+        views.BookingICSView.as_view(),
+    ),
     path("stripe/webhook/", webhooks.StripeWebhookView.as_view()),
     path(
         "stripe/connect-webhook/",

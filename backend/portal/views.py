@@ -7,9 +7,11 @@ from zoneinfo import ZoneInfo
 import stripe
 from django.conf import settings
 from django.core import signing
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage, send_mail
 from django.db.models import Q
-from django.http import FileResponse, Http404, HttpResponseRedirect
+from django.http import (
+    FileResponse, Http404, HttpResponse, HttpResponseRedirect,
+)
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from reportlab.lib.pagesizes import A4
@@ -22,6 +24,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .activity import log as log_activity
+from .calendar_invite import build_ics
 from .currencies import COUNTRIES
 from .payments import create_checkout_session
 from .permissions import IsOwnerOrStaffForWrite
@@ -1417,6 +1420,24 @@ class BlockedTimeViewSet(viewsets.ModelViewSet):
         serializer.save(workspace=self.request.user.get_workspace())
 
 
+def _send_booking_email(subject, message, booking, cancelled=False):
+    """Every booking confirmation/cancellation email carries the
+    matching .ics invite as an attachment (BOOK-61) so the client's
+    mail app offers to add (or remove) it in their own calendar
+    without them needing to visit the portal at all.
+    """
+    email = EmailMessage(
+        subject=subject,
+        body=message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[booking.client.contact_email],
+    )
+    email.attach(
+        "booking.ics", build_ics(booking, cancelled=cancelled), "text/calendar"
+    )
+    email.send(fail_silently=True)
+
+
 class BookingViewSet(viewsets.ModelViewSet):
     """Owners and staff see/manage every booking in their
     workspace; clients see only their own and can only ever
@@ -1495,7 +1516,7 @@ class BookingViewSet(viewsets.ModelViewSet):
             booking,
             client=booking.client,
         )
-        send_mail(
+        _send_booking_email(
             subject=f"Booking confirmed: {booked_name}",
             message=(
                 f"Your booking for {booked_name} is "
@@ -1504,9 +1525,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 f"\n\nIf you need to cancel or reschedule, do so "
                 f"from your client portal."
             ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[booking.client.contact_email],
-            fail_silently=True,
+            booking=booking,
         )
         # If this booking fills a slot the client was waiting on,
         # they no longer need to be on that waitlist. Waitlists
@@ -1552,16 +1571,15 @@ class BookingViewSet(viewsets.ModelViewSet):
                 if charges_fee
                 else ""
             )
-            send_mail(
+            _send_booking_email(
                 subject=f"Booking cancelled: {booked_name}",
                 message=(
                     f"Your booking for {booked_name} on "
                     f"{booking.start_time.strftime('%A %d %B %Y at %H:%M')}"
                     f" has been cancelled.{fee_note}"
                 ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[booking.client.contact_email],
-                fail_silently=True,
+                booking=booking,
+                cancelled=True,
             )
             if booking.service:
                 waiting = WaitlistEntry.objects.filter(
@@ -1657,6 +1675,27 @@ class BookingViewSet(viewsets.ModelViewSet):
             client=booking.client,
         )
         return Response(BookingSerializer(booking).data)
+
+
+class BookingICSView(APIView):
+    """GET /api/bookings/<id>/ics/ - lets whoever can already see
+    this booking (BOOK-65) re-download its calendar invite on
+    demand, for whenever the original confirmation email attachment
+    (BOOK-61) has been lost, deleted, or never arrived.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        user = request.user
+        if user.role in ("owner", "staff"):
+            qs = Booking.objects.filter(workspace=user.get_workspace())
+        else:
+            qs = Booking.objects.filter(client=user.client_profile)
+        booking = generics.get_object_or_404(qs, pk=pk)
+        ics = build_ics(booking, cancelled=booking.status == "cancelled")
+        response = HttpResponse(ics, content_type="text/calendar")
+        response["Content-Disposition"] = 'attachment; filename="booking.ics"'
+        return response
 
 
 class RecurringSeriesCreateView(APIView):
@@ -2390,7 +2429,7 @@ class PublicBookingCreateView(generics.CreateAPIView):
             booking,
             client=booking.client,
         )
-        send_mail(
+        _send_booking_email(
             subject=f"Booking confirmed: {booked_name}",
             message=(
                 f"Your booking for {booked_name} is confirmed for "
@@ -2398,7 +2437,5 @@ class PublicBookingCreateView(generics.CreateAPIView):
                 f"\n\nIf you need to cancel or reschedule, contact "
                 f"{booking.workspace.name} directly."
             ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[booking.client.contact_email],
-            fail_silently=True,
+            booking=booking,
         )
