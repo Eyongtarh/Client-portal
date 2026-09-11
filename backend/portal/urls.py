@@ -126,6 +126,18 @@ urlpatterns = [
     path("", include(router.urls)),
     path("availability/", views.AvailabilityView.as_view()),
     path(
+        "public/<slug:workspace_slug>/",
+        views.PublicWorkspaceView.as_view(),
+    ),
+    path(
+        "public/<slug:workspace_slug>/availability/",
+        views.PublicAvailabilityView.as_view(),
+    ),
+    path(
+        "public/<slug:workspace_slug>/bookings/",
+        views.PublicBookingCreateView.as_view(),
+    ),
+    path(
         "recurring-series/",
         views.RecurringSeriesCreateView.as_view(),
     ),

@@ -169,6 +169,13 @@
     "blockedTimeRemoved": "Blocked time removed.",
     "noBlockedTimes": "No holidays or blocked time yet.",
     "saveBlockedTime": "Save",
+    "publicBookingTitle": "Guest booking page",
+    "publicBookingEnable": "Enable guest booking page",
+    "publicBookingDescription": "Let anyone with the link book a service without creating an account.",
+    "publicBookingLink": "Booking page link",
+    "perServiceLinks": "Per-service links (opens with that service pre-selected)",
+    "copyLink": "Copy link",
+    "linkCopied": "Copied!",
     "paymentNone": "No payment at booking",
     "paymentDeposit": "Deposit required",
     "paymentFull": "Full payment required",
@@ -219,6 +226,18 @@
     "confirmMarkBookingPaid": "Mark this booking as paid? Only do this once you've confirmed you received the payment.",
     "bookingMarkedPaid": "Booking marked as paid.",
     "couldNotMarkBookingPaid": "Could not mark this booking as paid."
+  },
+  "publicBooking": {
+    "notFound": "This booking page isn't available.",
+    "notFoundDetail": "The link may be incorrect, or the business hasn't turned on online booking yet.",
+    "yourName": "Your name",
+    "yourEmail": "Your email",
+    "confirmBookingGuest": "Confirm booking",
+    "bookingConfirmedTitle": "You're booked!",
+    "bookingConfirmedDetail": "A confirmation has been sent to your email.",
+    "bookAnother": "Book another",
+    "paymentRequiredNotice": "This service requires payment when booking - please contact {{name}} directly to arrange it.",
+    "poweredBy": "Booking powered by"
   },
   "team": {
     "teamTitle": "Team",

@@ -169,6 +169,13 @@
     "blockedTimeRemoved": "Temps bloqué supprimé.",
     "noBlockedTimes": "Aucun jour férié ou temps bloqué pour le moment.",
     "saveBlockedTime": "Enregistrer",
+    "publicBookingTitle": "Page de réservation publique",
+    "publicBookingEnable": "Activer la page de réservation publique",
+    "publicBookingDescription": "Permettez à toute personne disposant du lien de réserver un service sans créer de compte.",
+    "publicBookingLink": "Lien de la page de réservation",
+    "perServiceLinks": "Liens par service (ouvre avec ce service présélectionné)",
+    "copyLink": "Copier le lien",
+    "linkCopied": "Copié !",
     "paymentNone": "Aucun paiement \u00e0 la r\u00e9servation",
     "paymentDeposit": "Acompte requis",
     "paymentFull": "Paiement int\u00e9gral requis",
@@ -219,6 +226,18 @@
     "confirmMarkBookingPaid": "Marquer cette r\u00e9servation comme pay\u00e9e ? \u00c0 faire uniquement apr\u00e8s avoir confirm\u00e9 la r\u00e9ception du paiement.",
     "bookingMarkedPaid": "R\u00e9servation marqu\u00e9e comme pay\u00e9e.",
     "couldNotMarkBookingPaid": "Impossible de marquer cette r\u00e9servation comme pay\u00e9e."
+  },
+  "publicBooking": {
+    "notFound": "Cette page de r\u00e9servation n'est pas disponible.",
+    "notFoundDetail": "Le lien est peut-\u00eatre incorrect, ou l'entreprise n'a pas encore activ\u00e9 la r\u00e9servation en ligne.",
+    "yourName": "Votre nom",
+    "yourEmail": "Votre email",
+    "confirmBookingGuest": "Confirmer la r\u00e9servation",
+    "bookingConfirmedTitle": "R\u00e9servation confirm\u00e9e !",
+    "bookingConfirmedDetail": "Une confirmation a \u00e9t\u00e9 envoy\u00e9e \u00e0 votre email.",
+    "bookAnother": "R\u00e9server \u00e0 nouveau",
+    "paymentRequiredNotice": "Ce service n\u00e9cessite un paiement au moment de la r\u00e9servation - veuillez contacter {{name}} directement pour l'organiser.",
+    "poweredBy": "R\u00e9servation propuls\u00e9e par"
   },
   "team": {
     "teamTitle": "\u00c9quipe",

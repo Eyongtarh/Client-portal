@@ -103,6 +103,13 @@ class Workspace(models.Model):
         "Stripe balance, not the platform's. Blank means the owner "
         "hasn't connected one yet - checkout is blocked until they do.",
     )
+    public_booking_enabled = models.BooleanField(
+        default=False,
+        help_text="Whether /book/<slug> (PublicBookingView, BOOK-26/"
+        "30) is reachable by anyone with the link, letting a guest "
+        "book without an account (BOOK-21). Off by default - an "
+        "owner opts in once they're ready to share it.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

@@ -55,6 +55,8 @@ from .serializers import (
     PaymentMethodSerializer,
     PasswordResetRequestSerializer,
     ProjectSerializer,
+    PublicBookingSerializer,
+    PublicWorkspaceSerializer,
     RecurringSeriesCreateSerializer,
     RegisterSerializer,
     ResourceSerializer,
@@ -2011,6 +2013,182 @@ class SearchView(APIView):
         )
 
 
+def compute_service_availability(workspace, service_id, date_str, staff_id):
+    """The service-mode half of AvailabilityView, pulled out to a
+    plain function so PublicAvailabilityView (BOOK-26, no
+    authenticated user to derive a workspace from) can offer a
+    guest the exact same slots - and be bound by the exact same
+    rules - as the authenticated booking flow, instead of a second,
+    driftable copy of ~100 lines of slot math.
+    """
+    tz = ZoneInfo(workspace.timezone)
+    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    now_local = timezone.now().astimezone(tz).replace(tzinfo=None)
+
+    service = generics.get_object_or_404(
+        Service, pk=service_id, workspace=workspace
+    )
+
+    if service.max_advance_days is not None:
+        latest = now_local.date() + timedelta(days=service.max_advance_days)
+        if target_date > latest:
+            return Response({"date": date_str, "slots": []})
+
+    if service.max_bookings_per_day is not None:
+        day_count = Booking.objects.filter(
+            workspace=workspace,
+            service=service,
+            status="confirmed",
+            start_time__date=target_date,
+        ).count()
+        if day_count >= service.max_bookings_per_day:
+            return Response({"date": date_str, "slots": []})
+    if service.max_bookings_per_week is not None:
+        week_start = target_date - timedelta(days=target_date.weekday())
+        week_end = week_start + timedelta(days=7)
+        week_count = Booking.objects.filter(
+            workspace=workspace,
+            service=service,
+            status="confirmed",
+            start_time__date__gte=week_start,
+            start_time__date__lt=week_end,
+        ).count()
+        if week_count >= service.max_bookings_per_week:
+            return Response({"date": date_str, "slots": []})
+
+    staff_member = None
+    if staff_id:
+        staff_member = generics.get_object_or_404(
+            User, pk=staff_id, role="staff", staff_workspace=workspace
+        )
+        if (
+            service.staff.exists()
+            and staff_member not in service.staff.all()
+        ):
+            return Response(
+                {"detail": "This team member does not perform this service."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    weekday = target_date.weekday()
+    # A staff member's own hours (BOOK-10/TEAM-05) replace the
+    # workspace default entirely once they have any of their
+    # own, rather than filling gaps day-by-day - a staff member
+    # who only ever set Monday hours is not implicitly available
+    # on the workspace's Tuesday hours too.
+    has_custom_hours = staff_member and WorkingHours.objects.filter(
+        workspace=workspace, staff=staff_member
+    ).exists()
+    windows = WorkingHours.objects.filter(
+        workspace=workspace,
+        weekday=weekday,
+        staff=staff_member if has_custom_hours else None,
+    )
+    day_start_local = datetime.combine(
+        target_date, datetime.min.time(), tzinfo=tz
+    )
+    day_end_local = day_start_local + timedelta(days=1)
+    existing = Booking.objects.filter(
+        workspace=workspace,
+        service=service,
+        status="confirmed",
+        start_time__gte=day_start_local,
+        start_time__lt=day_end_local,
+    )
+    if staff_member:
+        existing = existing.filter(staff=staff_member)
+
+    # A holiday (staff blank) always applies; a specific block
+    # (staff set) only applies when browsing that staff member's
+    # own availability - it never affects anyone else's calendar.
+    blocked_qs = BlockedTime.objects.filter(
+        workspace=workspace,
+        start_time__lt=day_end_local,
+        end_time__gt=day_start_local,
+    )
+    blocked_qs = (
+        blocked_qs.filter(Q(staff__isnull=True) | Q(staff=staff_member))
+        if staff_member
+        else blocked_qs.filter(staff__isnull=True)
+    )
+    blocked_windows = [
+        (
+            b.start_time.astimezone(tz).replace(tzinfo=None),
+            b.end_time.astimezone(tz).replace(tzinfo=None),
+        )
+        for b in blocked_qs
+    ]
+
+    resources = list(service.resources.all())
+    resource_bookings = {}
+    for resource in resources:
+        resource_bookings[resource.id] = list(
+            Booking.objects.filter(
+                workspace=workspace,
+                service__resources=resource,
+                status="confirmed",
+                start_time__gte=day_start_local - timedelta(hours=24),
+                start_time__lt=day_end_local + timedelta(hours=24),
+            )
+        )
+
+    slot_length = timedelta(minutes=service.duration_minutes)
+    slots = []
+    for window in windows:
+        cursor = datetime.combine(target_date, window.start_time)
+        window_end = datetime.combine(target_date, window.end_time)
+        # An existing booking's own buffer_before/buffer_after
+        # (BOOK-13) widens ITS window - nothing may start in the
+        # buffer_before zone right before it or end in the
+        # buffer_after zone right after it (see the identical
+        # reasoning in BookingSerializer.validate()).
+        buffer_before = timedelta(minutes=service.buffer_before_minutes)
+        buffer_after = timedelta(minutes=service.buffer_after_minutes)
+        while cursor + slot_length <= window_end:
+            slot_end = cursor + slot_length
+            overlap_count = sum(
+                1
+                for b in existing
+                if b.start_time.astimezone(tz).replace(tzinfo=None)
+                < slot_end + buffer_before
+                and b.end_time.astimezone(tz).replace(tzinfo=None)
+                > cursor - buffer_after
+            )
+            too_soon = cursor < now_local + timedelta(
+                hours=service.min_notice_hours
+            )
+            is_blocked = any(
+                cursor < b_end and slot_end > b_start
+                for b_start, b_end in blocked_windows
+            )
+            is_full = overlap_count >= service.capacity
+
+            resource_full = False
+            for resource in resources:
+                resource_overlap = sum(
+                    1
+                    for b in resource_bookings[resource.id]
+                    if cursor
+                    < b.end_time.astimezone(tz).replace(tzinfo=None)
+                    and slot_end
+                    > b.start_time.astimezone(tz).replace(tzinfo=None)
+                )
+                if resource_overlap >= resource.quantity:
+                    resource_full = True
+                    break
+
+            if (
+                not is_full
+                and not too_soon
+                and not resource_full
+                and not is_blocked
+            ):
+                slots.append(cursor.strftime("%H:%M"))
+            cursor += slot_length
+
+    return Response({"date": date_str, "slots": slots})
+
+
 class AvailabilityView(APIView):
     """GET /api/availability/?service=<id>&date=YYYY-MM-DD or
     GET /api/availability/?resource=<id>&date=YYYY-MM-DD
@@ -2128,180 +2306,99 @@ class AvailabilityView(APIView):
 
             return Response({"date": date_str, "slots": slots})
 
-        service = generics.get_object_or_404(
-            Service, pk=service_id, workspace=workspace
-        )
-
-        if service.max_advance_days is not None:
-            latest = now_local.date() + timedelta(
-                days=service.max_advance_days
-            )
-            if target_date > latest:
-                return Response({"date": date_str, "slots": []})
-
-        if service.max_bookings_per_day is not None:
-            day_count = Booking.objects.filter(
-                workspace=workspace,
-                service=service,
-                status="confirmed",
-                start_time__date=target_date,
-            ).count()
-            if day_count >= service.max_bookings_per_day:
-                return Response({"date": date_str, "slots": []})
-        if service.max_bookings_per_week is not None:
-            week_start = target_date - timedelta(days=target_date.weekday())
-            week_end = week_start + timedelta(days=7)
-            week_count = Booking.objects.filter(
-                workspace=workspace,
-                service=service,
-                status="confirmed",
-                start_time__date__gte=week_start,
-                start_time__date__lt=week_end,
-            ).count()
-            if week_count >= service.max_bookings_per_week:
-                return Response({"date": date_str, "slots": []})
-
-        staff_member = None
         staff_id = request.query_params.get("staff")
-        if staff_id:
-            staff_member = generics.get_object_or_404(
-                User, pk=staff_id, role="staff", staff_workspace=workspace
-            )
-            if (
-                service.staff.exists()
-                and staff_member not in service.staff.all()
-            ):
-                return Response(
-                    {"detail": "This team member does not perform this service."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        weekday = target_date.weekday()
-        # A staff member's own hours (BOOK-10/TEAM-05) replace the
-        # workspace default entirely once they have any of their
-        # own, rather than filling gaps day-by-day - a staff member
-        # who only ever set Monday hours is not implicitly available
-        # on the workspace's Tuesday hours too.
-        has_custom_hours = staff_member and WorkingHours.objects.filter(
-            workspace=workspace, staff=staff_member
-        ).exists()
-        windows = WorkingHours.objects.filter(
-            workspace=workspace,
-            weekday=weekday,
-            staff=staff_member if has_custom_hours else None,
+        return compute_service_availability(
+            workspace, service_id, date_str, staff_id
         )
-        day_start_local = datetime.combine(
-            target_date, datetime.min.time(), tzinfo=tz
+
+
+def _get_public_workspace(workspace_slug):
+    """Shared lookup for every guest-facing public-booking endpoint
+    (BOOK-21/26/27/28/30) - a workspace that hasn't opted in via
+    public_booking_enabled is 404, identical to it not existing, so
+    the setting doubles as an access gate without needing its own
+    permission class.
+    """
+    return generics.get_object_or_404(
+        Workspace, slug=workspace_slug, public_booking_enabled=True
+    )
+
+
+class PublicWorkspaceView(APIView):
+    """GET /api/public/<slug>/ - a guest's landing view of a
+    workspace's booking page: branding plus its bookable services.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, workspace_slug):
+        workspace = _get_public_workspace(workspace_slug)
+        services = Service.objects.filter(workspace=workspace, is_active=True)
+        return Response({
+            "workspace": PublicWorkspaceSerializer(workspace).data,
+            "services": ServiceSerializer(services, many=True).data,
+        })
+
+
+class PublicAvailabilityView(APIView):
+    """GET /api/public/<slug>/availability/?service=<id>&date=YYYY-MM-DD
+    (&staff=<id> optional) - the exact same slot logic and rules an
+    authenticated client sees (see compute_service_availability),
+    just reached without an account.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, workspace_slug):
+        workspace = _get_public_workspace(workspace_slug)
+        service_id = request.query_params.get("service")
+        date_str = request.query_params.get("date")
+        if not service_id or not date_str:
+            return Response(
+                {"detail": "service and date are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        staff_id = request.query_params.get("staff")
+        return compute_service_availability(
+            workspace, service_id, date_str, staff_id
         )
-        day_end_local = day_start_local + timedelta(days=1)
-        existing = Booking.objects.filter(
-            workspace=workspace,
-            service=service,
-            status="confirmed",
-            start_time__gte=day_start_local,
-            start_time__lt=day_end_local,
+
+
+class PublicBookingCreateView(generics.CreateAPIView):
+    """POST /api/public/<slug>/bookings/ - lets a guest book a
+    service without an account (BOOK-21), enforcing every rule a
+    logged-in client's booking would (capacity, buffers, notice,
+    blocked time, caps) via PublicBookingSerializer.
+    """
+    serializer_class = PublicBookingSerializer
+    permission_classes = [AllowAny]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["workspace"] = _get_public_workspace(
+            self.kwargs["workspace_slug"]
         )
-        if staff_member:
-            existing = existing.filter(staff=staff_member)
+        return context
 
-        # A holiday (staff blank) always applies; a specific block
-        # (staff set) only applies when browsing that staff member's
-        # own availability - it never affects anyone else's calendar.
-        blocked_qs = BlockedTime.objects.filter(
-            workspace=workspace,
-            start_time__lt=day_end_local,
-            end_time__gt=day_start_local,
+    def perform_create(self, serializer):
+        booking = serializer.save()
+        booked_name = (
+            booking.service.name if booking.service else booking.resource.name
         )
-        blocked_qs = (
-            blocked_qs.filter(Q(staff__isnull=True) | Q(staff=staff_member))
-            if staff_member
-            else blocked_qs.filter(staff__isnull=True)
+        log_activity(
+            booking.workspace,
+            None,
+            "booking_created",
+            booking,
+            client=booking.client,
         )
-        blocked_windows = [
-            (
-                b.start_time.astimezone(tz).replace(tzinfo=None),
-                b.end_time.astimezone(tz).replace(tzinfo=None),
-            )
-            for b in blocked_qs
-        ]
-
-        resources = list(service.resources.all())
-        resource_bookings = {}
-        for resource in resources:
-            resource_bookings[resource.id] = list(
-                Booking.objects.filter(
-                    workspace=workspace,
-                    service__resources=resource,
-                    status="confirmed",
-                    start_time__gte=day_start_local
-                    - timedelta(hours=24),
-                    start_time__lt=day_end_local
-                    + timedelta(hours=24),
-                )
-            )
-
-        slot_length = timedelta(minutes=service.duration_minutes)
-        slots = []
-        for window in windows:
-            cursor = datetime.combine(
-                target_date, window.start_time
-            )
-            window_end = datetime.combine(
-                target_date, window.end_time
-            )
-            # An existing booking's own buffer_before/buffer_after
-            # (BOOK-13) widens ITS window - nothing may start in the
-            # buffer_before zone right before it or end in the
-            # buffer_after zone right after it (see the identical
-            # reasoning in BookingSerializer.validate()).
-            buffer_before = timedelta(
-                minutes=service.buffer_before_minutes
-            )
-            buffer_after = timedelta(minutes=service.buffer_after_minutes)
-            while cursor + slot_length <= window_end:
-                slot_end = cursor + slot_length
-                overlap_count = sum(
-                    1
-                    for b in existing
-                    if b.start_time.astimezone(tz).replace(tzinfo=None)
-                    < slot_end + buffer_before
-                    and b.end_time.astimezone(tz).replace(tzinfo=None)
-                    > cursor - buffer_after
-                )
-                too_soon = cursor < now_local + timedelta(
-                    hours=service.min_notice_hours
-                )
-                is_blocked = any(
-                    cursor < b_end and slot_end > b_start
-                    for b_start, b_end in blocked_windows
-                )
-                is_full = overlap_count >= service.capacity
-
-                resource_full = False
-                for resource in resources:
-                    resource_overlap = sum(
-                        1
-                        for b in resource_bookings[resource.id]
-                        if cursor
-                        < b.end_time.astimezone(tz).replace(
-                            tzinfo=None
-                        )
-                        and slot_end
-                        > b.start_time.astimezone(tz).replace(
-                            tzinfo=None
-                        )
-                    )
-                    if resource_overlap >= resource.quantity:
-                        resource_full = True
-                        break
-
-                if (
-                    not is_full
-                    and not too_soon
-                    and not resource_full
-                    and not is_blocked
-                ):
-                    slots.append(cursor.strftime("%H:%M"))
-                cursor += slot_length
-
-        return Response({"date": date_str, "slots": slots})
+        send_mail(
+            subject=f"Booking confirmed: {booked_name}",
+            message=(
+                f"Your booking for {booked_name} is confirmed for "
+                f"{booking.start_time.strftime('%A %d %B %Y at %H:%M')}."
+                f"\n\nIf you need to cancel or reschedule, contact "
+                f"{booking.workspace.name} directly."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[booking.client.contact_email],
+            fail_silently=True,
+        )

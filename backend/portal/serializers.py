@@ -114,7 +114,7 @@ class WorkspaceSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "slug", "logo", "currency", "country", "timezone",
             "brand_color", "reminder_hours_before", "plan", "client_count",
-            "team_member_count", "stripe_connected",
+            "team_member_count", "stripe_connected", "public_booking_enabled",
         ]
         read_only_fields = ["id", "slug"]
 
@@ -1183,6 +1183,80 @@ class BookingSerializer(serializers.ModelSerializer):
                     "This resource is fully booked for this time."
                 )
         return attrs
+
+
+class PublicWorkspaceSerializer(serializers.ModelSerializer):
+    """The guest-facing view of a workspace (BOOK-21/26) - only the
+    handful of fields a booking page actually needs to render, never
+    the owner-only fields WorkspaceSerializer exposes (client/team
+    counts, Stripe connection status, plan).
+    """
+
+    class Meta:
+        model = Workspace
+        fields = [
+            "id", "name", "slug", "logo", "currency", "timezone",
+            "brand_color",
+        ]
+
+
+class PublicBookingSerializer(BookingSerializer):
+    """A guest books through /public/<slug>/bookings/ (BOOK-21) with
+    no account and no request.user to derive a workspace or client
+    from: the workspace comes from the URL slug (passed in via
+    context by the view) and a Client is found-or-created from the
+    name/email the guest types in, instead of an existing login.
+    Every other rule (capacity, buffers, notice, blocked time, caps)
+    is inherited unchanged from BookingSerializer.
+    """
+
+    client_name = serializers.CharField(write_only=True, max_length=255)
+    client_email = serializers.EmailField(write_only=True)
+    client = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta(BookingSerializer.Meta):
+        fields = BookingSerializer.Meta.fields + [
+            "client_name", "client_email",
+        ]
+
+    def validate_staff(self, value):
+        if value is None:
+            return value
+        workspace = self.context["workspace"]
+        if value.staff_workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only assign a team member from this workspace."
+            )
+        return value
+
+    def validate(self, attrs):
+        # service/resource are plain PrimaryKeyRelatedFields with an
+        # unrestricted queryset (this is pre-existing looseness the
+        # authenticated flow gets away with because a logged-in
+        # user's own workspace scoping happens elsewhere) - the
+        # public endpoint has no such scoping anywhere else, so it's
+        # the one place a cross-workspace id must be rejected here.
+        workspace = self.context["workspace"]
+        service = attrs.get("service")
+        resource = attrs.get("resource")
+        if service and service.workspace_id != workspace.id:
+            raise serializers.ValidationError("Invalid service.")
+        if resource and resource.workspace_id != workspace.id:
+            raise serializers.ValidationError("Invalid resource.")
+        return super().validate(attrs)
+
+    def create(self, validated_data):
+        client_name = validated_data.pop("client_name")
+        client_email = validated_data.pop("client_email")
+        workspace = self.context["workspace"]
+        client, _ = Client.objects.get_or_create(
+            workspace=workspace,
+            contact_email=client_email,
+            defaults={"company_name": client_name},
+        )
+        validated_data["workspace"] = workspace
+        validated_data["client"] = client
+        return super().create(validated_data)
 
 
 class RecurringSeriesCreateSerializer(serializers.Serializer):

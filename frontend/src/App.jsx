@@ -16,6 +16,7 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import Landing from "./pages/Landing.jsx";
 import Booking from "./pages/Booking.jsx";
+import PublicBooking from "./pages/PublicBooking.jsx";
 import Projects from "./pages/Projects.jsx";
 import Account from "./pages/Account.jsx";
 
@@ -49,6 +50,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/book/:workspaceSlug" element={<PublicBooking />} />
       <Route path="/accept-invite/:token" element={<AcceptInvite />} />
       <Route path="/accept-team-invite/:token" element={<AcceptTeamInvite />} />
       <Route
