@@ -508,6 +508,50 @@ class Service(models.Model):
         return self.name
 
 
+class ServiceQuestion(models.Model):
+    """A custom intake question an owner attaches to a service
+    (BOOK-69) - the client answers it while booking (BOOK-70) and
+    the answer is stored on the Booking itself (Booking.
+    custom_answers) so the owner can review it before the
+    appointment (BOOK-71).
+    """
+
+    class QuestionType(models.TextChoices):
+        TEXT = "text", "Short answer"
+        CHOICE = "choice", "Multiple choice"
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="service_questions"
+    )
+    service = models.ForeignKey(
+        Service, on_delete=models.CASCADE, related_name="questions"
+    )
+    text = models.CharField(max_length=500)
+    question_type = models.CharField(
+        max_length=10,
+        choices=QuestionType.choices,
+        default=QuestionType.TEXT,
+    )
+    choices = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Comma-separated options. Only used when "
+        "question_type is 'choice'.",
+    )
+    required = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.text
+
+    def choice_list(self):
+        return [c.strip() for c in self.choices.split(",") if c.strip()]
+
+
 class BlockedTime(models.Model):
     """An unavailable window that overrides working hours entirely -
     a holiday (BOOK-11) is just one that spans a whole day and has
@@ -827,6 +871,14 @@ class Booking(models.Model):
         "booking is never reminded twice.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    custom_answers = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="BOOK-69/70/71: this service's ServiceQuestion "
+        "answers at booking time, keyed by question id as a string "
+        "(e.g. {'3': 'Curly'}) so the owner can review them before "
+        "the appointment.",
+    )
 
     class Meta:
         ordering = ["start_time"]

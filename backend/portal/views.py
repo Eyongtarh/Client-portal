@@ -31,8 +31,8 @@ from .permissions import IsOwnerOrStaffForWrite
 from .models import (
     Activity, Approval, BlockedTime, Booking, Client, Document, Invoice,
     Message, Milestone, PaymentMethod, Project, RecurringSeries, Resource,
-    Review, Service, SubscriptionPlan, Task, User, WaitlistEntry,
-    WorkingHours, Workspace,
+    Review, Service, ServiceQuestion, SubscriptionPlan, Task, User,
+    WaitlistEntry, WorkingHours, Workspace,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -65,6 +65,7 @@ from .serializers import (
     ResourceSerializer,
     ReviewResponseSerializer,
     ReviewSerializer,
+    ServiceQuestionSerializer,
     ServiceSerializer,
     SubscriptionPlanSerializer,
     TaskSerializer,
@@ -1391,6 +1392,29 @@ class WorkingHoursViewSet(viewsets.ModelViewSet):
                 workspace=user.get_workspace()
             )
         return WorkingHours.objects.filter(
+            workspace=user.client_profile.workspace
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(workspace=self.request.user.get_workspace())
+
+
+class ServiceQuestionViewSet(viewsets.ModelViewSet):
+    """Owners and staff manage a service's custom intake questions
+    (BOOK-69); clients get read-only access, though in practice they
+    see these through ServiceSerializer's nested `questions` field
+    while booking rather than calling this endpoint directly.
+    """
+    serializer_class = ServiceQuestionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ("owner", "staff"):
+            return ServiceQuestion.objects.filter(
+                workspace=user.get_workspace()
+            )
+        return ServiceQuestion.objects.filter(
             workspace=user.client_profile.workspace
         )
 

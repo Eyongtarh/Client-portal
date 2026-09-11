@@ -26,6 +26,10 @@ router.register(
     "services", views.ServiceViewSet, basename="service"
 )
 router.register(
+    "service-questions", views.ServiceQuestionViewSet,
+    basename="servicequestion"
+)
+router.register(
     "working-hours", views.WorkingHoursViewSet, basename="workinghours"
 )
 router.register(

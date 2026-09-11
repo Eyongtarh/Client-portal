@@ -47,6 +47,7 @@ export default function PublicBooking() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [customAnswers, setCustomAnswers] = useState({});
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -94,6 +95,7 @@ export default function PublicBooking() {
         start_time: startTime,
         client_name: clientName,
         client_email: clientEmail,
+        custom_answers: customAnswers,
       });
       setConfirmed(true);
     } catch (err) {
@@ -114,6 +116,7 @@ export default function PublicBooking() {
     setSelectedSlot("");
     setClientName("");
     setClientEmail("");
+    setCustomAnswers({});
   }
 
   if (loading) {
@@ -191,6 +194,7 @@ export default function PublicBooking() {
                   onClick={() => {
                     setSelectedService(String(svc.id));
                     setSelectedStaff("");
+                    setCustomAnswers({});
                     setErrorMsg(null);
                   }}
                   aria-pressed={selectedService === String(svc.id)}
@@ -334,6 +338,58 @@ export default function PublicBooking() {
 
                   {selectedSlot && (
                     <>
+                      {service.questions?.map((question) => (
+                        <div key={question.id} className="mb-3">
+                          <label
+                            htmlFor={`pub-intake-${question.id}`}
+                            className="block text-xs text-ink-soft mb-1"
+                          >
+                            {question.text}
+                            {question.required ? " *" : ""}
+                          </label>
+                          {question.question_type === "choice" ? (
+                            <select
+                              id={`pub-intake-${question.id}`}
+                              required={question.required}
+                              value={customAnswers[question.id] || ""}
+                              onChange={(e) =>
+                                setCustomAnswers((prev) => ({
+                                  ...prev,
+                                  [question.id]: e.target.value,
+                                }))
+                              }
+                              className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                            >
+                              <option value="" disabled>
+                                {t("booking.selectOne")}
+                              </option>
+                              {question.choices
+                                .split(",")
+                                .map((c) => c.trim())
+                                .filter(Boolean)
+                                .map((choice) => (
+                                  <option key={choice} value={choice}>
+                                    {choice}
+                                  </option>
+                                ))}
+                            </select>
+                          ) : (
+                            <input
+                              id={`pub-intake-${question.id}`}
+                              type="text"
+                              required={question.required}
+                              value={customAnswers[question.id] || ""}
+                              onChange={(e) =>
+                                setCustomAnswers((prev) => ({
+                                  ...prev,
+                                  [question.id]: e.target.value,
+                                }))
+                              }
+                              className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                            />
+                          )}
+                        </div>
+                      ))}
                       <label
                         htmlFor="pub-name"
                         className="block text-xs text-ink-soft mb-1"

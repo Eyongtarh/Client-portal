@@ -4,8 +4,9 @@ from .currencies import VALID_CURRENCIES
 from .models import (
     Activity, Approval, BlockedTime, Client, ClientInvite, Document,
     Invoice, InvoiceItem, Message, Milestone, PaymentMethod, Project,
-    RecurringSeries, Resource, Review, Service, SubscriptionPlan, Task,
-    TeamInvite, User, WaitlistEntry, WorkingHours, Booking, Workspace,
+    RecurringSeries, Resource, Review, Service, ServiceQuestion,
+    SubscriptionPlan, Task, TeamInvite, User, WaitlistEntry, WorkingHours,
+    Booking, Workspace,
 )
 from rest_framework import serializers
 from django.db.models import Q
@@ -647,9 +648,50 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return instance
 
 
+class ServiceQuestionSerializer(serializers.ModelSerializer):
+    """A custom intake question on a service (BOOK-69). choices is a
+    plain comma-separated string in both directions - simple enough
+    for an owner to type/edit directly with no add/remove-chip UI,
+    and only meaningful at all when question_type is 'choice'.
+    """
+
+    class Meta:
+        model = ServiceQuestion
+        fields = [
+            "id", "workspace", "service", "text", "question_type",
+            "choices", "required", "order",
+        ]
+        read_only_fields = ["workspace"]
+
+    def validate(self, attrs):
+        question_type = attrs.get(
+            "question_type",
+            self.instance.question_type if self.instance else "text",
+        )
+        choices = attrs.get(
+            "choices", self.instance.choices if self.instance else ""
+        )
+        if question_type == "choice" and not choices.strip():
+            raise serializers.ValidationError(
+                "Provide at least one comma-separated choice for a "
+                "multiple-choice question."
+            )
+        return attrs
+
+    def validate_service(self, value):
+        workspace = self.context["request"].user.get_workspace()
+        if value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only add questions to a service in your own "
+                "workspace."
+            )
+        return value
+
+
 class ServiceSerializer(serializers.ModelSerializer):
     resource_names = serializers.SerializerMethodField()
     staff_names = serializers.SerializerMethodField()
+    questions = ServiceQuestionSerializer(many=True, read_only=True)
     staff = serializers.PrimaryKeyRelatedField(
         many=True, required=False, queryset=User.objects.filter(role="staff")
     )
@@ -660,7 +702,7 @@ class ServiceSerializer(serializers.ModelSerializer):
             "id", "workspace", "name", "description", "photo",
             "duration_minutes", "price", "capacity", "is_active",
             "location", "is_online", "meeting_link", "instructions",
-            "resource_names", "staff", "staff_names",
+            "resource_names", "staff", "staff_names", "questions",
             "payment_requirement", "deposit_percent",
             "cancellation_notice_hours", "late_cancellation_fee_percent",
             "buffer_before_minutes", "buffer_after_minutes",
@@ -887,7 +929,7 @@ class BookingSerializer(serializers.ModelSerializer):
             "client_name", "staff", "staff_name", "series", "start_time",
             "end_time", "status", "notes", "created_at",
             "remaining_capacity", "payment_status", "payment_amount",
-            "is_late_cancellation",
+            "is_late_cancellation", "custom_answers",
         ]
         read_only_fields = [
             "workspace", "end_time", "payment_status", "payment_amount",
@@ -1041,6 +1083,28 @@ class BookingSerializer(serializers.ModelSerializer):
                 minutes=service.duration_minutes
             )
             end = attrs["end_time"]
+
+            # BOOK-69/70: intake questions are only asked once, at
+            # booking time - re-validating them on every later save
+            # (e.g. marking an old booking completed) would fail for
+            # no reason against answers that were already accepted.
+            if not self.instance:
+                answers = attrs.get("custom_answers") or {}
+                for question in service.questions.all():
+                    answer = str(answers.get(str(question.id), "")).strip()
+                    if question.required and not answer:
+                        raise serializers.ValidationError(
+                            f"'{question.text}' is required."
+                        )
+                    if (
+                        question.question_type == "choice"
+                        and answer
+                        and answer not in question.choice_list()
+                    ):
+                        raise serializers.ValidationError(
+                            f"'{answer}' is not a valid choice for "
+                            f"'{question.text}'."
+                        )
 
             # Notice window, advance-booking window, holidays/blocked
             # time, and daily/weekly caps (BOOK-14/15/11/12/16) only

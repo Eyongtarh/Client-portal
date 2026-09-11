@@ -614,6 +614,7 @@ function BookingSection() {
   const [editWaitlistDate, setEditWaitlistDate] = useState("");
   const [editWaitlistTime, setEditWaitlistTime] = useState("");
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [customAnswers, setCustomAnswers] = useState({});
 
   async function loadServices() {
     const res = await api.get("/services/");
@@ -692,6 +693,7 @@ function BookingSection() {
           service: selectedService,
           staff: selectedStaff || null,
           start_time: startTime,
+          custom_answers: customAnswers,
         });
         setStatusMsg({
           key: "booking.bookingConfirmed",
@@ -713,6 +715,7 @@ function BookingSection() {
       setSelectedStaff("");
       setRepeatWeekly(false);
       setNumberOfWeeks("4");
+      setCustomAnswers({});
       loadMyBookings();
     } catch (err) {
       const data = err.response?.data;
@@ -941,6 +944,7 @@ function BookingSection() {
                 onClick={() => {
                   setSelectedService(String(service.id));
                   setSelectedStaff("");
+                  setCustomAnswers({});
                 }}
                 aria-pressed={selectedService === String(service.id)}
                 aria-label={`Select ${service.name}`}
@@ -1183,6 +1187,62 @@ function BookingSection() {
                     currency={currency}
                   />
                 )}
+                {selectedSlot &&
+                  bookingType === "service" &&
+                  services
+                    .find((s) => String(s.id) === selectedService)
+                    ?.questions?.map((question) => (
+                      <div key={question.id} className="mb-3">
+                        <label
+                          htmlFor={`intake-${question.id}`}
+                          className="block text-xs text-ink-soft mb-1"
+                        >
+                          {question.text}
+                          {question.required ? " *" : ""}
+                        </label>
+                        {question.question_type === "choice" ? (
+                          <select
+                            id={`intake-${question.id}`}
+                            required={question.required}
+                            value={customAnswers[question.id] || ""}
+                            onChange={(e) =>
+                              setCustomAnswers((prev) => ({
+                                ...prev,
+                                [question.id]: e.target.value,
+                              }))
+                            }
+                            className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                          >
+                            <option value="" disabled>
+                              {t("booking.selectOne")}
+                            </option>
+                            {question.choices
+                              .split(",")
+                              .map((c) => c.trim())
+                              .filter(Boolean)
+                              .map((choice) => (
+                                <option key={choice} value={choice}>
+                                  {choice}
+                                </option>
+                              ))}
+                          </select>
+                        ) : (
+                          <input
+                            id={`intake-${question.id}`}
+                            type="text"
+                            required={question.required}
+                            value={customAnswers[question.id] || ""}
+                            onChange={(e) =>
+                              setCustomAnswers((prev) => ({
+                                ...prev,
+                                [question.id]: e.target.value,
+                              }))
+                            }
+                            className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                          />
+                        )}
+                      </div>
+                    ))}
                 {selectedSlot && (
                   <button
                     onClick={confirmBooking}
