@@ -374,7 +374,13 @@
     "myClientsOnly": "My clients only",
     "archiveClient": "Archive",
     "unarchiveClient": "Unarchive",
-    "noArchivedClients": "No archived clients."
+    "noArchivedClients": "No archived clients.",
+    "paymentHistoryTitle": "Payment history",
+    "filterByStatus": "Filter by status",
+    "allStatuses": "All statuses",
+    "totalPaid": "Total paid",
+    "invoiceNumber": "Invoice",
+    "noPayments": "No invoices yet."
   },
   "clientDetail": {
     "allClients": "All clients",

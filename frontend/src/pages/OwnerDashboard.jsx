@@ -9,6 +9,7 @@ import {
   FiAlertTriangle,
   FiArchive,
   FiCalendar,
+  FiDownload,
   FiFolder,
   FiLogOut,
   FiRotateCcw,
@@ -486,6 +487,8 @@ export default function OwnerDashboard() {
           onPlanChanged={loadWorkspace}
         />
 
+        <PaymentHistorySection />
+
         <ActivityFeed />
       </main>
     </div>
@@ -829,6 +832,92 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+// Workspace-wide invoice history across every client (PAY-05) -
+// read-only and downloadable only; editing an invoice stays a
+// per-client action on ClientDetail's own Invoices tab, where the
+// project/line-item context it needs already lives.
+function PaymentHistorySection() {
+  const { t } = useTranslation();
+  const [invoices, setInvoices] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("");
+
+  async function load(status = statusFilter) {
+    const query = status ? `?status=${status}` : "";
+    const res = await api.get(`/invoices/${query}`);
+    setInvoices(res.data);
+  }
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
+
+  async function downloadPdf(invoiceId) {
+    const res = await api.get(`/invoices/${invoiceId}/pdf/`, {
+      responseType: "blob",
+    });
+    const url = URL.createObjectURL(res.data);
+    window.open(url, "_blank");
+  }
+
+  const totalPaid = invoices
+    .filter((inv) => inv.status === "paid")
+    .reduce((sum, inv) => sum + Number(inv.total), 0);
+
+  return (
+    <section className="bg-surface border border-line rounded-2xl p-6">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="font-medium text-ink">{t("dashboard.paymentHistoryTitle")}</h2>
+        <label className="sr-only" htmlFor="payment-history-status">
+          {t("dashboard.filterByStatus")}
+        </label>
+        <select
+          id="payment-history-status"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-1.5 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+        >
+          <option value="">{t("dashboard.allStatuses")}</option>
+          <option value="draft">draft</option>
+          <option value="sent">sent</option>
+          <option value="paid">paid</option>
+        </select>
+      </div>
+      <p className="text-sm text-ink-soft mb-3">
+        {t("dashboard.totalPaid")}: {"€"}
+        {totalPaid.toFixed(2)}
+      </p>
+      <ul className="divide-y divide-line">
+        {invoices.map((invoice) => (
+          <li
+            key={invoice.id}
+            className="py-2 text-sm flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"
+          >
+            <span>
+              {t("dashboard.invoiceNumber")} #{invoice.number} {"·"}{" "}
+              {invoice.client_name}
+              {" · "}
+              {"€"}
+              {invoice.total} {"· "}
+              {invoice.status}
+            </span>
+            <button
+              onClick={() => downloadPdf(invoice.id)}
+              aria-label={`Download invoice ${invoice.number} as PDF`}
+              className="text-brand-700 underline transition-colors hover:text-brand-900 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded w-fit"
+            >
+              <FiDownload className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+              {t("clientDetail.downloadPdf")}
+            </button>
+          </li>
+        ))}
+        {invoices.length === 0 && (
+          <p className="text-ink-soft text-sm">{t("dashboard.noPayments")}</p>
+        )}
+      </ul>
     </section>
   );
 }

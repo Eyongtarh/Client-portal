@@ -374,7 +374,13 @@
     "myClientsOnly": "Mes clients uniquement",
     "archiveClient": "Archiver",
     "unarchiveClient": "D\u00e9sarchiver",
-    "noArchivedClients": "Aucun client archiv\u00e9."
+    "noArchivedClients": "Aucun client archiv\u00e9.",
+    "paymentHistoryTitle": "Historique des paiements",
+    "filterByStatus": "Filtrer par statut",
+    "allStatuses": "Tous les statuts",
+    "totalPaid": "Total pay\u00e9",
+    "invoiceNumber": "Facture",
+    "noPayments": "Aucune facture pour le moment."
   },
   "clientDetail": {
     "allClients": "Tous les clients",
