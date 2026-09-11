@@ -284,6 +284,73 @@ class LateCancellationTests(BookingPolicyTestCase):
         self.assertFalse(res.data["is_late_cancellation"])
 
 
+class RescheduleNoticeTests(BookingPolicyTestCase):
+    """BOOK-40: a client is held to the same notice window for
+    rescheduling as for cancelling (cancellation_notice_hours) -
+    the business loses the slot either way if it's changed too
+    close to the appointment. Owner/staff aren't restricted since
+    they're the ones rearranging the schedule on the business's own
+    terms.
+    """
+
+    def _make_booking(self, notice_hours, start_delta):
+        service = Service.objects.create(
+            workspace=self.workspace,
+            name="Session",
+            duration_minutes=60,
+            price=Decimal("80.00"),
+            cancellation_notice_hours=notice_hours,
+        )
+        return service, Booking.objects.create(
+            workspace=self.workspace,
+            service=service,
+            client=self.client_profile,
+            start_time=timezone.now() + start_delta,
+            end_time=timezone.now() + start_delta + timedelta(minutes=60),
+        )
+
+    def test_client_cannot_reschedule_inside_the_notice_window(self):
+        _, booking = self._make_booking(
+            notice_hours=24, start_delta=timedelta(hours=2)
+        )
+        res = auth_client(self.client_user).patch(
+            f"/api/bookings/{booking.id}/",
+            {"start_time": (timezone.now() + timedelta(days=3)).isoformat()},
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_client_can_reschedule_outside_the_notice_window(self):
+        _, booking = self._make_booking(
+            notice_hours=24, start_delta=timedelta(days=5)
+        )
+        res = auth_client(self.client_user).patch(
+            f"/api/bookings/{booking.id}/",
+            {"start_time": (timezone.now() + timedelta(days=6)).isoformat()},
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+
+    def test_owner_can_reschedule_inside_the_notice_window(self):
+        _, booking = self._make_booking(
+            notice_hours=24, start_delta=timedelta(hours=2)
+        )
+        res = auth_client(self.owner).patch(
+            f"/api/bookings/{booking.id}/",
+            {"start_time": (timezone.now() + timedelta(days=3)).isoformat()},
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+
+    def test_unrelated_status_update_is_not_blocked_by_notice_window(self):
+        _, booking = self._make_booking(
+            notice_hours=24, start_delta=timedelta(hours=-1),
+        )
+        booking.status = "confirmed"
+        booking.save(update_fields=["status"])
+        res = auth_client(self.client_user).patch(
+            f"/api/bookings/{booking.id}/", {"status": "cancelled"},
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+
+
 class NoShowActionTests(BookingPolicyTestCase):
     def setUp(self):
         super().setUp()

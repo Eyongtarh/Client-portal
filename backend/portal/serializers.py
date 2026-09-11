@@ -1013,6 +1013,29 @@ class BookingSerializer(serializers.ModelSerializer):
             if timezone.now() > self.instance.start_time - notice:
                 attrs["is_late_cancellation"] = True
 
+        # BOOK-40: a client rescheduling their own booking is held to
+        # the same notice window as cancelling it - the business
+        # still loses the slot on short notice either way. Owner/
+        # staff are exempt since they're the ones who'd manually
+        # rearrange a schedule on the business's own terms.
+        if (
+            self.instance
+            and "start_time" in attrs
+            and self.instance.service
+            and request
+            and request.user.role == "client"
+        ):
+            notice = timedelta(
+                hours=self.instance.service.cancellation_notice_hours
+            )
+            if timezone.now() > self.instance.start_time - notice:
+                raise serializers.ValidationError(
+                    "This booking can no longer be rescheduled - it "
+                    "requires at least "
+                    f"{self.instance.service.cancellation_notice_hours} "
+                    "hour(s) notice."
+                )
+
         if service:
             attrs["end_time"] = start + timedelta(
                 minutes=service.duration_minutes
