@@ -139,6 +139,12 @@ function ClientNotesTab({ client, onChange }) {
   const { t } = useTranslation();
   const [notes, setNotes] = useState(client.notes || "");
   const [statusMsg, setStatusMsg] = useState(null);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [assignMsg, setAssignMsg] = useState(null);
+
+  useEffect(() => {
+    api.get("/team/").then((res) => setTeamMembers(res.data));
+  }, []);
 
   async function save(e) {
     e.preventDefault();
@@ -154,46 +160,101 @@ function ClientNotesTab({ client, onChange }) {
     }
   }
 
+  async function toggleAssignedStaff(staffId, checked) {
+    const current = client.assigned_staff || [];
+    const next = checked
+      ? [...current, staffId]
+      : current.filter((id) => id !== staffId);
+    try {
+      await api.patch(`/clients/${client.id}/`, { assigned_staff: next });
+      onChange();
+    } catch {
+      setAssignMsg({
+        key: "clientDetail.couldNotUpdateAssignedStaff",
+        type: "error",
+      });
+    }
+  }
+
   return (
-    <div>
-      <h4 className="font-medium mb-1 text-ink">
-        {t("clientDetail.tabNotes")}
-      </h4>
-      <p className="text-xs text-ink-soft mb-3">
-        {t("clientDetail.notesHint")}
-      </p>
-      {statusMsg && (
-        <div
-          role="status"
-          className={
-            statusMsg.type === "success"
-              ? "mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
-              : "mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
-          }
-        >
-          {t(statusMsg.key)}
+    <div className="space-y-6">
+      <div>
+        <h4 className="font-medium mb-1 text-ink">
+          {t("clientDetail.tabNotes")}
+        </h4>
+        <p className="text-xs text-ink-soft mb-3">
+          {t("clientDetail.notesHint")}
+        </p>
+        {statusMsg && (
+          <div
+            role="status"
+            className={
+              statusMsg.type === "success"
+                ? "mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+                : "mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+            }
+          >
+            {t(statusMsg.key)}
+          </div>
+        )}
+        <form onSubmit={save}>
+          <label htmlFor="client-notes" className="sr-only">
+            {t("clientDetail.tabNotes")}
+          </label>
+          <textarea
+            id="client-notes"
+            rows={6}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={t("clientDetail.notesPlaceholder")}
+            className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+          <button
+            type="submit"
+            className="mt-3 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+            {t("clientDetail.save")}
+          </button>
+        </form>
+      </div>
+
+      {teamMembers.length > 0 && (
+        <div>
+          <h4 className="font-medium mb-1 text-ink">
+            {t("clientDetail.assignedTeam")}
+          </h4>
+          <p className="text-xs text-ink-soft mb-3">
+            {t("clientDetail.assignedTeamHint")}
+          </p>
+          {assignMsg && (
+            <div
+              role="status"
+              className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+            >
+              {t(assignMsg.key)}
+            </div>
+          )}
+          <div className="space-y-2">
+            {teamMembers.map((member) => (
+              <label
+                key={member.id}
+                className="flex items-center gap-2 text-sm text-ink cursor-pointer w-fit"
+              >
+                <input
+                  type="checkbox"
+                  checked={(client.assigned_staff || []).includes(member.id)}
+                  onChange={(e) =>
+                    toggleAssignedStaff(member.id, e.target.checked)
+                  }
+                  className="rounded"
+                />
+                {member.first_name || member.email}
+              </label>
+            ))}
+          </div>
         </div>
       )}
-      <form onSubmit={save}>
-        <label htmlFor="client-notes" className="sr-only">
-          {t("clientDetail.tabNotes")}
-        </label>
-        <textarea
-          id="client-notes"
-          rows={6}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder={t("clientDetail.notesPlaceholder")}
-          className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
-        />
-        <button
-          type="submit"
-          className="mt-3 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
-        >
-          <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
-          {t("clientDetail.save")}
-        </button>
-      </form>
     </div>
   );
 }

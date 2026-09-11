@@ -41,19 +41,32 @@ export default function OwnerDashboard() {
   const [nameValue, setNameValue] = useState("");
   const [nameMsg, setNameMsg] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [assignedToMe, setAssignedToMe] = useState(false);
   const isOwner = user.role === "owner";
+  const isStaff = user.role === "staff";
 
-  async function loadClients(archived = showArchived) {
-    const res = await api.get(
-      `/clients/${archived ? "?archived=true" : ""}`
-    );
+  async function loadClients(
+    archived = showArchived,
+    onlyMine = assignedToMe,
+  ) {
+    const params = new URLSearchParams();
+    if (archived) params.set("archived", "true");
+    if (isStaff && onlyMine) params.set("assigned_to_me", "true");
+    const query = params.toString();
+    const res = await api.get(`/clients/${query ? `?${query}` : ""}`);
     setClients(res.data);
   }
 
   async function toggleArchived(e) {
     const next = e.target.checked;
     setShowArchived(next);
-    loadClients(next);
+    loadClients(next, assignedToMe);
+  }
+
+  async function toggleAssignedToMe(e) {
+    const next = e.target.checked;
+    setAssignedToMe(next);
+    loadClients(showArchived, next);
   }
 
   async function archiveClient(e, clientId, isArchived) {
@@ -382,15 +395,28 @@ export default function OwnerDashboard() {
               </button>
             </form>
           )}
-          <label className="flex items-center gap-2 mb-3 text-sm text-ink-soft cursor-pointer w-fit">
-            <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={toggleArchived}
-              className="rounded"
-            />
-            {t("dashboard.showArchivedClients")}
-          </label>
+          <div className="flex flex-wrap gap-4 mb-3">
+            <label className="flex items-center gap-2 text-sm text-ink-soft cursor-pointer w-fit">
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={toggleArchived}
+                className="rounded"
+              />
+              {t("dashboard.showArchivedClients")}
+            </label>
+            {isStaff && (
+              <label className="flex items-center gap-2 text-sm text-ink-soft cursor-pointer w-fit">
+                <input
+                  type="checkbox"
+                  checked={assignedToMe}
+                  onChange={toggleAssignedToMe}
+                  className="rounded"
+                />
+                {t("dashboard.myClientsOnly")}
+              </label>
+            )}
+          </div>
           <div className="space-y-3">
             {clients.map((client) => (
               <Link
@@ -406,6 +432,11 @@ export default function OwnerDashboard() {
                   <p className="text-sm text-ink-soft">
                     {client.contact_email}
                   </p>
+                  {client.assigned_staff_names?.length > 0 && (
+                    <p className="text-xs text-ink-soft mt-1">
+                      {client.assigned_staff_names.join(", ")}
+                    </p>
+                  )}
                 </div>
                 {isOwner && (
                   <button

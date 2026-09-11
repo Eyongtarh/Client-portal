@@ -214,6 +214,8 @@ function ServicesSection() {
   const [feePercent, setFeePercent] = useState("");
   const [newPhoto, setNewPhoto] = useState(null);
   const [newPhotoPreview, setNewPhotoPreview] = useState(null);
+  const [staffIds, setStaffIds] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -223,12 +225,17 @@ function ServicesSection() {
   const [editDepositPercent, setEditDepositPercent] = useState("");
   const [editNoticeHours, setEditNoticeHours] = useState("24");
   const [editFeePercent, setEditFeePercent] = useState("");
+  const [editStaffIds, setEditStaffIds] = useState([]);
   const [statusMsg, setStatusMsg] = useState(null);
   const [stripeConnectBanner, setStripeConnectBanner] = useState(null);
 
   async function load() {
     const res = await api.get("/services/");
     setServices(res.data);
+  }
+  async function loadTeamMembers() {
+    const res = await api.get("/team/");
+    setTeamMembers(res.data);
   }
   async function loadWorkspace() {
     const res = await api.get("/workspace/");
@@ -245,6 +252,7 @@ function ServicesSection() {
     load();
     loadWorkspace();
     loadCountries();
+    loadTeamMembers();
     const params = new URLSearchParams(window.location.search);
     const stripeConnect = params.get("stripe_connect");
     if (stripeConnect === "success" || stripeConnect === "error") {
@@ -324,6 +332,7 @@ function ServicesSection() {
         paymentRequirement === "deposit" ? depositPercent || null : null,
       cancellation_notice_hours: noticeHours || 0,
       late_cancellation_fee_percent: feePercent || null,
+      staff: staffIds,
     });
     if (newPhoto) {
       const formData = new FormData();
@@ -344,6 +353,7 @@ function ServicesSection() {
     setFeePercent("");
     setNewPhoto(null);
     setNewPhotoPreview(null);
+    setStaffIds([]);
     setShowForm(false);
     setStatusMsg({ key: "booking.serviceCreated", type: "success" });
     load();
@@ -369,6 +379,7 @@ function ServicesSection() {
     setEditDepositPercent(service.deposit_percent || "");
     setEditNoticeHours(String(service.cancellation_notice_hours ?? "24"));
     setEditFeePercent(service.late_cancellation_fee_percent || "");
+    setEditStaffIds(service.staff || []);
   }
 
   function cancelEdit() {
@@ -388,10 +399,19 @@ function ServicesSection() {
           : null,
       cancellation_notice_hours: editNoticeHours || 0,
       late_cancellation_fee_percent: editFeePercent || null,
+      staff: editStaffIds,
     });
     setEditingId(null);
     setStatusMsg({ key: "booking.serviceUpdated", type: "success" });
     load();
+  }
+
+  function toggleStaffId(ids, setIds, staffId) {
+    setIds(
+      ids.includes(staffId)
+        ? ids.filter((id) => id !== staffId)
+        : [...ids, staffId],
+    );
   }
 
   async function deleteService(serviceId, serviceName) {
@@ -702,6 +722,31 @@ function ServicesSection() {
             feePercent={feePercent}
             setFeePercent={setFeePercent}
           />
+          {teamMembers.length > 0 && (
+            <fieldset className="mb-2">
+              <legend className="text-xs text-ink-soft mb-1">
+                {t("booking.staffForService")}
+              </legend>
+              <div className="flex flex-wrap gap-3">
+                {teamMembers.map((member) => (
+                  <label
+                    key={member.id}
+                    className="flex items-center gap-1.5 text-sm text-ink cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={staffIds.includes(member.id)}
+                      onChange={() =>
+                        toggleStaffId(staffIds, setStaffIds, member.id)
+                      }
+                      className="rounded"
+                    />
+                    {member.first_name || member.email}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
           <button
             aria-label={t("booking.createService")}
             className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
@@ -779,6 +824,35 @@ function ServicesSection() {
                   feePercent={editFeePercent}
                   setFeePercent={setEditFeePercent}
                 />
+                {teamMembers.length > 0 && (
+                  <fieldset className="mb-2">
+                    <legend className="text-xs text-ink-soft mb-1">
+                      {t("booking.staffForService")}
+                    </legend>
+                    <div className="flex flex-wrap gap-3">
+                      {teamMembers.map((member) => (
+                        <label
+                          key={member.id}
+                          className="flex items-center gap-1.5 text-sm text-ink cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={editStaffIds.includes(member.id)}
+                            onChange={() =>
+                              toggleStaffId(
+                                editStaffIds,
+                                setEditStaffIds,
+                                member.id,
+                              )
+                            }
+                            className="rounded"
+                          />
+                          {member.first_name || member.email}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
                 <div className="flex gap-2">
                   <button
                     onClick={() => saveEdit(service.id)}
@@ -839,6 +913,9 @@ function ServicesSection() {
                   {service.resource_names &&
                     service.resource_names.length > 0 &&
                     ` \u00b7 ${service.resource_names.join(", ")}`}
+                  {service.staff_names &&
+                    service.staff_names.length > 0 &&
+                    ` \u00b7 ${service.staff_names.join(", ")}`}
                   {service.payment_requirement === "deposit" &&
                     ` \u00b7 ${service.deposit_percent}% ${t("booking.depositAtBooking")}`}
                   {service.payment_requirement === "full" &&
@@ -1953,6 +2030,7 @@ function BookingsSection() {
   const { t } = useTranslation();
   const [bookings, setBookings] = useState([]);
   const [services, setServices] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
   const [statusMsg, setStatusMsg] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editDate, setEditDate] = useState("");
@@ -1967,10 +2045,22 @@ function BookingsSection() {
     const res = await api.get("/services/");
     setServices(res.data);
   }
+  async function loadTeamMembers() {
+    const res = await api.get("/team/");
+    setTeamMembers(res.data);
+  }
   useEffect(() => {
     load();
     loadServices();
+    loadTeamMembers();
   }, []);
+
+  async function assignStaff(bookingId, staffId) {
+    await api.patch(`/bookings/${bookingId}/`, {
+      staff: staffId || null,
+    });
+    load();
+  }
 
   async function cancel(bookingId) {
     if (!window.confirm(t("booking.confirmCancelBooking"))) return;
@@ -2148,7 +2238,30 @@ function BookingsSection() {
                     </span>{" "}
                     <PaymentBadge status={booking.payment_status} />
                   </span>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
+                    {teamMembers.length > 0 && (
+                      <label className="sr-only" htmlFor={`booking-staff-${booking.id}`}>
+                        {t("booking.assignStaff")}
+                      </label>
+                    )}
+                    {teamMembers.length > 0 && (
+                      <select
+                        id={`booking-staff-${booking.id}`}
+                        value={booking.staff || ""}
+                        onChange={(e) =>
+                          assignStaff(booking.id, e.target.value)
+                        }
+                        title={t("booking.assignStaff")}
+                        className="px-2 py-1.5 bg-canvas border border-line rounded-lg text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      >
+                        <option value="">{t("booking.unassigned")}</option>
+                        {teamMembers.map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.first_name || member.email}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     {booking.payment_status === "pending" && (
                       <button
                         onClick={() => markBookingPaid(booking.id)}

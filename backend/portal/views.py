@@ -585,7 +585,9 @@ class ProjectViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     ?status=<active|completed|on_hold>, ?deadline_after=<YYYY-MM-DD>
     and ?deadline_before=<YYYY-MM-DD> narrow by status and deadline
     (SEARCH-02). A malformed date is ignored, same as an invalid
-    ?client=.
+    ?client=. ?assigned_to_me=true (staff only) narrows to projects
+    of clients that staff member is assigned to (TEAM-04) - a
+    project has no assignment of its own, it inherits its client's.
     """
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
@@ -596,6 +598,11 @@ class ProjectViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         user = self.request.user
         if user.role in ("owner", "staff"):
             qs = Project.objects.filter(workspace=user.get_workspace())
+            if (
+                user.role == "staff"
+                and self.request.query_params.get("assigned_to_me") == "true"
+            ):
+                qs = qs.filter(client__assigned_staff=user)
         else:
             qs = Project.objects.filter(client=user.client_profile)
         qs = self.filter_by_query_param(qs)
@@ -1265,6 +1272,11 @@ class ClientViewSet(viewsets.ModelViewSet):
     legitimate reason to edit their own company_name/notes/archived
     status via this endpoint. By default, archived clients (CLIENT-
     04) are hidden from the list; ?archived=true shows only those.
+    ?assigned_to_me=true (staff only) narrows the list to clients
+    that staff member is assigned to (TEAM-04) - it's an opt-in
+    filter, not a default restriction, since staff still see the
+    whole workspace by default the same as an owner does everywhere
+    else in this API.
     """
     permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
 
@@ -1277,6 +1289,11 @@ class ClientViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role in ("owner", "staff"):
             qs = Client.objects.filter(workspace=user.get_workspace())
+            if (
+                user.role == "staff"
+                and self.request.query_params.get("assigned_to_me") == "true"
+            ):
+                qs = qs.filter(assigned_staff=user)
             # Archiving only hides a client from the default list -
             # their detail page, projects, invoices etc. must stay
             # reachable by ID, or "archive" would behave like delete.
@@ -1390,11 +1407,11 @@ class BookingViewSet(viewsets.ModelViewSet):
     to wait for it. Any confirmed booking whose end time has
     passed is automatically flipped to completed, so it stops
     showing as upcoming and becomes reviewable. For owner/staff,
-    ?date=<YYYY-MM-DD>, ?service=<id>, ?resource=<id>, ?client=<id>
-    and ?status=<confirmed|cancelled|completed|no_show> each
-    optionally narrow the list (SEARCH-04) - there's no per-booking
-    team-member assignment in the data model yet, so filtering by
-    team member isn't possible.
+    ?date=<YYYY-MM-DD>, ?service=<id>, ?resource=<id>, ?client=<id>,
+    ?staff=<id> and ?status=<confirmed|cancelled|completed|no_show>
+    each optionally narrow the list (SEARCH-04). ?assigned_to_me=true
+    (staff only) narrows to bookings assigned to that staff member
+    (TEAM-04), same opt-in-filter reasoning as ClientViewSet's.
     """
     serializer_class = BookingSerializer
     permission_classes = [IsAuthenticated]
@@ -1421,6 +1438,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 ("service", "service_id"),
                 ("resource", "resource_id"),
                 ("client", "client_id"),
+                ("staff", "staff_id"),
             ):
                 value = params.get(param)
                 if value and str(value).isdigit():
@@ -1428,6 +1446,8 @@ class BookingViewSet(viewsets.ModelViewSet):
             status_param = params.get("status")
             if status_param:
                 qs = qs.filter(status=status_param)
+            if user.role == "staff" and params.get("assigned_to_me") == "true":
+                qs = qs.filter(staff=user)
             return qs
         return Booking.objects.filter(client=user.client_profile)
 

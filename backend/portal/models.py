@@ -173,6 +173,17 @@ class Client(models.Model):
         help_text="Hides an inactive client from the default list "
         "(CLIENT-04) without deleting their history.",
     )
+    assigned_staff = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="assigned_clients",
+        limit_choices_to={"role": "staff"},
+        help_text="Team members responsible for this client (TEAM-04) "
+        "- a staff member's 'my clients' view, and by extension their "
+        "'my projects' view, is derived from this rather than a "
+        "separate per-project assignment, since every project in "
+        "this app already hangs off exactly one client.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -383,6 +394,16 @@ class Service(models.Model):
     )
     capacity = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
+    staff = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="bookable_services",
+        limit_choices_to={"role": "staff"},
+        help_text="Team members qualified to perform this service "
+        "(TEAM-05). Empty means any team member can - the field is "
+        "informational for now (BOOK-04/10/19, staff selection in "
+        "the booking flow itself, is a separate follow-up).",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class PaymentRequirement(models.TextChoices):
@@ -633,6 +654,18 @@ class Booking(models.Model):
     )
     client = models.ForeignKey(
         Client, on_delete=models.CASCADE, related_name="bookings"
+    )
+    staff = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="staff_bookings",
+        limit_choices_to={"role": "staff"},
+        help_text="Which team member is handling this appointment "
+        "(TEAM-04/TEAM-05, SEARCH-04) - manually assigned by owner/"
+        "staff for now; not yet factored into availability, so "
+        "assigning someone doesn't block their calendar elsewhere.",
     )
     series = models.ForeignKey(
         RecurringSeries,

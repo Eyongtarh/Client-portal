@@ -44,15 +44,37 @@ class ClientSerializer(serializers.ModelSerializer):
     """Owner/staff view - includes `notes` (CLIENT-05) and
     `is_archived` (CLIENT-04). Never used for the client's own view
     of themselves - see ClientSelfSerializer - since notes are
-    meant to stay private to the workspace side.
+    meant to stay private to the workspace side. `assigned_staff` is
+    the team members responsible for this client (TEAM-04); a
+    staff's "my projects"/"my bookings" views derive from this too,
+    since every project and booking hangs off exactly one client.
     """
+    assigned_staff_names = serializers.SerializerMethodField()
+    assigned_staff = serializers.PrimaryKeyRelatedField(
+        many=True, required=False, queryset=User.objects.filter(role="staff")
+    )
+
     class Meta:
         model = Client
         fields = [
             "id", "workspace", "company_name", "contact_email",
-            "notes", "is_archived", "created_at",
+            "notes", "is_archived", "assigned_staff",
+            "assigned_staff_names", "created_at",
         ]
         read_only_fields = ["workspace"]
+
+    def get_assigned_staff_names(self, obj):
+        return [u.first_name for u in obj.assigned_staff.all()]
+
+    def validate_assigned_staff(self, value):
+        workspace = self.context["request"].user.get_workspace()
+        for staff in value:
+            if staff.staff_workspace_id != workspace.id:
+                raise serializers.ValidationError(
+                    "Can only assign team members from your own "
+                    "workspace."
+                )
+        return value
 
 
 class ClientSelfSerializer(serializers.ModelSerializer):
@@ -626,19 +648,45 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 class ServiceSerializer(serializers.ModelSerializer):
     resource_names = serializers.SerializerMethodField()
+    staff_names = serializers.SerializerMethodField()
+    staff = serializers.PrimaryKeyRelatedField(
+        many=True, required=False, queryset=User.objects.filter(role="staff")
+    )
 
     class Meta:
         model = Service
         fields = [
             "id", "workspace", "name", "description", "photo",
             "duration_minutes", "price", "capacity", "is_active",
-            "resource_names", "payment_requirement", "deposit_percent",
+            "resource_names", "staff", "staff_names",
+            "payment_requirement", "deposit_percent",
             "cancellation_notice_hours", "late_cancellation_fee_percent",
         ]
         read_only_fields = ["workspace"]
 
     def get_resource_names(self, obj):
         return [r.name for r in obj.resources.all()]
+
+    def get_staff_names(self, obj):
+        return [u.first_name for u in obj.staff.all()]
+
+    def validate_staff(self, value):
+        user = self.context["request"].user
+        if not value:
+            return value
+        if user.role not in ("owner", "staff"):
+            raise serializers.ValidationError(
+                "Only the workspace owner or a team member can assign "
+                "staff to a service."
+            )
+        workspace = user.get_workspace()
+        for staff in value:
+            if staff.staff_workspace_id != workspace.id:
+                raise serializers.ValidationError(
+                    "Can only assign team members from your own "
+                    "workspace."
+                )
+        return value
 
     def validate(self, attrs):
         requirement = attrs.get(
@@ -734,6 +782,7 @@ class BookingSerializer(serializers.ModelSerializer):
     service_name = serializers.SerializerMethodField()
     resource_name = serializers.SerializerMethodField()
     client_name = serializers.SerializerMethodField()
+    staff_name = serializers.SerializerMethodField()
     remaining_capacity = serializers.SerializerMethodField()
     client = serializers.PrimaryKeyRelatedField(
         queryset=Client.objects.all(), required=False
@@ -744,20 +793,43 @@ class BookingSerializer(serializers.ModelSerializer):
     resource = serializers.PrimaryKeyRelatedField(
         queryset=Resource.objects.all(), required=False, allow_null=True
     )
+    staff = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(role="staff"),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Booking
         fields = [
             "id", "workspace", "service", "service_name", "resource",
-            "resource_name", "client", "client_name", "series",
-            "start_time", "end_time", "status", "notes", "created_at",
-            "remaining_capacity", "payment_status", "payment_amount",
-            "is_late_cancellation",
+            "resource_name", "client", "client_name", "staff",
+            "staff_name", "series", "start_time", "end_time", "status",
+            "notes", "created_at", "remaining_capacity", "payment_status",
+            "payment_amount", "is_late_cancellation",
         ]
         read_only_fields = [
             "workspace", "end_time", "payment_status", "payment_amount",
             "is_late_cancellation",
         ]
+
+    def get_staff_name(self, obj):
+        return obj.staff.first_name if obj.staff else None
+
+    def validate_staff(self, value):
+        if value is None:
+            return value
+        user = self.context["request"].user
+        if user.role not in ("owner", "staff"):
+            raise serializers.ValidationError(
+                "Only the workspace owner or a team member can assign "
+                "a booking to a team member."
+            )
+        if value.staff_workspace_id != user.get_workspace().id:
+            raise serializers.ValidationError(
+                "Can only assign a team member from your own workspace."
+            )
+        return value
 
     def get_service_name(self, obj):
         return obj.service.name if obj.service else None

@@ -80,6 +80,9 @@
     "addPhotoOptional": "Add photo (optional)",
     "changePhoto": "Change photo",
     "maxPerSlot": "Max per slot",
+    "staffForService": "Team members who can perform this service",
+    "assignStaff": "Assign team member",
+    "unassigned": "Unassigned",
     "remove": "Remove",
     "workingHoursAdded": "Working hours added.",
     "workingHoursUpdated": "Working hours updated.",
@@ -291,6 +294,7 @@
     "workspaceNameUpdated": "Workspace name updated.",
     "couldNotUpdateWorkspaceName": "Could not update workspace name.",
     "showArchivedClients": "Show archived clients",
+    "myClientsOnly": "My clients only",
     "archiveClient": "Archive",
     "unarchiveClient": "Unarchive",
     "noArchivedClients": "No archived clients."
@@ -344,6 +348,9 @@
     "notesPlaceholder": "e.g. prefers morning appointments, allergic to fragrance products...",
     "notesUpdated": "Notes updated.",
     "couldNotUpdateNotes": "Could not update notes.",
+    "assignedTeam": "Assigned team",
+    "assignedTeamHint": "Team members responsible for this client. Their \"My clients\" view on the dashboard is built from this.",
+    "couldNotUpdateAssignedStaff": "Could not update assigned team members.",
     "tabApprovals": "Approvals",
     "newApproval": "New approval request",
     "approvalTitle": "Title",
@@ -526,6 +533,7 @@
     "deadlineBefore": "Deadline before",
     "deadline": "Due {{date}}",
     "noDeadline": "No deadline",
-    "noProjects": "No projects match these filters."
+    "noProjects": "No projects match these filters.",
+    "assignedToMeOnly": "Assigned to me only"
   }
 }

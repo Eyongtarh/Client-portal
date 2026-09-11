@@ -23,6 +23,8 @@ export default function Projects() {
   const [statusFilter, setStatusFilter] = useState("");
   const [deadlineAfter, setDeadlineAfter] = useState("");
   const [deadlineBefore, setDeadlineBefore] = useState("");
+  const [assignedToMe, setAssignedToMe] = useState(false);
+  const isStaff = user.role === "staff";
 
   useEffect(() => {
     api.get("/clients/").then((res) => setClients(res.data));
@@ -34,8 +36,16 @@ export default function Projects() {
     if (statusFilter) params.status = statusFilter;
     if (deadlineAfter) params.deadline_after = deadlineAfter;
     if (deadlineBefore) params.deadline_before = deadlineBefore;
+    if (isStaff && assignedToMe) params.assigned_to_me = "true";
     api.get("/projects/", { params }).then((res) => setProjects(res.data));
-  }, [clientFilter, statusFilter, deadlineAfter, deadlineBefore]);
+  }, [
+    clientFilter,
+    statusFilter,
+    deadlineAfter,
+    deadlineBefore,
+    assignedToMe,
+    isStaff,
+  ]);
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -137,6 +147,17 @@ export default function Projects() {
               />
             </div>
           </div>
+          {isStaff && (
+            <label className="flex items-center gap-2 mt-3 text-sm text-ink-soft cursor-pointer w-fit">
+              <input
+                type="checkbox"
+                checked={assignedToMe}
+                onChange={(e) => setAssignedToMe(e.target.checked)}
+                className="rounded"
+              />
+              {t("projects.assignedToMeOnly")}
+            </label>
+          )}
         </section>
         <section className="space-y-3">
           {projects.map((p) => (
