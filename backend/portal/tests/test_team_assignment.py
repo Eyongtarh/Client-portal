@@ -212,7 +212,12 @@ class BookingStaffAssignmentTests(TeamAssignmentTestCase):
         )
         self.assertEqual(res.status_code, 400)
 
-    def test_client_cannot_assign_staff_to_their_own_booking(self):
+    def test_client_can_pick_a_team_member_when_the_service_has_no_restriction(
+        self,
+    ):
+        # BOOK-19: a client chooses a team member "when applicable" -
+        # an unrestricted service (no staff list) means anyone on
+        # the team is applicable.
         res = auth_client(self.client_user).post(
             "/api/bookings/",
             {
@@ -221,7 +226,34 @@ class BookingStaffAssignmentTests(TeamAssignmentTestCase):
                 "start_time": "2027-06-01T10:00:00Z",
             },
         )
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data["staff"], self.staff_a.id)
+
+    def test_client_cannot_pick_a_team_member_not_qualified_for_the_service(
+        self,
+    ):
+        self.service.staff.add(self.staff_a)
+        res = auth_client(self.client_user).post(
+            "/api/bookings/",
+            {
+                "service": self.service.id,
+                "staff": self.staff_b.id,
+                "start_time": "2027-06-01T10:00:00Z",
+            },
+        )
         self.assertEqual(res.status_code, 400)
+
+    def test_client_can_pick_a_qualified_team_member(self):
+        self.service.staff.add(self.staff_a)
+        res = auth_client(self.client_user).post(
+            "/api/bookings/",
+            {
+                "service": self.service.id,
+                "staff": self.staff_a.id,
+                "start_time": "2027-06-01T10:00:00Z",
+            },
+        )
+        self.assertEqual(res.status_code, 201, res.data)
 
     def test_assigned_to_me_narrows_bookings_to_that_staff_members_bookings(
         self,

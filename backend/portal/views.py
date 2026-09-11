@@ -1997,7 +1997,12 @@ class AvailabilityView(APIView):
     Service mode: slots are drawn from the workspace's working
     hours, checking the service's own capacity AND every resource
     tied to it, so a slot is only offered when both the service
-    and every resource it needs are free.
+    and every resource it needs are free. An optional &staff=<id>
+    (BOOK-04/10/19) narrows this to one team member: their own
+    working hours (if they've set any) replace the workspace
+    default entirely, and the capacity/conflict check only counts
+    that team member's own bookings for this service, not everyone
+    else's. 400s if that team member doesn't perform this service.
 
     Resource mode: a resource booking is direct and not tied to
     staff time, so slots cover the FULL 24-hour day (not limited
@@ -2095,9 +2100,35 @@ class AvailabilityView(APIView):
         service = generics.get_object_or_404(
             Service, pk=service_id, workspace=workspace
         )
+
+        staff_member = None
+        staff_id = request.query_params.get("staff")
+        if staff_id:
+            staff_member = generics.get_object_or_404(
+                User, pk=staff_id, role="staff", staff_workspace=workspace
+            )
+            if (
+                service.staff.exists()
+                and staff_member not in service.staff.all()
+            ):
+                return Response(
+                    {"detail": "This team member does not perform this service."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         weekday = target_date.weekday()
+        # A staff member's own hours (BOOK-10/TEAM-05) replace the
+        # workspace default entirely once they have any of their
+        # own, rather than filling gaps day-by-day - a staff member
+        # who only ever set Monday hours is not implicitly available
+        # on the workspace's Tuesday hours too.
+        has_custom_hours = staff_member and WorkingHours.objects.filter(
+            workspace=workspace, staff=staff_member
+        ).exists()
         windows = WorkingHours.objects.filter(
-            workspace=workspace, weekday=weekday
+            workspace=workspace,
+            weekday=weekday,
+            staff=staff_member if has_custom_hours else None,
         )
         day_start_local = datetime.combine(
             target_date, datetime.min.time(), tzinfo=tz
@@ -2110,6 +2141,8 @@ class AvailabilityView(APIView):
             start_time__gte=day_start_local,
             start_time__lt=day_end_local,
         )
+        if staff_member:
+            existing = existing.filter(staff=staff_member)
 
         resources = list(service.resources.all())
         resource_bookings = {}

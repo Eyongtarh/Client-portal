@@ -759,12 +759,34 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
 
 
 class WorkingHoursSerializer(serializers.ModelSerializer):
+    staff_name = serializers.SerializerMethodField()
+    staff = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(role="staff"),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = WorkingHours
         fields = [
-            "id", "workspace", "weekday", "start_time", "end_time",
+            "id", "workspace", "staff", "staff_name", "weekday",
+            "start_time", "end_time",
         ]
         read_only_fields = ["workspace"]
+
+    def get_staff_name(self, obj):
+        return obj.staff.first_name if obj.staff else None
+
+    def validate_staff(self, value):
+        if value is None:
+            return value
+        workspace = self.context["request"].user.get_workspace()
+        if value.staff_workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only set hours for a team member in your own "
+                "workspace."
+            )
+        return value
 
 
 class BookingSerializer(serializers.ModelSerializer):
@@ -823,15 +845,20 @@ class BookingSerializer(serializers.ModelSerializer):
         return obj.staff.first_name if obj.staff else None
 
     def validate_staff(self, value):
+        # A client picks from the service's own staff list (BOOK-19)
+        # rather than being blocked from setting this at all - the
+        # object-level validate() below is what actually enforces
+        # "only a team member qualified for this service", uniformly
+        # for owner/staff and client bookings alike.
         if value is None:
             return value
         user = self.context["request"].user
-        if user.role not in ("owner", "staff"):
-            raise serializers.ValidationError(
-                "Only the workspace owner or a team member can assign "
-                "a booking to a team member."
-            )
-        if value.staff_workspace_id != user.get_workspace().id:
+        workspace = (
+            user.get_workspace()
+            if user.role in ("owner", "staff")
+            else user.client_profile.workspace
+        )
+        if value.staff_workspace_id != workspace.id:
             raise serializers.ValidationError(
                 "Can only assign a team member from your own workspace."
             )
@@ -895,6 +922,14 @@ class BookingSerializer(serializers.ModelSerializer):
         if not self.instance and start < timezone.now():
             raise serializers.ValidationError(
                 "You cannot book a time in the past."
+            )
+
+        staff = attrs.get(
+            "staff", self.instance.staff if self.instance else None
+        )
+        if staff and service and service.staff.exists() and staff not in service.staff.all():
+            raise serializers.ValidationError(
+                "This team member does not perform this service."
             )
 
         new_status = attrs.get("status")

@@ -567,6 +567,19 @@ class WorkingHours(models.Model):
         on_delete=models.CASCADE,
         related_name="working_hours",
     )
+    staff = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="working_hours",
+        limit_choices_to={"role": "staff"},
+        help_text="Left blank, this is the workspace's default "
+        "availability. Set to a team member, it overrides the "
+        "default for that person only (TEAM-05/BOOK-10) - "
+        "AvailabilityView falls back to the workspace default rows "
+        "when a staff member has none of their own.",
+    )
     weekday = models.IntegerField(choices=Weekday.choices)
     start_time = models.TimeField()
     end_time = models.TimeField()

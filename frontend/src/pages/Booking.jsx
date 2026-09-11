@@ -1852,22 +1852,30 @@ function ResourcesSection() {
 function WorkingHoursSection() {
   const { t } = useTranslation();
   const [hours, setHours] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [weekday, setWeekday] = useState("0");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
+  const [staffId, setStaffId] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editWeekday, setEditWeekday] = useState("0");
   const [editStartTime, setEditStartTime] = useState("09:00");
   const [editEndTime, setEditEndTime] = useState("17:00");
+  const [editStaffId, setEditStaffId] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
 
   async function load() {
     const res = await api.get("/working-hours/");
     setHours(res.data);
   }
+  async function loadTeamMembers() {
+    const res = await api.get("/team/");
+    setTeamMembers(res.data);
+  }
   useEffect(() => {
     load();
+    loadTeamMembers();
   }, []);
 
   async function onCreate(e) {
@@ -1876,8 +1884,10 @@ function WorkingHoursSection() {
       weekday,
       start_time: `${startTime}:00`,
       end_time: `${endTime}:00`,
+      staff: staffId || null,
     });
     setShowForm(false);
+    setStaffId("");
     setStatusMsg({
       key: "booking.workingHoursAdded",
       type: "success",
@@ -1890,6 +1900,7 @@ function WorkingHoursSection() {
     setEditWeekday(String(window.weekday));
     setEditStartTime(window.start_time.slice(0, 5));
     setEditEndTime(window.end_time.slice(0, 5));
+    setEditStaffId(window.staff ? String(window.staff) : "");
   }
 
   function cancelEdit() {
@@ -1901,6 +1912,7 @@ function WorkingHoursSection() {
       weekday: editWeekday,
       start_time: `${editStartTime}:00`,
       end_time: `${editEndTime}:00`,
+      staff: editStaffId || null,
     });
     setEditingId(null);
     setStatusMsg({
@@ -2006,6 +2018,29 @@ function WorkingHoursSection() {
               className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
           </div>
+          {teamMembers.length > 0 && (
+            <div>
+              <label
+                htmlFor="wh-staff"
+                className="block text-xs text-ink-soft mb-1"
+              >
+                {t("booking.hoursForStaff")}
+              </label>
+              <select
+                id="wh-staff"
+                value={staffId}
+                onChange={(e) => setStaffId(e.target.value)}
+                className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              >
+                <option value="">{t("booking.workspaceDefaultHours")}</option>
+                {teamMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.first_name || member.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <button
             aria-label={t("booking.saveHours")}
             className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
@@ -2071,6 +2106,31 @@ function WorkingHoursSection() {
                     className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
                 </div>
+                {teamMembers.length > 0 && (
+                  <div>
+                    <label
+                      htmlFor={`edit-wh-staff-${window.id}`}
+                      className="block text-xs text-ink-soft mb-1"
+                    >
+                      {t("booking.hoursForStaff")}
+                    </label>
+                    <select
+                      id={`edit-wh-staff-${window.id}`}
+                      value={editStaffId}
+                      onChange={(e) => setEditStaffId(e.target.value)}
+                      className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    >
+                      <option value="">
+                        {t("booking.workspaceDefaultHours")}
+                      </option>
+                      {teamMembers.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.first_name || member.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <button
                   onClick={() => saveEdit(window.id)}
                   aria-label={t("booking.save")}
@@ -2096,6 +2156,7 @@ function WorkingHoursSection() {
                   {window.start_time.slice(0, 5)}
                   {"\u2013"}
                   {window.end_time.slice(0, 5)}
+                  {window.staff_name && ` \u00b7 ${window.staff_name}`}
                 </span>
                 <div className="flex gap-2">
                   <button

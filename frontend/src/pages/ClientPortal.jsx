@@ -591,6 +591,7 @@ function BookingSection() {
   const [resources, setResources] = useState([]);
   const [selectedService, setSelectedService] = useState("");
   const [selectedResource, setSelectedResource] = useState("");
+  const [selectedStaff, setSelectedStaff] = useState("");
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -650,8 +651,12 @@ function BookingSection() {
     setSelectedSlot("");
     try {
       const param = bookingType === "service" ? "service" : "resource";
+      const staffParam =
+        bookingType === "service" && selectedStaff
+          ? `&staff=${selectedStaff}`
+          : "";
       const res = await api.get(
-        `/availability/?${param}=${itemId}&date=${date}`,
+        `/availability/?${param}=${itemId}&date=${date}${staffParam}`,
       );
       setSlots(res.data.slots);
     } finally {
@@ -661,7 +666,7 @@ function BookingSection() {
   useEffect(() => {
     loadSlots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedService, selectedResource, bookingType, date]);
+  }, [selectedService, selectedResource, selectedStaff, bookingType, date]);
 
   function selectSlot(time) {
     setSelectedSlot(time);
@@ -684,6 +689,7 @@ function BookingSection() {
       } else if (bookingType === "service") {
         await api.post("/bookings/", {
           service: selectedService,
+          staff: selectedStaff || null,
           start_time: startTime,
         });
         setStatusMsg({
@@ -703,6 +709,7 @@ function BookingSection() {
       setSlots([]);
       setSelectedSlot("");
       setDate("");
+      setSelectedStaff("");
       setRepeatWeekly(false);
       setNumberOfWeeks("4");
       loadMyBookings();
@@ -922,7 +929,10 @@ function BookingSection() {
             {services.map((service) => (
               <button
                 key={service.id}
-                onClick={() => setSelectedService(String(service.id))}
+                onClick={() => {
+                  setSelectedService(String(service.id));
+                  setSelectedStaff("");
+                }}
                 aria-pressed={selectedService === String(service.id)}
                 aria-label={`Select ${service.name}`}
                 className={
@@ -1043,6 +1053,40 @@ function BookingSection() {
           </div>
         </>
       )}
+
+      {bookingType === "service" &&
+        selectedService &&
+        (() => {
+          const service = services.find(
+            (s) => String(s.id) === selectedService,
+          );
+          if (!service || !service.staff || service.staff.length === 0) {
+            return null;
+          }
+          return (
+            <div className="mb-3">
+              <label
+                htmlFor="book-staff"
+                className="block text-xs text-ink-soft mb-1"
+              >
+                {t("booking.selectTeamMember")}
+              </label>
+              <select
+                id="book-staff"
+                value={selectedStaff}
+                onChange={(e) => setSelectedStaff(e.target.value)}
+                className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              >
+                <option value="">{t("booking.anyTeamMember")}</option>
+                {service.staff.map((staffId, index) => (
+                  <option key={staffId} value={staffId}>
+                    {service.staff_names?.[index] || staffId}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })()}
 
       <label htmlFor="book-date" className="block text-xs text-ink-soft mb-1">
         {t("booking.selectDate")}
@@ -1409,7 +1453,8 @@ function BookingSection() {
                   <span>
                     {booking.service_name || booking.resource_name}
                     {" \u00b7 "}
-                    {new Date(booking.start_time).toLocaleString()}{" "}
+                    {new Date(booking.start_time).toLocaleString()}
+                    {booking.staff_name && ` \u00b7 ${booking.staff_name}`}{" "}
                     <ClientPaymentBadge status={booking.payment_status} />
                   </span>
                   <div className="flex flex-wrap gap-2">
