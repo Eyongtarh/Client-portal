@@ -125,6 +125,10 @@ urlpatterns = [
         "bookings/<int:pk>/ics/",
         views.BookingICSView.as_view(),
     ),
+    path(
+        "booking-analytics/",
+        views.BookingAnalyticsView.as_view(),
+    ),
     path("stripe/webhook/", webhooks.StripeWebhookView.as_view()),
     path(
         "stripe/connect-webhook/",

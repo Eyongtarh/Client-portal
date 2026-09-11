@@ -1,6 +1,7 @@
 import io
 import logging
 from datetime import datetime, timedelta
+from decimal import Decimal
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
@@ -8,7 +9,8 @@ import stripe
 from django.conf import settings
 from django.core import signing
 from django.core.mail import EmailMessage, send_mail
-from django.db.models import Q
+from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncDate
 from django.http import (
     FileResponse, Http404, HttpResponse, HttpResponseRedirect,
 )
@@ -1720,6 +1722,110 @@ class BookingICSView(APIView):
         response = HttpResponse(ics, content_type="text/calendar")
         response["Content-Disposition"] = 'attachment; filename="booking.ics"'
         return response
+
+
+class BookingAnalyticsView(APIView):
+    """GET /api/booking-analytics/ - aggregate booking demand,
+    cancellation/no-show rates, and revenue for the workspace
+    (BOOK-76..79). Owner and staff both get the same workspace-wide
+    read; there's nothing here a team member shouldn't see. Resource
+    -only bookings (no service) are counted in totals and revenue
+    but excluded from the by-service/staff/location breakdowns,
+    which describe a service booking specifically.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role not in ("owner", "staff"):
+            raise PermissionDenied(
+                "Only the business can view booking analytics."
+            )
+        workspace = user.get_workspace()
+        bookings = Booking.objects.filter(workspace=workspace)
+
+        total = bookings.count()
+        status_breakdown = {
+            row["status"]: row["count"]
+            for row in bookings.values("status").annotate(count=Count("id"))
+        }
+        for key in ("confirmed", "cancelled", "completed", "no_show"):
+            status_breakdown.setdefault(key, 0)
+
+        def rate(count):
+            return round(count / total * 100, 1) if total else 0.0
+
+        by_service = [
+            {
+                "service_id": row["service_id"],
+                "name": row["service__name"],
+                "count": row["count"],
+            }
+            for row in bookings.filter(service__isnull=False)
+            .values("service_id", "service__name")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        ]
+
+        by_staff = [
+            {
+                "staff_id": row["staff_id"],
+                "name": row["staff__first_name"] or "Unassigned",
+                "count": row["count"],
+            }
+            for row in bookings.values("staff_id", "staff__first_name")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        ]
+
+        location_counts = {}
+        for service in Service.objects.filter(workspace=workspace):
+            count = bookings.filter(service=service).count()
+            if not count:
+                continue
+            label = (
+                "Online"
+                if service.is_online
+                else service.location or "Not specified"
+            )
+            location_counts[label] = location_counts.get(label, 0) + count
+        by_location = [
+            {"location": label, "count": count}
+            for label, count in sorted(
+                location_counts.items(), key=lambda item: -item[1]
+            )
+        ]
+
+        window_start = timezone.now().date() - timedelta(days=29)
+        daily_counts = [
+            {"date": row["day"].isoformat(), "count": row["count"]}
+            for row in bookings.filter(start_time__date__gte=window_start)
+            .annotate(day=TruncDate("start_time"))
+            .values("day")
+            .annotate(count=Count("id"))
+            .order_by("day")
+        ]
+
+        revenue = {
+            "paid": bookings.filter(payment_status="paid").aggregate(
+                total=Sum("payment_amount")
+            )["total"] or Decimal("0"),
+            "pending": bookings.filter(payment_status="pending").aggregate(
+                total=Sum("payment_amount")
+            )["total"] or Decimal("0"),
+        }
+
+        return Response({
+            "total_bookings": total,
+            "status_breakdown": status_breakdown,
+            "cancellation_rate": rate(status_breakdown["cancelled"]),
+            "no_show_rate": rate(status_breakdown["no_show"]),
+            "by_service": by_service,
+            "by_staff": by_staff,
+            "by_location": by_location,
+            "daily_counts": daily_counts,
+            "revenue": revenue,
+        })
 
 
 class RecurringSeriesCreateView(APIView):

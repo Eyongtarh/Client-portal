@@ -242,7 +242,18 @@
     "markBookingPaid": "Marquer comme pay\u00e9",
     "confirmMarkBookingPaid": "Marquer cette r\u00e9servation comme pay\u00e9e ? \u00c0 faire uniquement apr\u00e8s avoir confirm\u00e9 la r\u00e9ception du paiement.",
     "bookingMarkedPaid": "R\u00e9servation marqu\u00e9e comme pay\u00e9e.",
-    "couldNotMarkBookingPaid": "Impossible de marquer cette r\u00e9servation comme pay\u00e9e."
+    "couldNotMarkBookingPaid": "Impossible de marquer cette r\u00e9servation comme pay\u00e9e.",
+    "analyticsTitle": "Statistiques de r\u00e9servation",
+    "totalBookings": "Total des r\u00e9servations",
+    "cancellationRate": "Taux d'annulation",
+    "noShowRate": "Taux d'absence",
+    "revenueCollected": "Revenu encaiss\u00e9",
+    "revenuePending": "en attente",
+    "bookingsLast30Days": "R\u00e9servations, 30 derniers jours",
+    "bookingsByService": "Par service",
+    "bookingsByTeamMember": "Par membre de l'\u00e9quipe",
+    "bookingsByLocation": "Par lieu",
+    "noAnalyticsData": "Pas encore assez de donn\u00e9es."
   },
   "publicBooking": {
     "notFound": "Cette page de r\u00e9servation n'est pas disponible.",

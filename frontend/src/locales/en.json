@@ -242,7 +242,18 @@
     "markBookingPaid": "Mark as paid",
     "confirmMarkBookingPaid": "Mark this booking as paid? Only do this once you've confirmed you received the payment.",
     "bookingMarkedPaid": "Booking marked as paid.",
-    "couldNotMarkBookingPaid": "Could not mark this booking as paid."
+    "couldNotMarkBookingPaid": "Could not mark this booking as paid.",
+    "analyticsTitle": "Booking analytics",
+    "totalBookings": "Total bookings",
+    "cancellationRate": "Cancellation rate",
+    "noShowRate": "No-show rate",
+    "revenueCollected": "Revenue collected",
+    "revenuePending": "pending",
+    "bookingsLast30Days": "Bookings, last 30 days",
+    "bookingsByService": "By service",
+    "bookingsByTeamMember": "By team member",
+    "bookingsByLocation": "By location",
+    "noAnalyticsData": "Not enough data yet."
   },
   "publicBooking": {
     "notFound": "This booking page isn't available.",
