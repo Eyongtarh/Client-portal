@@ -12,7 +12,9 @@ import {
   FiCreditCard,
   FiDownload,
   FiEdit2,
+  FiInfo,
   FiLogOut,
+  FiMapPin,
   FiPaperclip,
   FiSend,
   FiTrash2,
@@ -20,6 +22,7 @@ import {
   FiUser,
   FiUserMinus,
   FiUserPlus,
+  FiVideo,
   FiX,
 } from "react-icons/fi";
 import { useAuth } from "../lib/AuthContext.jsx";
@@ -960,6 +963,24 @@ function BookingSection() {
                         {service.resource_names.join(", ")}
                       </p>
                     )}
+                  {service.location && (
+                    <p className="text-xs text-ink-soft mt-0.5">
+                      <FiMapPin className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />
+                      {service.location}
+                    </p>
+                  )}
+                  {service.is_online && (
+                    <p className="text-xs text-ink-soft mt-0.5">
+                      <FiVideo className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />
+                      {t("booking.onlineAppointment")}
+                    </p>
+                  )}
+                  {service.instructions && (
+                    <p className="text-xs text-ink-soft mt-0.5">
+                      <FiInfo className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />
+                      {service.instructions}
+                    </p>
+                  )}
                 </div>
               </button>
             ))}
@@ -1422,6 +1443,35 @@ function BookingSection() {
                     </button>
                   </div>
                 </div>
+                {(booking.service_location || booking.service_is_online) && (
+                  <p className="text-xs text-ink-soft mt-1">
+                    {booking.service_location && (
+                      <>
+                        <FiMapPin className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />
+                        {booking.service_location}
+                      </>
+                    )}
+                    {booking.service_location && booking.service_is_online && " · "}
+                    {booking.service_is_online && booking.service_meeting_link ? (
+                      <a
+                        href={booking.service_meeting_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-brand-700 underline hover:text-brand-900"
+                      >
+                        <FiVideo className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />
+                        {t("booking.joinOnlineMeeting")}
+                      </a>
+                    ) : (
+                      booking.service_is_online && (
+                        <>
+                          <FiVideo className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />
+                          {t("booking.onlineAppointment")}
+                        </>
+                      )
+                    )}
+                  </p>
+                )}
                 {booking.payment_status === "pending" &&
                   paymentMethods.length > 0 && (
                     <p className="text-xs text-ink-soft mt-1">

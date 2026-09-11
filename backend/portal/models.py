@@ -394,6 +394,30 @@ class Service(models.Model):
     )
     capacity = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
+    location = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Where an in-person appointment takes place "
+        "(BOOK-06), e.g. an address or room name.",
+    )
+    is_online = models.BooleanField(
+        default=False,
+        help_text="Whether this service is conducted virtually "
+        "(BOOK-07). meeting_link is only meaningful when this is set.",
+    )
+    meeting_link = models.URLField(
+        blank=True,
+        default="",
+        help_text="Video call link shared with the client once "
+        "booked (BOOK-07), e.g. a Zoom or Google Meet URL.",
+    )
+    instructions = models.TextField(
+        blank=True,
+        default="",
+        help_text="What the client should prepare or know before "
+        "the appointment (BOOK-08), shown to them when booking.",
+    )
     staff = models.ManyToManyField(
         User,
         blank=True,

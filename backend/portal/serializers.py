@@ -658,6 +658,7 @@ class ServiceSerializer(serializers.ModelSerializer):
         fields = [
             "id", "workspace", "name", "description", "photo",
             "duration_minutes", "price", "capacity", "is_active",
+            "location", "is_online", "meeting_link", "instructions",
             "resource_names", "staff", "staff_names",
             "payment_requirement", "deposit_percent",
             "cancellation_notice_hours", "late_cancellation_fee_percent",
@@ -780,6 +781,9 @@ class BookingSerializer(serializers.ModelSerializer):
     can never be confirmed if the relevant capacity is exhausted.
     """
     service_name = serializers.SerializerMethodField()
+    service_location = serializers.SerializerMethodField()
+    service_is_online = serializers.SerializerMethodField()
+    service_meeting_link = serializers.SerializerMethodField()
     resource_name = serializers.SerializerMethodField()
     client_name = serializers.SerializerMethodField()
     staff_name = serializers.SerializerMethodField()
@@ -802,11 +806,13 @@ class BookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = [
-            "id", "workspace", "service", "service_name", "resource",
-            "resource_name", "client", "client_name", "staff",
-            "staff_name", "series", "start_time", "end_time", "status",
-            "notes", "created_at", "remaining_capacity", "payment_status",
-            "payment_amount", "is_late_cancellation",
+            "id", "workspace", "service", "service_name",
+            "service_location", "service_is_online",
+            "service_meeting_link", "resource", "resource_name", "client",
+            "client_name", "staff", "staff_name", "series", "start_time",
+            "end_time", "status", "notes", "created_at",
+            "remaining_capacity", "payment_status", "payment_amount",
+            "is_late_cancellation",
         ]
         read_only_fields = [
             "workspace", "end_time", "payment_status", "payment_amount",
@@ -833,6 +839,15 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def get_service_name(self, obj):
         return obj.service.name if obj.service else None
+
+    def get_service_location(self, obj):
+        return obj.service.location if obj.service else ""
+
+    def get_service_is_online(self, obj):
+        return obj.service.is_online if obj.service else False
+
+    def get_service_meeting_link(self, obj):
+        return obj.service.meeting_link if obj.service else ""
 
     def get_resource_name(self, obj):
         return obj.resource.name if obj.resource else None

@@ -88,6 +88,81 @@ class ServicePolicyValidationTests(BookingPolicyTestCase):
         self.assertEqual(res.status_code, 201, res.data)
 
 
+class ServiceLocationDetailsTests(BookingPolicyTestCase):
+    """Location, online meeting link, and prep instructions
+    (BOOK-06, BOOK-07, BOOK-08) - plain fields, but every one of
+    them needs to actually round-trip through the API since a
+    client relies on them to know where/how to show up.
+    """
+
+    def test_can_set_location_meeting_link_and_instructions(self):
+        res = auth_client(self.owner).post(
+            "/api/services/",
+            {
+                "name": "Consultation",
+                "duration_minutes": 60,
+                "location": "123 Main St, Suite 4",
+                "is_online": True,
+                "meeting_link": "https://meet.example.com/room",
+                "instructions": "Bring a photo ID.",
+            },
+        )
+        self.assertEqual(res.status_code, 201, res.data)
+        service = Service.objects.get(id=res.data["id"])
+        self.assertEqual(service.location, "123 Main St, Suite 4")
+        self.assertTrue(service.is_online)
+        self.assertEqual(service.meeting_link, "https://meet.example.com/room")
+        self.assertEqual(service.instructions, "Bring a photo ID.")
+
+    def test_these_fields_are_optional(self):
+        res = auth_client(self.owner).post(
+            "/api/services/",
+            {"name": "Quick chat", "duration_minutes": 15},
+        )
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data["location"], "")
+        self.assertFalse(res.data["is_online"])
+
+    def test_client_sees_location_and_instructions_on_the_service(self):
+        service = Service.objects.create(
+            workspace=self.workspace,
+            name="Consultation",
+            duration_minutes=60,
+            location="123 Main St",
+            is_online=True,
+            meeting_link="https://meet.example.com/room",
+            instructions="Bring a photo ID.",
+        )
+        res = auth_client(self.client_user).get("/api/services/")
+        entry = next(s for s in res.data if s["id"] == service.id)
+        self.assertEqual(entry["location"], "123 Main St")
+        self.assertEqual(entry["meeting_link"], "https://meet.example.com/room")
+        self.assertEqual(entry["instructions"], "Bring a photo ID.")
+
+    def test_a_booking_carries_its_services_location_details(self):
+        # BOOK-24: a client checking their confirmed booking needs
+        # to see where/how to show up without cross-referencing the
+        # service separately.
+        service = Service.objects.create(
+            workspace=self.workspace,
+            name="Consultation",
+            duration_minutes=60,
+            location="123 Main St",
+            is_online=True,
+            meeting_link="https://meet.example.com/room",
+        )
+        res = auth_client(self.client_user).post(
+            "/api/bookings/",
+            {"service": service.id, "start_time": "2027-06-01T10:00:00Z"},
+        )
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data["service_location"], "123 Main St")
+        self.assertTrue(res.data["service_is_online"])
+        self.assertEqual(
+            res.data["service_meeting_link"], "https://meet.example.com/room"
+        )
+
+
 class BookingPaymentAmountTests(BookingPolicyTestCase):
     def _book(self, service, start):
         return auth_client(self.client_user).post(

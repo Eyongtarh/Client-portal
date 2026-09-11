@@ -216,6 +216,10 @@ function ServicesSection() {
   const [newPhotoPreview, setNewPhotoPreview] = useState(null);
   const [staffIds, setStaffIds] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [location, setLocation] = useState("");
+  const [isOnline, setIsOnline] = useState(false);
+  const [meetingLink, setMeetingLink] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -226,6 +230,10 @@ function ServicesSection() {
   const [editNoticeHours, setEditNoticeHours] = useState("24");
   const [editFeePercent, setEditFeePercent] = useState("");
   const [editStaffIds, setEditStaffIds] = useState([]);
+  const [editLocation, setEditLocation] = useState("");
+  const [editIsOnline, setEditIsOnline] = useState(false);
+  const [editMeetingLink, setEditMeetingLink] = useState("");
+  const [editInstructions, setEditInstructions] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
   const [stripeConnectBanner, setStripeConnectBanner] = useState(null);
 
@@ -333,6 +341,10 @@ function ServicesSection() {
       cancellation_notice_hours: noticeHours || 0,
       late_cancellation_fee_percent: feePercent || null,
       staff: staffIds,
+      location,
+      is_online: isOnline,
+      meeting_link: isOnline ? meetingLink : "",
+      instructions,
     });
     if (newPhoto) {
       const formData = new FormData();
@@ -354,6 +366,10 @@ function ServicesSection() {
     setNewPhoto(null);
     setNewPhotoPreview(null);
     setStaffIds([]);
+    setLocation("");
+    setIsOnline(false);
+    setMeetingLink("");
+    setInstructions("");
     setShowForm(false);
     setStatusMsg({ key: "booking.serviceCreated", type: "success" });
     load();
@@ -380,6 +396,10 @@ function ServicesSection() {
     setEditNoticeHours(String(service.cancellation_notice_hours ?? "24"));
     setEditFeePercent(service.late_cancellation_fee_percent || "");
     setEditStaffIds(service.staff || []);
+    setEditLocation(service.location || "");
+    setEditIsOnline(service.is_online || false);
+    setEditMeetingLink(service.meeting_link || "");
+    setEditInstructions(service.instructions || "");
   }
 
   function cancelEdit() {
@@ -400,6 +420,10 @@ function ServicesSection() {
       cancellation_notice_hours: editNoticeHours || 0,
       late_cancellation_fee_percent: editFeePercent || null,
       staff: editStaffIds,
+      location: editLocation,
+      is_online: editIsOnline,
+      meeting_link: editIsOnline ? editMeetingLink : "",
+      instructions: editInstructions,
     });
     setEditingId(null);
     setStatusMsg({ key: "booking.serviceUpdated", type: "success" });
@@ -711,6 +735,51 @@ function ServicesSection() {
               className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
           </div>
+          <label htmlFor="service-location" className="sr-only">
+            {t("booking.serviceLocation")}
+          </label>
+          <input
+            id="service-location"
+            placeholder={t("booking.serviceLocation")}
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+          <label className="flex items-center gap-2 mb-2 text-sm text-ink cursor-pointer w-fit">
+            <input
+              type="checkbox"
+              checked={isOnline}
+              onChange={(e) => setIsOnline(e.target.checked)}
+              className="rounded"
+            />
+            {t("booking.isOnlineService")}
+          </label>
+          {isOnline && (
+            <>
+              <label htmlFor="service-meeting-link" className="sr-only">
+                {t("booking.meetingLink")}
+              </label>
+              <input
+                id="service-meeting-link"
+                type="url"
+                placeholder={t("booking.meetingLink")}
+                value={meetingLink}
+                onChange={(e) => setMeetingLink(e.target.value)}
+                className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+            </>
+          )}
+          <label htmlFor="service-instructions" className="sr-only">
+            {t("booking.serviceInstructions")}
+          </label>
+          <textarea
+            id="service-instructions"
+            placeholder={t("booking.serviceInstructions")}
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            rows={2}
+            className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
           <PolicyFields
             idPrefix="new-service"
             paymentRequirement={paymentRequirement}
@@ -813,6 +882,60 @@ function ServicesSection() {
                     className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
                 </div>
+                <label
+                  htmlFor={`edit-location-${service.id}`}
+                  className="sr-only"
+                >
+                  {t("booking.serviceLocation")}
+                </label>
+                <input
+                  id={`edit-location-${service.id}`}
+                  placeholder={t("booking.serviceLocation")}
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <label className="flex items-center gap-2 mb-2 text-sm text-ink cursor-pointer w-fit">
+                  <input
+                    type="checkbox"
+                    checked={editIsOnline}
+                    onChange={(e) => setEditIsOnline(e.target.checked)}
+                    className="rounded"
+                  />
+                  {t("booking.isOnlineService")}
+                </label>
+                {editIsOnline && (
+                  <>
+                    <label
+                      htmlFor={`edit-meeting-link-${service.id}`}
+                      className="sr-only"
+                    >
+                      {t("booking.meetingLink")}
+                    </label>
+                    <input
+                      id={`edit-meeting-link-${service.id}`}
+                      type="url"
+                      placeholder={t("booking.meetingLink")}
+                      value={editMeetingLink}
+                      onChange={(e) => setEditMeetingLink(e.target.value)}
+                      className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                  </>
+                )}
+                <label
+                  htmlFor={`edit-instructions-${service.id}`}
+                  className="sr-only"
+                >
+                  {t("booking.serviceInstructions")}
+                </label>
+                <textarea
+                  id={`edit-instructions-${service.id}`}
+                  placeholder={t("booking.serviceInstructions")}
+                  value={editInstructions}
+                  onChange={(e) => setEditInstructions(e.target.value)}
+                  rows={2}
+                  className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
                 <PolicyFields
                   idPrefix={`edit-service-${service.id}`}
                   paymentRequirement={editPaymentRequirement}
@@ -916,6 +1039,8 @@ function ServicesSection() {
                   {service.staff_names &&
                     service.staff_names.length > 0 &&
                     ` \u00b7 ${service.staff_names.join(", ")}`}
+                  {service.location && ` \u00b7 ${service.location}`}
+                  {service.is_online && ` \u00b7 ${t("booking.onlineAppointment")}`}
                   {service.payment_requirement === "deposit" &&
                     ` \u00b7 ${service.deposit_percent}% ${t("booking.depositAtBooking")}`}
                   {service.payment_requirement === "full" &&
