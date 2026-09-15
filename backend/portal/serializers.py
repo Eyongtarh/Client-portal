@@ -3,10 +3,11 @@ from decimal import Decimal
 from .currencies import VALID_CURRENCIES
 from .models import (
     Activity, Approval, BlockedTime, BookingResourceCharge, Client,
-    ClientInvite, Document, Invoice, InvoiceItem, Message, Milestone,
-    PaymentMethod, Project, RecurringSeries, Resource, ResourceAvailability,
-    ResourceRental, ResourceRentalPolicy, ResourceReservation, Review,
-    Service, ServiceQuestion, ServiceResourceRequirement, SubscriptionPlan,
+    ClientInvite, Document, Invoice, InvoiceItem, Location, Message,
+    Milestone, PaymentMethod, Project, RecurringSeries, Resource,
+    ResourceAvailability, ResourceRental, ResourceRentalPolicy,
+    ResourceReservation, Review, Service, ServiceQuestion,
+    ServiceResourceRequirement, SubscriptionPlan,
     Task, TeamInvite, User, WaitlistEntry, WorkingHours, Booking, Workspace,
 )
 from .resource_availability import (
@@ -771,12 +772,31 @@ class ServiceQuestionSerializer(serializers.ModelSerializer):
         return value
 
 
+class LocationSerializer(serializers.ModelSerializer):
+    """Full CRUD for a workspace's physical locations (BOOK-06).
+    Services/Resources/WorkingHours/BlockedTime each optionally link
+    to one - see their own serializers for how.
+    """
+
+    class Meta:
+        model = Location
+        fields = [
+            "id", "workspace", "name", "address", "phone", "is_active",
+            "created_at",
+        ]
+        read_only_fields = ["workspace", "created_at"]
+
+
 class ServiceSerializer(serializers.ModelSerializer):
     resource_names = serializers.SerializerMethodField()
     staff_names = serializers.SerializerMethodField()
+    location_name = serializers.SerializerMethodField()
     questions = ServiceQuestionSerializer(many=True, read_only=True)
     staff = serializers.PrimaryKeyRelatedField(
         many=True, required=False, queryset=User.objects.filter(role="staff")
+    )
+    location_ref = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.all(), required=False, allow_null=True
     )
 
     class Meta:
@@ -784,7 +804,8 @@ class ServiceSerializer(serializers.ModelSerializer):
         fields = [
             "id", "workspace", "name", "description", "photo",
             "duration_minutes", "price", "capacity", "is_active",
-            "location", "is_online", "meeting_link", "instructions",
+            "location", "location_ref", "location_name", "is_online",
+            "meeting_link", "instructions",
             "resource_names", "staff", "staff_names", "questions",
             "payment_requirement", "deposit_percent",
             "cancellation_notice_hours", "late_cancellation_fee_percent",
@@ -799,6 +820,19 @@ class ServiceSerializer(serializers.ModelSerializer):
 
     def get_staff_names(self, obj):
         return [u.first_name for u in obj.staff.all()]
+
+    def get_location_name(self, obj):
+        return obj.location_ref.name if obj.location_ref else None
+
+    def validate_location_ref(self, value):
+        if value is None:
+            return value
+        workspace = self.context["request"].user.get_workspace()
+        if value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only use a location from your own workspace."
+            )
+        return value
 
     def validate_staff(self, value):
         user = self.context["request"].user
@@ -873,6 +907,10 @@ class ResourceSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(
         source="get_status_display", read_only=True
     )
+    location_name = serializers.SerializerMethodField()
+    location_ref = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.all(), required=False, allow_null=True
+    )
 
     class Meta:
         model = Resource
@@ -881,6 +919,7 @@ class ResourceSerializer(serializers.ModelSerializer):
             "quantity", "price", "duration_minutes", "services",
             "created_at",
             "type", "type_display", "custom_type", "category", "location",
+            "location_ref", "location_name",
             "status", "status_display", "reservation_mode", "pricing_mode",
             "capacity", "capacity_mode",
             "booking_buffer_before_minutes", "booking_buffer_after_minutes",
@@ -888,6 +927,19 @@ class ResourceSerializer(serializers.ModelSerializer):
             "min_duration_minutes", "max_duration_minutes", "extra_rules",
         ]
         read_only_fields = ["workspace", "created_at"]
+
+    def get_location_name(self, obj):
+        return obj.location_ref.name if obj.location_ref else None
+
+    def validate_location_ref(self, value):
+        if value is None:
+            return value
+        workspace = self.context["request"].user.get_workspace()
+        if value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only use a location from your own workspace."
+            )
+        return value
 
     def validate_duration_minutes(self, value):
         if value < 1:
@@ -966,22 +1018,29 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
 
 class WorkingHoursSerializer(serializers.ModelSerializer):
     staff_name = serializers.SerializerMethodField()
+    location_name = serializers.SerializerMethodField()
     staff = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role="staff"),
         required=False,
         allow_null=True,
     )
+    location = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.all(), required=False, allow_null=True
+    )
 
     class Meta:
         model = WorkingHours
         fields = [
-            "id", "workspace", "staff", "staff_name", "weekday",
-            "start_time", "end_time",
+            "id", "workspace", "staff", "staff_name", "location",
+            "location_name", "weekday", "start_time", "end_time",
         ]
         read_only_fields = ["workspace"]
 
     def get_staff_name(self, obj):
         return obj.staff.first_name if obj.staff else None
+
+    def get_location_name(self, obj):
+        return obj.location.name if obj.location else None
 
     def validate_staff(self, value):
         if value is None:
@@ -994,17 +1053,45 @@ class WorkingHoursSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_location(self, value):
+        if value is None:
+            return value
+        workspace = self.context["request"].user.get_workspace()
+        if value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only set hours for a location in your own "
+                "workspace."
+            )
+        return value
+
+    def validate(self, attrs):
+        staff = attrs.get(
+            "staff", self.instance.staff if self.instance else None
+        )
+        location = attrs.get(
+            "location", self.instance.location if self.instance else None
+        )
+        if staff and location:
+            raise serializers.ValidationError(
+                "Hours can be scoped to a team member or a location, "
+                "not both."
+            )
+        return attrs
+
 
 class BlockedTimeSerializer(serializers.ModelSerializer):
-    """A holiday (BOOK-11, staff and resource both left blank), a
-    specific staff block (BOOK-12, staff set), or a resource block
+    """A holiday (BOOK-11, staff/resource/location all left blank), a
+    specific staff block (BOOK-12, staff set), a resource block
     (BOOK-60, resource set - maintenance/cleaning/repair/private
-    use) - AvailabilityView and booking creation all treat any
-    overlapping row as fully unavailable, regardless of working/
-    resource hours. `staff` and `resource` are never both set.
+    use), or a location block (BOOK-06, location set - closed for a
+    holiday, renovation, or private event) - AvailabilityView and
+    booking creation all treat any overlapping row as fully
+    unavailable, regardless of working/resource hours. At most one
+    of `staff`/`resource`/`location` is ever set.
     """
     staff_name = serializers.SerializerMethodField()
     resource_name = serializers.SerializerMethodField()
+    location_name = serializers.SerializerMethodField()
     staff = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role="staff"),
         required=False,
@@ -1013,13 +1100,16 @@ class BlockedTimeSerializer(serializers.ModelSerializer):
     resource = serializers.PrimaryKeyRelatedField(
         queryset=Resource.objects.all(), required=False, allow_null=True
     )
+    location = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.all(), required=False, allow_null=True
+    )
 
     class Meta:
         model = BlockedTime
         fields = [
             "id", "workspace", "staff", "staff_name", "resource",
-            "resource_name", "block_type", "start_time",
-            "end_time", "reason", "created_at",
+            "resource_name", "location", "location_name", "block_type",
+            "start_time", "end_time", "reason", "created_at",
         ]
         read_only_fields = ["workspace", "created_at"]
 
@@ -1028,6 +1118,9 @@ class BlockedTimeSerializer(serializers.ModelSerializer):
 
     def get_resource_name(self, obj):
         return obj.resource.name if obj.resource else None
+
+    def get_location_name(self, obj):
+        return obj.location.name if obj.location else None
 
     def validate_staff(self, value):
         if value is None:
@@ -1050,6 +1143,16 @@ class BlockedTimeSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_location(self, value):
+        if value is None:
+            return value
+        workspace = self.context["request"].user.get_workspace()
+        if value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only block a location in your own workspace."
+            )
+        return value
+
     def validate(self, attrs):
         start = attrs.get(
             "start_time", self.instance.start_time if self.instance else None
@@ -1067,10 +1170,13 @@ class BlockedTimeSerializer(serializers.ModelSerializer):
         resource = attrs.get(
             "resource", self.instance.resource if self.instance else None
         )
-        if staff and resource:
+        location = attrs.get(
+            "location", self.instance.location if self.instance else None
+        )
+        if sum(bool(x) for x in (staff, resource, location)) > 1:
             raise serializers.ValidationError(
-                "A block can target a team member or a resource, "
-                "not both."
+                "A block can target a team member, a resource, or a "
+                "location, not more than one."
             )
         return attrs
 
@@ -1516,9 +1622,20 @@ class BookingSerializer(serializers.ModelSerializer):
                     start_time__lt=end,
                     end_time__gt=start,
                 )
-                blocked = blocked.filter(
-                    Q(staff__isnull=True) | Q(staff=staff)
-                ) if staff else blocked.filter(staff__isnull=True)
+                # Mirrors compute_service_availability's blocked_qs
+                # scoping exactly - a resource-specific block is
+                # never relevant here, and a location-specific block
+                # only applies when this service is tied to that
+                # location.
+                scope = Q(
+                    staff__isnull=True, resource__isnull=True,
+                    location__isnull=True,
+                )
+                if staff:
+                    scope |= Q(staff=staff)
+                if service.location_ref_id:
+                    scope |= Q(location=service.location_ref)
+                blocked = blocked.filter(scope)
                 if blocked.exists():
                     raise serializers.ValidationError(
                         "This time is unavailable."

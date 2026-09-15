@@ -40,8 +40,8 @@ from .resource_availability import (
 )
 from .models import (
     Activity, Approval, BlockedTime, Booking, Client, Document, Invoice,
-    Message, Milestone, PaymentMethod, Project, RecurringSeries, Resource,
-    ResourceAvailability, ResourceRental, ResourceRentalPolicy,
+    Location, Message, Milestone, PaymentMethod, Project, RecurringSeries,
+    Resource, ResourceAvailability, ResourceRental, ResourceRentalPolicy,
     ResourceReservation, Review, Service, ServiceQuestion,
     ServiceResourceRequirement, SubscriptionPlan, Task, User, WaitlistEntry,
     WorkingHours, Workspace,
@@ -62,6 +62,7 @@ from .serializers import (
     DeleteAccountSerializer,
     DocumentSerializer,
     InvoiceSerializer,
+    LocationSerializer,
     MeSerializer,
     MeUpdateSerializer,
     MessageSerializer,
@@ -1391,6 +1392,26 @@ class ClientViewSet(viewsets.ModelViewSet):
         return Client.objects.filter(id=user.client_profile.id)
 
 
+class LocationViewSet(viewsets.ModelViewSet):
+    """Full CRUD for a workspace's physical locations (BOOK-06) for
+    owners/staff. Clients get read-only access so a booking flow can
+    show which location a service is at.
+    """
+    serializer_class = LocationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ("owner", "staff"):
+            return Location.objects.filter(workspace=user.get_workspace())
+        return Location.objects.filter(
+            workspace=user.client_profile.workspace, is_active=True
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(workspace=self.request.user.get_workspace())
+
+
 class ServiceViewSet(viewsets.ModelViewSet):
     """Owners and staff manage services; clients get read-only
     access so they can see what's bookable.
@@ -2651,15 +2672,35 @@ def compute_service_availability(workspace, service_id, date_str, staff_id):
     # workspace default entirely once they have any of their
     # own, rather than filling gaps day-by-day - a staff member
     # who only ever set Monday hours is not implicitly available
-    # on the workspace's Tuesday hours too.
+    # on the workspace's Tuesday hours too. A service tied to a
+    # Location (BOOK-06) falls back one step further before the
+    # bare workspace default: that location's own hours (staff
+    # blank, location set), same "any of their own" rule.
     has_custom_hours = staff_member and WorkingHours.objects.filter(
         workspace=workspace, staff=staff_member
     ).exists()
-    windows = WorkingHours.objects.filter(
-        workspace=workspace,
-        weekday=weekday,
-        staff=staff_member if has_custom_hours else None,
+    has_location_hours = (
+        not has_custom_hours
+        and service.location_ref_id
+        and WorkingHours.objects.filter(
+            workspace=workspace, staff__isnull=True,
+            location=service.location_ref,
+        ).exists()
     )
+    if has_custom_hours:
+        windows = WorkingHours.objects.filter(
+            workspace=workspace, weekday=weekday, staff=staff_member,
+        )
+    elif has_location_hours:
+        windows = WorkingHours.objects.filter(
+            workspace=workspace, weekday=weekday, staff__isnull=True,
+            location=service.location_ref,
+        )
+    else:
+        windows = WorkingHours.objects.filter(
+            workspace=workspace, weekday=weekday, staff__isnull=True,
+            location__isnull=True,
+        )
     day_start_local = datetime.combine(
         target_date, datetime.min.time(), tzinfo=tz
     )
@@ -2682,11 +2723,19 @@ def compute_service_availability(workspace, service_id, date_str, staff_id):
         start_time__lt=day_end_local,
         end_time__gt=day_start_local,
     )
-    blocked_qs = (
-        blocked_qs.filter(Q(staff__isnull=True) | Q(staff=staff_member))
-        if staff_member
-        else blocked_qs.filter(staff__isnull=True)
-    )
+    # A true holiday (staff/resource/location all blank) always
+    # applies; a staff-specific block only applies when browsing
+    # that staff member's own calendar; a location-specific block
+    # only applies when this service is tied to that location; a
+    # resource-specific block is never relevant to service/staff
+    # availability at all (see resource_availability.py for where
+    # that's checked instead).
+    scope = Q(staff__isnull=True, resource__isnull=True, location__isnull=True)
+    if staff_member:
+        scope |= Q(staff=staff_member)
+    if service.location_ref_id:
+        scope |= Q(location=service.location_ref)
+    blocked_qs = blocked_qs.filter(scope)
     blocked_windows = [
         (
             b.start_time.astimezone(tz).replace(tzinfo=None),
@@ -2964,15 +3013,24 @@ def _get_public_workspace(workspace_slug):
 class PublicWorkspaceView(APIView):
     """GET /api/public/<slug>/ - a guest's landing view of a
     workspace's booking page: branding plus its bookable services.
+    Optional ?location=<id> narrows to services at just that
+    Location, for a workspace with more than one (BOOK-06).
     """
     permission_classes = [AllowAny]
 
     def get(self, request, workspace_slug):
         workspace = _get_public_workspace(workspace_slug)
         services = Service.objects.filter(workspace=workspace, is_active=True)
+        location_id = request.query_params.get("location")
+        if location_id:
+            services = services.filter(location_ref_id=location_id)
         return Response({
             "workspace": PublicWorkspaceSerializer(workspace).data,
             "services": ServiceSerializer(services, many=True).data,
+            "locations": LocationSerializer(
+                Location.objects.filter(workspace=workspace, is_active=True),
+                many=True,
+            ).data,
         })
 
 

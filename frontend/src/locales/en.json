@@ -272,6 +272,7 @@
     "noAnalyticsData": "Not enough data yet."
   },
   "publicBooking": {
+    "allLocations": "All locations",
     "notFound": "This booking page isn't available.",
     "notFoundDetail": "The link may be incorrect, or the business hasn't turned on online booking yet.",
     "yourName": "Your name",
@@ -560,6 +561,32 @@
     "brandColor": "Brand color",
     "colorUpdated": "Brand color updated.",
     "couldNotUpdateColor": "Could not update brand color."
+  },
+  "locations": {
+    "locationsTitle": "Locations",
+    "addLocation": "Add location",
+    "locationName": "Location name",
+    "addressOptional": "Address (optional)",
+    "phoneOptional": "Phone (optional)",
+    "createLocation": "Create location",
+    "locationCreated": "Location created.",
+    "couldNotCreateLocation": "Could not create location.",
+    "locationUpdated": "Location updated.",
+    "couldNotUpdateLocation": "Could not update location.",
+    "confirmDeleteLocation": "Delete this location?",
+    "locationDeleted": "Location deleted.",
+    "couldNotDeleteLocation": "Could not delete location.",
+    "noLocations": "No locations yet.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "active": "Active",
+    "inactive": "Inactive",
+    "noLocationLinked": "No location linked",
+    "hoursForLocation": "Location default hours",
+    "blockThisLocation": "Block a location instead",
+    "noLocationSelected": "No location"
   },
   "resources": {
     "resourcesTitle": "Resources",

@@ -23,6 +23,9 @@ router.register(
     "approvals", views.ApprovalViewSet, basename="approval"
 )
 router.register(
+    "locations", views.LocationViewSet, basename="location"
+)
+router.register(
     "services", views.ServiceViewSet, basename="service"
 )
 router.register(

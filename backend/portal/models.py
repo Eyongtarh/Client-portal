@@ -461,7 +461,17 @@ class Service(models.Model):
         blank=True,
         default="",
         help_text="Where an in-person appointment takes place "
-        "(BOOK-06), e.g. an address or room name.",
+        "(BOOK-06), e.g. an address or room name. Free-text fallback -"
+        " prefer location_ref once the workspace has real Locations.",
+    )
+    location_ref = models.ForeignKey(
+        "Location",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="services",
+        help_text="A structured Location, superseding the free-text "
+        "`location` field above when set.",
     )
     is_online = models.BooleanField(
         default=False,
@@ -616,8 +626,11 @@ class BlockedTime(models.Model):
     blocks that person. `resource`, added for BOOK-60, generalizes
     the same idea one step further: set it to block just that
     resource (maintenance, cleaning, repair, private use) instead
-    of a person or the whole workspace. `staff` and `resource` are
-    never both set on the same row.
+    of a person or the whole workspace. `location`, added for BOOK-
+    06, generalizes it a third way: block a whole physical location
+    (e.g. closed for a holiday, renovation, or private event) rather
+    than a person, a resource, or the entire workspace. At most one
+    of `staff`/`resource`/`location` is ever set on the same row.
     """
 
     class BlockType(models.TextChoices):
@@ -651,6 +664,16 @@ class BlockedTime(models.Model):
         help_text="Set to block only this resource (maintenance, "
         "cleaning, repair, private use) rather than a person or the "
         "whole workspace.",
+    )
+    location = models.ForeignKey(
+        "Location",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="blocked_times",
+        help_text="Set to block only this location (e.g. closed for "
+        "a holiday, renovation, or private event) rather than a "
+        "person, a resource, or the whole workspace.",
     )
     block_type = models.CharField(
         max_length=20, choices=BlockType.choices, default=BlockType.OTHER,
@@ -807,8 +830,17 @@ class Resource(models.Model):
     )
     location = models.CharField(
         max_length=255, blank=True, default="",
-        help_text="Free-text location for now (a first-class "
-        "Location entity is a later phase).",
+        help_text="Free-text fallback - prefer location_ref once the "
+        "workspace has real Locations.",
+    )
+    location_ref = models.ForeignKey(
+        "Location",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resources",
+        help_text="A structured Location, superseding the free-text "
+        "`location` field above when set.",
     )
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.AVAILABLE,
@@ -921,6 +953,18 @@ class WorkingHours(models.Model):
         "default for that person only (TEAM-05/BOOK-10) - "
         "AvailabilityView falls back to the workspace default rows "
         "when a staff member has none of their own.",
+    )
+    location = models.ForeignKey(
+        "Location",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="working_hours",
+        help_text="Only meaningful when `staff` is blank - a "
+        "location's own default hours, which a service linked to "
+        "that location falls back to when its staff member has no "
+        "personal hours, before falling further back to the "
+        "workspace-wide default (staff blank, location blank).",
     )
     weekday = models.IntegerField(choices=Weekday.choices)
     start_time = models.TimeField()
@@ -1617,6 +1661,40 @@ class ResourceGroup(models.Model):
     )
     combined_capacity = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Location(models.Model):
+    """A first-class physical location a workspace operates from
+    (BOOK-06) - a shop, studio, office, or branch. Services and
+    Resources can each optionally link to one via `location_ref`;
+    their older free-text `location` CharField stays exactly as it
+    was for anyone who hasn't switched to a structured Location, so
+    adding this model changes nothing for an existing workspace
+    until they actually create one and link something to it.
+    WorkingHours and BlockedTime rows can also be scoped to a
+    Location the same way they're already scoped to a staff member
+    or a resource - see resource_availability.py's fallback-chain
+    reasoning for how a location's own default hours sit between a
+    staff member's personal hours and the workspace-wide default.
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="locations"
+    )
+    name = models.CharField(max_length=255)
+    address = models.TextField(blank=True, default="")
+    phone = models.CharField(max_length=50, blank=True, default="")
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Hides a closed/retired location from booking "
+        "flows without deleting its history.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
 
     def __str__(self):
         return self.name

@@ -272,6 +272,7 @@
     "noAnalyticsData": "Pas encore assez de donn\u00e9es."
   },
   "publicBooking": {
+    "allLocations": "Tous les emplacements",
     "notFound": "Cette page de r\u00e9servation n'est pas disponible.",
     "notFoundDetail": "Le lien est peut-\u00eatre incorrect, ou l'entreprise n'a pas encore activ\u00e9 la r\u00e9servation en ligne.",
     "yourName": "Votre nom",
@@ -560,6 +561,32 @@
     "brandColor": "Couleur de marque",
     "colorUpdated": "Couleur de marque mise \u00e0 jour.",
     "couldNotUpdateColor": "Impossible de mettre \u00e0 jour la couleur de marque."
+  },
+  "locations": {
+    "locationsTitle": "Emplacements",
+    "addLocation": "Ajouter un emplacement",
+    "locationName": "Nom de l'emplacement",
+    "addressOptional": "Adresse (optionnel)",
+    "phoneOptional": "T\u00e9l\u00e9phone (optionnel)",
+    "createLocation": "Cr\u00e9er l'emplacement",
+    "locationCreated": "Emplacement cr\u00e9\u00e9.",
+    "couldNotCreateLocation": "Impossible de cr\u00e9er l'emplacement.",
+    "locationUpdated": "Emplacement mis \u00e0 jour.",
+    "couldNotUpdateLocation": "Impossible de mettre \u00e0 jour l'emplacement.",
+    "confirmDeleteLocation": "Supprimer cet emplacement\u00a0?",
+    "locationDeleted": "Emplacement supprim\u00e9.",
+    "couldNotDeleteLocation": "Impossible de supprimer l'emplacement.",
+    "noLocations": "Aucun emplacement pour le moment.",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "noLocationLinked": "Aucun emplacement li\u00e9",
+    "hoursForLocation": "Horaires par d\u00e9faut de l'emplacement",
+    "blockThisLocation": "Bloquer un emplacement \u00e0 la place",
+    "noLocationSelected": "Aucun emplacement"
   },
   "resources": {
     "resourcesTitle": "Ressources",

@@ -1,10 +1,10 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import (
-    BlockedTime, Client, ClientInvite, Resource, ResourceAvailability,
-    ResourceRental, ResourceRentalPolicy, ResourceReservation,
-    ServiceResourceRequirement, User, Workspace, Service, Booking,
-    WorkingHours,
+    BlockedTime, Client, ClientInvite, Location, Resource,
+    ResourceAvailability, ResourceRental, ResourceRentalPolicy,
+    ResourceReservation, ServiceResourceRequirement, User, Workspace,
+    Service, Booking, WorkingHours,
 )
 
 
@@ -33,6 +33,7 @@ admin.site.register(Service)
 admin.site.register(Booking)
 admin.site.register(WorkingHours)
 admin.site.register(BlockedTime)
+admin.site.register(Location)
 admin.site.register(Resource)
 admin.site.register(ResourceAvailability)
 admin.site.register(ResourceReservation)

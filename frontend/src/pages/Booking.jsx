@@ -104,6 +104,7 @@ export default function Booking() {
         </MobileNav>
       </header>
       <main id="main-content" className="max-w-2xl mx-auto px-8 py-8 space-y-6">
+        <LocationsSection />
         <ServicesSection />
         <ResourcesSection />
         <ResourceRulesSection />
@@ -310,6 +311,292 @@ function SchedulingRuleFields({
   );
 }
 
+// A workspace's physical locations (BOOK-06) - shops, studios,
+// branches. Services and resources can each optionally link to one
+// (see their own sections below); mounted first since it's the
+// list those pickers read from.
+function LocationsSection() {
+  const { t } = useTranslation();
+  const [locations, setLocations] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [statusMsg, setStatusMsg] = useState(null);
+
+  async function load() {
+    const res = await api.get("/locations/");
+    setLocations(res.data);
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function onCreate(e) {
+    e.preventDefault();
+    try {
+      await api.post("/locations/", { name, address, phone });
+      setName("");
+      setAddress("");
+      setPhone("");
+      setShowForm(false);
+      setStatusMsg({ key: "locations.locationCreated", type: "success" });
+      load();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "locations.couldNotCreateLocation", type: "error" },
+      );
+    }
+  }
+
+  function startEdit(location) {
+    setEditingId(location.id);
+    setEditName(location.name);
+    setEditAddress(location.address || "");
+    setEditPhone(location.phone || "");
+    setEditIsActive(location.is_active);
+  }
+  function cancelEdit() {
+    setEditingId(null);
+  }
+  async function saveEdit(locationId) {
+    try {
+      await api.patch(`/locations/${locationId}/`, {
+        name: editName,
+        address: editAddress,
+        phone: editPhone,
+        is_active: editIsActive,
+      });
+      setEditingId(null);
+      setStatusMsg({ key: "locations.locationUpdated", type: "success" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "locations.couldNotUpdateLocation",
+        type: "error",
+      });
+    }
+  }
+
+  async function deleteLocation(locationId) {
+    if (!window.confirm(t("locations.confirmDeleteLocation"))) return;
+    try {
+      await api.delete(`/locations/${locationId}/`);
+      setStatusMsg({ key: "locations.locationDeleted", type: "error" });
+      load();
+    } catch (err) {
+      setStatusMsg({
+        key: "locations.couldNotDeleteLocation",
+        type: "error",
+      });
+    }
+  }
+
+  return (
+    <section className="bg-surface border border-line rounded-2xl p-6">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="font-medium text-ink">{t("locations.locationsTitle")}</h2>
+        <button
+          onClick={() => {
+            setShowForm(!showForm);
+            setStatusMsg(null);
+          }}
+          aria-expanded={showForm}
+          aria-label={t("locations.addLocation")}
+          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+        >
+          <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+          {t("locations.addLocation")}
+        </button>
+      </div>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
+        </div>
+      )}
+
+      {showForm && (
+        <form
+          onSubmit={onCreate}
+          className="border border-line rounded-lg p-4 mb-4 space-y-2"
+        >
+          <label htmlFor="loc-name" className="sr-only">
+            {t("locations.locationName")}
+          </label>
+          <input
+            id="loc-name"
+            required
+            placeholder={t("locations.locationName")}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+          <label htmlFor="loc-address" className="sr-only">
+            {t("locations.addressOptional")}
+          </label>
+          <textarea
+            id="loc-address"
+            rows={2}
+            placeholder={t("locations.addressOptional")}
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+          <label htmlFor="loc-phone" className="sr-only">
+            {t("locations.phoneOptional")}
+          </label>
+          <input
+            id="loc-phone"
+            placeholder={t("locations.phoneOptional")}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+          />
+          <button
+            aria-label={t("locations.createLocation")}
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+            {t("locations.createLocation")}
+          </button>
+        </form>
+      )}
+
+      <ul className="divide-y divide-line">
+        {locations.map((location) => (
+          <li key={location.id} className="py-3 text-sm">
+            {editingId === location.id ? (
+              <div className="border border-brand-200 rounded-lg p-3 space-y-2">
+                <label
+                  htmlFor={`edit-loc-name-${location.id}`}
+                  className="sr-only"
+                >
+                  {t("locations.locationName")}
+                </label>
+                <input
+                  id={`edit-loc-name-${location.id}`}
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <label
+                  htmlFor={`edit-loc-address-${location.id}`}
+                  className="sr-only"
+                >
+                  {t("locations.addressOptional")}
+                </label>
+                <textarea
+                  id={`edit-loc-address-${location.id}`}
+                  rows={2}
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <label
+                  htmlFor={`edit-loc-phone-${location.id}`}
+                  className="sr-only"
+                >
+                  {t("locations.phoneOptional")}
+                </label>
+                <input
+                  id={`edit-loc-phone-${location.id}`}
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+                <label className="flex items-center gap-1.5 text-sm cursor-pointer w-fit">
+                  <input
+                    type="checkbox"
+                    checked={editIsActive}
+                    onChange={(e) => setEditIsActive(e.target.checked)}
+                    className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                  />
+                  {t("locations.active")}
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => saveEdit(location.id)}
+                    aria-label={t("locations.save")}
+                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                    {t("locations.save")}
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    aria-label={t("locations.cancel")}
+                    className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                    {t("locations.cancel")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-start gap-3">
+                <div>
+                  <span className="font-medium">{location.name}</span>
+                  {!location.is_active && (
+                    <span className="ml-1.5 text-xs bg-surface-2 text-ink-soft px-1.5 py-0.5 rounded">
+                      {t("locations.inactive")}
+                    </span>
+                  )}
+                  {location.address && (
+                    <p className="text-ink-soft mt-0.5 whitespace-pre-wrap">
+                      {location.address}
+                    </p>
+                  )}
+                  {location.phone && (
+                    <p className="text-ink-soft mt-0.5">{location.phone}</p>
+                  )}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => startEdit(location)}
+                    aria-label={`${t("locations.edit")} ${location.name}`}
+                    className="bg-brand-50 text-brand-700 text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                    {t("locations.edit")}
+                  </button>
+                  <button
+                    onClick={() => deleteLocation(location.id)}
+                    aria-label={`${t("locations.delete")} ${location.name}`}
+                    className="bg-red-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  >
+                    <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                    {t("locations.delete")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+        {locations.length === 0 && (
+          <p className="text-ink-soft text-sm">{t("locations.noLocations")}</p>
+        )}
+      </ul>
+    </section>
+  );
+}
+
 function ServicesSection() {
   const { t } = useTranslation();
   const [services, setServices] = useState([]);
@@ -333,7 +620,9 @@ function ServicesSection() {
   const [newPhotoPreview, setNewPhotoPreview] = useState(null);
   const [staffIds, setStaffIds] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [location, setLocation] = useState("");
+  const [locationRef, setLocationRef] = useState("");
   const [isOnline, setIsOnline] = useState(false);
   const [meetingLink, setMeetingLink] = useState("");
   const [instructions, setInstructions] = useState("");
@@ -354,6 +643,7 @@ function ServicesSection() {
   const [editFeePercent, setEditFeePercent] = useState("");
   const [editStaffIds, setEditStaffIds] = useState([]);
   const [editLocation, setEditLocation] = useState("");
+  const [editLocationRef, setEditLocationRef] = useState("");
   const [editIsOnline, setEditIsOnline] = useState(false);
   const [editMeetingLink, setEditMeetingLink] = useState("");
   const [editInstructions, setEditInstructions] = useState("");
@@ -374,6 +664,10 @@ function ServicesSection() {
     const res = await api.get("/team/");
     setTeamMembers(res.data);
   }
+  async function loadLocations() {
+    const res = await api.get("/locations/");
+    setLocations(res.data);
+  }
   async function loadWorkspace() {
     const res = await api.get("/workspace/");
     setWorkspace(res.data);
@@ -390,6 +684,7 @@ function ServicesSection() {
     loadWorkspace();
     loadCountries();
     loadTeamMembers();
+    loadLocations();
     const params = new URLSearchParams(window.location.search);
     const stripeConnect = params.get("stripe_connect");
     if (stripeConnect === "success" || stripeConnect === "error") {
@@ -471,6 +766,7 @@ function ServicesSection() {
       late_cancellation_fee_percent: feePercent || null,
       staff: staffIds,
       location,
+      location_ref: locationRef || null,
       is_online: isOnline,
       meeting_link: isOnline ? meetingLink : "",
       instructions,
@@ -502,6 +798,7 @@ function ServicesSection() {
     setNewPhotoPreview(null);
     setStaffIds([]);
     setLocation("");
+    setLocationRef("");
     setIsOnline(false);
     setMeetingLink("");
     setInstructions("");
@@ -538,6 +835,7 @@ function ServicesSection() {
     setEditFeePercent(service.late_cancellation_fee_percent || "");
     setEditStaffIds(service.staff || []);
     setEditLocation(service.location || "");
+    setEditLocationRef(service.location_ref ? String(service.location_ref) : "");
     setEditIsOnline(service.is_online || false);
     setEditMeetingLink(service.meeting_link || "");
     setEditInstructions(service.instructions || "");
@@ -568,6 +866,7 @@ function ServicesSection() {
       late_cancellation_fee_percent: editFeePercent || null,
       staff: editStaffIds,
       location: editLocation,
+      location_ref: editLocationRef || null,
       is_online: editIsOnline,
       meeting_link: editIsOnline ? editMeetingLink : "",
       instructions: editInstructions,
@@ -888,6 +1187,26 @@ function ServicesSection() {
               className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
           </div>
+          {locations.length > 0 && (
+            <>
+              <label htmlFor="service-location-ref" className="sr-only">
+                {t("locations.locationsTitle")}
+              </label>
+              <select
+                id="service-location-ref"
+                value={locationRef}
+                onChange={(e) => setLocationRef(e.target.value)}
+                className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                <option value="">{t("locations.noLocationLinked")}</option>
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
           <label htmlFor="service-location" className="sr-only">
             {t("booking.serviceLocation")}
           </label>
@@ -1050,6 +1369,29 @@ function ServicesSection() {
                     className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
                 </div>
+                {locations.length > 0 && (
+                  <>
+                    <label
+                      htmlFor={`edit-location-ref-${service.id}`}
+                      className="sr-only"
+                    >
+                      {t("locations.locationsTitle")}
+                    </label>
+                    <select
+                      id={`edit-location-ref-${service.id}`}
+                      value={editLocationRef}
+                      onChange={(e) => setEditLocationRef(e.target.value)}
+                      className="w-full mb-2 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    >
+                      <option value="">{t("locations.noLocationLinked")}</option>
+                      {locations.map((loc) => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.name}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
                 <label
                   htmlFor={`edit-location-${service.id}`}
                   className="sr-only"
@@ -1535,7 +1877,9 @@ function ResourcesSection() {
   const [type, setType] = useState("other");
   const [customType, setCustomType] = useState("");
   const [category, setCategory] = useState("");
+  const [locations, setLocations] = useState([]);
   const [location, setLocation] = useState("");
+  const [locationRef, setLocationRef] = useState("");
   const [reservationMode, setReservationMode] = useState("reservation");
   const [pricingMode, setPricingMode] = useState("none");
   const [capacity, setCapacity] = useState("");
@@ -1556,6 +1900,7 @@ function ResourcesSection() {
   const [editCustomType, setEditCustomType] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editLocation, setEditLocation] = useState("");
+  const [editLocationRef, setEditLocationRef] = useState("");
   const [editStatus, setEditStatus] = useState("available");
   const [editReservationMode, setEditReservationMode] = useState("reservation");
   const [editPricingMode, setEditPricingMode] = useState("none");
@@ -1577,9 +1922,14 @@ function ResourcesSection() {
     const res = await api.get("/services/");
     setServices(res.data);
   }
+  async function loadLocations() {
+    const res = await api.get("/locations/");
+    setLocations(res.data);
+  }
   useEffect(() => {
     load();
     loadServices();
+    loadLocations();
   }, []);
 
   function toggleSelected(list, setList, serviceId) {
@@ -1610,6 +1960,7 @@ function ResourcesSection() {
         custom_type: type === "custom" ? customType : "",
         category,
         location,
+        location_ref: locationRef || null,
         reservation_mode: reservationMode,
         pricing_mode: pricingMode,
         capacity: capacity || null,
@@ -1641,6 +1992,7 @@ function ResourcesSection() {
       setCustomType("");
       setCategory("");
       setLocation("");
+      setLocationRef("");
       setReservationMode("reservation");
       setPricingMode("none");
       setCapacity("");
@@ -1686,6 +2038,7 @@ function ResourcesSection() {
     setEditCustomType(resource.custom_type || "");
     setEditCategory(resource.category || "");
     setEditLocation(resource.location || "");
+    setEditLocationRef(resource.location_ref ? String(resource.location_ref) : "");
     setEditStatus(resource.status || "available");
     setEditReservationMode(resource.reservation_mode || "reservation");
     setEditPricingMode(resource.pricing_mode || "none");
@@ -1713,6 +2066,7 @@ function ResourcesSection() {
         custom_type: editType === "custom" ? editCustomType : "",
         category: editCategory,
         location: editLocation,
+        location_ref: editLocationRef || null,
         status: editStatus,
         reservation_mode: editReservationMode,
         pricing_mode: editPricingMode,
@@ -1973,6 +2327,26 @@ function ResourcesSection() {
               onChange={(e) => setLocation(e.target.value)}
               className="flex-1 min-w-32 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
+            {locations.length > 0 && (
+              <>
+                <label htmlFor="resource-location-ref" className="sr-only">
+                  {t("locations.locationsTitle")}
+                </label>
+                <select
+                  id="resource-location-ref"
+                  value={locationRef}
+                  onChange={(e) => setLocationRef(e.target.value)}
+                  className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  <option value="">{t("locations.noLocationLinked")}</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2 mb-3">
@@ -2285,6 +2659,29 @@ function ResourcesSection() {
                     onChange={(e) => setEditLocation(e.target.value)}
                     className="flex-1 min-w-32 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
+                  {locations.length > 0 && (
+                    <>
+                      <label
+                        htmlFor={`edit-resource-location-ref-${resource.id}`}
+                        className="sr-only"
+                      >
+                        {t("locations.locationsTitle")}
+                      </label>
+                      <select
+                        id={`edit-resource-location-ref-${resource.id}`}
+                        value={editLocationRef}
+                        onChange={(e) => setEditLocationRef(e.target.value)}
+                        className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      >
+                        <option value="">{t("locations.noLocationLinked")}</option>
+                        {locations.map((loc) => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.name}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -2630,16 +3027,19 @@ function WorkingHoursSection() {
   const { t } = useTranslation();
   const [hours, setHours] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [weekday, setWeekday] = useState("0");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [staffId, setStaffId] = useState("");
+  const [locationId, setLocationId] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editWeekday, setEditWeekday] = useState("0");
   const [editStartTime, setEditStartTime] = useState("09:00");
   const [editEndTime, setEditEndTime] = useState("17:00");
   const [editStaffId, setEditStaffId] = useState("");
+  const [editLocationId, setEditLocationId] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
 
   async function load() {
@@ -2650,9 +3050,14 @@ function WorkingHoursSection() {
     const res = await api.get("/team/");
     setTeamMembers(res.data);
   }
+  async function loadLocations() {
+    const res = await api.get("/locations/");
+    setLocations(res.data);
+  }
   useEffect(() => {
     load();
     loadTeamMembers();
+    loadLocations();
   }, []);
 
   async function onCreate(e) {
@@ -2662,9 +3067,11 @@ function WorkingHoursSection() {
       start_time: `${startTime}:00`,
       end_time: `${endTime}:00`,
       staff: staffId || null,
+      location: locationId || null,
     });
     setShowForm(false);
     setStaffId("");
+    setLocationId("");
     setStatusMsg({
       key: "booking.workingHoursAdded",
       type: "success",
@@ -2678,6 +3085,7 @@ function WorkingHoursSection() {
     setEditStartTime(window.start_time.slice(0, 5));
     setEditEndTime(window.end_time.slice(0, 5));
     setEditStaffId(window.staff ? String(window.staff) : "");
+    setEditLocationId(window.location ? String(window.location) : "");
   }
 
   function cancelEdit() {
@@ -2690,6 +3098,7 @@ function WorkingHoursSection() {
       start_time: `${editStartTime}:00`,
       end_time: `${editEndTime}:00`,
       staff: editStaffId || null,
+      location: editLocationId || null,
     });
     setEditingId(null);
     setStatusMsg({
@@ -2806,13 +3215,42 @@ function WorkingHoursSection() {
               <select
                 id="wh-staff"
                 value={staffId}
-                onChange={(e) => setStaffId(e.target.value)}
+                onChange={(e) => {
+                  setStaffId(e.target.value);
+                  if (e.target.value) setLocationId("");
+                }}
                 className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
               >
                 <option value="">{t("booking.workspaceDefaultHours")}</option>
                 {teamMembers.map((member) => (
                   <option key={member.id} value={member.id}>
                     {member.first_name || member.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {locations.length > 0 && (
+            <div>
+              <label
+                htmlFor="wh-location"
+                className="block text-xs text-ink-soft mb-1"
+              >
+                {t("locations.hoursForLocation")}
+              </label>
+              <select
+                id="wh-location"
+                value={locationId}
+                onChange={(e) => {
+                  setLocationId(e.target.value);
+                  if (e.target.value) setStaffId("");
+                }}
+                className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              >
+                <option value="">{t("booking.workspaceDefaultHours")}</option>
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name}
                   </option>
                 ))}
               </select>
@@ -2894,7 +3332,10 @@ function WorkingHoursSection() {
                     <select
                       id={`edit-wh-staff-${window.id}`}
                       value={editStaffId}
-                      onChange={(e) => setEditStaffId(e.target.value)}
+                      onChange={(e) => {
+                        setEditStaffId(e.target.value);
+                        if (e.target.value) setEditLocationId("");
+                      }}
                       className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                     >
                       <option value="">
@@ -2903,6 +3344,34 @@ function WorkingHoursSection() {
                       {teamMembers.map((member) => (
                         <option key={member.id} value={member.id}>
                           {member.first_name || member.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {locations.length > 0 && (
+                  <div>
+                    <label
+                      htmlFor={`edit-wh-location-${window.id}`}
+                      className="block text-xs text-ink-soft mb-1"
+                    >
+                      {t("locations.hoursForLocation")}
+                    </label>
+                    <select
+                      id={`edit-wh-location-${window.id}`}
+                      value={editLocationId}
+                      onChange={(e) => {
+                        setEditLocationId(e.target.value);
+                        if (e.target.value) setEditStaffId("");
+                      }}
+                      className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    >
+                      <option value="">
+                        {t("booking.workspaceDefaultHours")}
+                      </option>
+                      {locations.map((loc) => (
+                        <option key={loc.id} value={loc.id}>
+                          {loc.name}
                         </option>
                       ))}
                     </select>
@@ -2934,6 +3403,7 @@ function WorkingHoursSection() {
                   {"\u2013"}
                   {window.end_time.slice(0, 5)}
                   {window.staff_name && ` \u00b7 ${window.staff_name}`}
+                  {window.location_name && ` \u00b7 ${window.location_name}`}
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -3302,6 +3772,7 @@ function BlockedTimeSection() {
   const [blockedTimes, setBlockedTimes] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [resources, setResources] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("00:00");
@@ -3309,6 +3780,7 @@ function BlockedTimeSection() {
   const [endTime, setEndTime] = useState("23:59");
   const [staffId, setStaffId] = useState("");
   const [resourceId, setResourceId] = useState("");
+  const [locationId, setLocationId] = useState("");
   const [blockType, setBlockType] = useState("other");
   const [reason, setReason] = useState("");
   const [editingId, setEditingId] = useState(null);
@@ -3318,6 +3790,7 @@ function BlockedTimeSection() {
   const [editEndTime, setEditEndTime] = useState("23:59");
   const [editStaffId, setEditStaffId] = useState("");
   const [editResourceId, setEditResourceId] = useState("");
+  const [editLocationId, setEditLocationId] = useState("");
   const [editBlockType, setEditBlockType] = useState("other");
   const [editReason, setEditReason] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
@@ -3334,10 +3807,15 @@ function BlockedTimeSection() {
     const res = await api.get("/resources/");
     setResources(res.data);
   }
+  async function loadLocations() {
+    const res = await api.get("/locations/");
+    setLocations(res.data);
+  }
   useEffect(() => {
     load();
     loadTeamMembers();
     loadResources();
+    loadLocations();
   }, []);
 
   async function onCreate(e) {
@@ -3348,6 +3826,7 @@ function BlockedTimeSection() {
         end_time: new Date(`${endDate}T${endTime}:00`).toISOString(),
         staff: staffId || null,
         resource: resourceId || null,
+        location: locationId || null,
         block_type: blockType,
         reason,
       });
@@ -3358,6 +3837,7 @@ function BlockedTimeSection() {
       setEndTime("23:59");
       setStaffId("");
       setResourceId("");
+      setLocationId("");
       setBlockType("other");
       setReason("");
       setStatusMsg({ key: "booking.blockedTimeAdded", type: "success" });
@@ -3383,6 +3863,7 @@ function BlockedTimeSection() {
     setEditEndTime(end.toTimeString().slice(0, 5));
     setEditStaffId(entry.staff ? String(entry.staff) : "");
     setEditResourceId(entry.resource ? String(entry.resource) : "");
+    setEditLocationId(entry.location ? String(entry.location) : "");
     setEditBlockType(entry.block_type || "other");
     setEditReason(entry.reason || "");
   }
@@ -3399,6 +3880,7 @@ function BlockedTimeSection() {
       end_time: new Date(`${editEndDate}T${editEndTime}:00`).toISOString(),
       staff: editStaffId || null,
       resource: editResourceId || null,
+      location: editLocationId || null,
       block_type: editBlockType,
       reason: editReason,
     });
@@ -3515,7 +3997,10 @@ function BlockedTimeSection() {
                 value={staffId}
                 onChange={(e) => {
                   setStaffId(e.target.value);
-                  if (e.target.value) setResourceId("");
+                  if (e.target.value) {
+                    setResourceId("");
+                    setLocationId("");
+                  }
                 }}
                 className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
@@ -3538,7 +4023,10 @@ function BlockedTimeSection() {
                 value={resourceId}
                 onChange={(e) => {
                   setResourceId(e.target.value);
-                  if (e.target.value) setStaffId("");
+                  if (e.target.value) {
+                    setStaffId("");
+                    setLocationId("");
+                  }
                 }}
                 className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
@@ -3546,6 +4034,32 @@ function BlockedTimeSection() {
                 {resources.map((resource) => (
                   <option key={resource.id} value={resource.id}>
                     {resource.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {locations.length > 0 && (
+            <div>
+              <label htmlFor="bt-location" className="block text-xs text-ink-soft mb-1">
+                {t("locations.blockThisLocation")}
+              </label>
+              <select
+                id="bt-location"
+                value={locationId}
+                onChange={(e) => {
+                  setLocationId(e.target.value);
+                  if (e.target.value) {
+                    setStaffId("");
+                    setResourceId("");
+                  }
+                }}
+                className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                <option value="">{t("locations.noLocationSelected")}</option>
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name}
                   </option>
                 ))}
               </select>
@@ -3635,7 +4149,10 @@ function BlockedTimeSection() {
                     value={editStaffId}
                     onChange={(e) => {
                       setEditStaffId(e.target.value);
-                      if (e.target.value) setEditResourceId("");
+                      if (e.target.value) {
+                        setEditResourceId("");
+                        setEditLocationId("");
+                      }
                     }}
                     className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
@@ -3653,7 +4170,10 @@ function BlockedTimeSection() {
                     value={editResourceId}
                     onChange={(e) => {
                       setEditResourceId(e.target.value);
-                      if (e.target.value) setEditStaffId("");
+                      if (e.target.value) {
+                        setEditStaffId("");
+                        setEditLocationId("");
+                      }
                     }}
                     className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
@@ -3661,6 +4181,27 @@ function BlockedTimeSection() {
                     {resources.map((resource) => (
                       <option key={resource.id} value={resource.id}>
                         {resource.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {locations.length > 0 && (
+                  <select
+                    aria-label={t("locations.blockThisLocation")}
+                    value={editLocationId}
+                    onChange={(e) => {
+                      setEditLocationId(e.target.value);
+                      if (e.target.value) {
+                        setEditStaffId("");
+                        setEditResourceId("");
+                      }
+                    }}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    <option value="">{t("locations.noLocationSelected")}</option>
+                    {locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.name}
                       </option>
                     ))}
                   </select>
@@ -3704,6 +4245,7 @@ function BlockedTimeSection() {
                   {new Date(entry.end_time).toLocaleString()}
                   {" · "}
                   {entry.resource_name ||
+                    entry.location_name ||
                     entry.staff_name ||
                     t("booking.wholeWorkspace")}
                   {entry.block_type && entry.block_type !== "other" && (

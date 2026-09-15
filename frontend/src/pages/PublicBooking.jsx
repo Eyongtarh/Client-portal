@@ -35,6 +35,10 @@ export default function PublicBooking() {
   const [notFound, setNotFound] = useState(false);
   const [workspace, setWorkspace] = useState(null);
   const [services, setServices] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [locationFilter, setLocationFilter] = useState(
+    searchParams.get("location") || "",
+  );
 
   const [selectedService, setSelectedService] = useState(preselectedService);
   const [selectedStaff, setSelectedStaff] = useState("");
@@ -57,6 +61,7 @@ export default function PublicBooking() {
       .then((res) => {
         setWorkspace(res.data.workspace);
         setServices(res.data.services);
+        setLocations(res.data.locations || []);
         applyBrandColor(res.data.workspace.brand_color);
       })
       .catch(() => setNotFound(true))
@@ -79,6 +84,9 @@ export default function PublicBooking() {
       .finally(() => setLoadingSlots(false));
   }, [workspaceSlug, selectedService, selectedStaff, date]);
 
+  const visibleServices = locationFilter
+    ? services.filter((s) => String(s.location_ref) === locationFilter)
+    : services;
   const service = services.find((s) => String(s.id) === selectedService);
   const requiresPayment =
     service && service.payment_requirement && service.payment_requirement !== "none";
@@ -184,11 +192,37 @@ export default function PublicBooking() {
           </div>
         ) : (
           <div className="bg-surface border border-line rounded-2xl p-6">
+            {locations.length > 1 && (
+              <div className="mb-3">
+                <label
+                  htmlFor="pub-location-filter"
+                  className="block text-xs text-ink-soft mb-1"
+                >
+                  {t("locations.locationsTitle")}
+                </label>
+                <select
+                  id="pub-location-filter"
+                  value={locationFilter}
+                  onChange={(e) => {
+                    setLocationFilter(e.target.value);
+                    setSelectedService("");
+                  }}
+                  className="w-full px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                >
+                  <option value="">{t("publicBooking.allLocations")}</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <p className="text-xs text-ink-soft mb-2">
               {t("booking.selectService")}
             </p>
             <div className="space-y-2 mb-4">
-              {services.map((svc) => (
+              {visibleServices.map((svc) => (
                 <button
                   key={svc.id}
                   onClick={() => {
@@ -229,10 +263,10 @@ export default function PublicBooking() {
                         {svc.description}
                       </p>
                     )}
-                    {svc.location && (
+                    {(svc.location_name || svc.location) && (
                       <p className="text-xs text-ink-soft mt-0.5">
                         <FiMapPin className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />
-                        {svc.location}
+                        {svc.location_name || svc.location}
                       </p>
                     )}
                     {svc.is_online && (
@@ -244,7 +278,7 @@ export default function PublicBooking() {
                   </div>
                 </button>
               ))}
-              {services.length === 0 && (
+              {visibleServices.length === 0 && (
                 <p className="text-ink-soft text-sm">{t("booking.noServices")}</p>
               )}
             </div>
