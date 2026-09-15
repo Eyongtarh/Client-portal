@@ -5,12 +5,16 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  FiBell,
+  FiBox,
   FiBriefcase,
   FiCalendar,
   FiCheckCircle,
   FiCreditCard,
   FiFileText,
+  FiMapPin,
   FiMessageSquare,
+  FiStar,
   FiTag,
   FiUsers,
 } from "react-icons/fi";
@@ -25,11 +29,15 @@ const STEPS = ["step1", "step2", "step3"];
 const FEATURES = [
   ["featureProjectsTitle", "featureProjectsBody", FiBriefcase],
   ["featureBookingsTitle", "featureBookingsBody", FiCalendar],
+  ["featureResourcesTitle", "featureResourcesBody", FiBox],
+  ["featureLocationsTitle", "featureLocationsBody", FiMapPin],
   ["featureInvoicesTitle", "featureInvoicesBody", FiCreditCard],
   ["featureApprovalsTitle", "featureApprovalsBody", FiCheckCircle],
   ["featureDocsTitle", "featureDocsBody", FiFileText],
   ["featureMessagesTitle", "featureMessagesBody", FiMessageSquare],
   ["featureTeamTitle", "featureTeamBody", FiUsers],
+  ["featureFeedbackTitle", "featureFeedbackBody", FiStar],
+  ["featureNotificationsTitle", "featureNotificationsBody", FiBell],
   ["featureBrandingTitle", "featureBrandingBody", FiTag],
 ];
 
