@@ -5,19 +5,19 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  FiBell,
-  FiBox,
-  FiBriefcase,
-  FiCalendar,
-  FiCheckCircle,
-  FiCreditCard,
-  FiFileText,
-  FiMapPin,
-  FiMessageSquare,
-  FiStar,
-  FiTag,
-  FiUsers,
-} from "react-icons/fi";
+  FcAdvertising,
+  FcAlarmClock,
+  FcApproval,
+  FcCalendar,
+  FcConferenceCall,
+  FcDocument,
+  FcGlobe,
+  FcMoneyTransfer,
+  FcPackage,
+  FcSms,
+  FcSurvey,
+  FcWorkflow,
+} from "react-icons/fc";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import LogoMark from "../components/LogoMark.jsx";
@@ -26,19 +26,24 @@ import SkipLink from "../components/SkipLink.jsx";
 
 const STEPS = ["step1", "step2", "step3"];
 
+// Flat Color Icons (react-icons/fc) carry their own fixed palette
+// rather than following currentColor like the outline Fi set does,
+// so each one is picked to suit its card rather than recoloured -
+// see the icon container's own background decision below for how
+// they stay legible in both light and dark theme.
 const FEATURES = [
-  ["featureProjectsTitle", "featureProjectsBody", FiBriefcase],
-  ["featureBookingsTitle", "featureBookingsBody", FiCalendar],
-  ["featureResourcesTitle", "featureResourcesBody", FiBox],
-  ["featureLocationsTitle", "featureLocationsBody", FiMapPin],
-  ["featureInvoicesTitle", "featureInvoicesBody", FiCreditCard],
-  ["featureApprovalsTitle", "featureApprovalsBody", FiCheckCircle],
-  ["featureDocsTitle", "featureDocsBody", FiFileText],
-  ["featureMessagesTitle", "featureMessagesBody", FiMessageSquare],
-  ["featureTeamTitle", "featureTeamBody", FiUsers],
-  ["featureFeedbackTitle", "featureFeedbackBody", FiStar],
-  ["featureNotificationsTitle", "featureNotificationsBody", FiBell],
-  ["featureBrandingTitle", "featureBrandingBody", FiTag],
+  ["featureProjectsTitle", "featureProjectsBody", FcWorkflow],
+  ["featureBookingsTitle", "featureBookingsBody", FcCalendar],
+  ["featureResourcesTitle", "featureResourcesBody", FcPackage],
+  ["featureLocationsTitle", "featureLocationsBody", FcGlobe],
+  ["featureInvoicesTitle", "featureInvoicesBody", FcMoneyTransfer],
+  ["featureApprovalsTitle", "featureApprovalsBody", FcApproval],
+  ["featureDocsTitle", "featureDocsBody", FcDocument],
+  ["featureMessagesTitle", "featureMessagesBody", FcSms],
+  ["featureTeamTitle", "featureTeamBody", FcConferenceCall],
+  ["featureFeedbackTitle", "featureFeedbackBody", FcSurvey],
+  ["featureNotificationsTitle", "featureNotificationsBody", FcAlarmClock],
+  ["featureBrandingTitle", "featureBrandingBody", FcAdvertising],
 ];
 
 export default function Landing() {
@@ -128,8 +133,8 @@ export default function Landing() {
               className="animate-rise group bg-surface border border-line rounded-2xl p-6 transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg"
               style={{ animationDelay: `${0.1 + i * 0.05}s` }}
             >
-              <div className="w-10 h-10 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center mb-4 transition-colors group-hover:bg-brand-200">
-                <Icon aria-hidden="true" size={22} />
+              <div className="w-10 h-10 rounded-lg bg-white border border-line flex items-center justify-center mb-4 shadow-sm transition-shadow group-hover:shadow-md">
+                <Icon aria-hidden="true" size={24} />
               </div>
               <h3 className="font-semibold text-ink mb-1.5">
                 {t(`landing.${titleKey}`)}
