@@ -107,7 +107,8 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
         model = SubscriptionPlan
         fields = [
             "id", "name", "price_per_month", "max_clients",
-            "max_team_members",
+            "max_team_members", "max_projects", "max_bookings_per_month",
+            "max_storage_mb",
         ]
 
 
@@ -120,6 +121,10 @@ class WorkspaceSerializer(serializers.ModelSerializer):
     plan = SubscriptionPlanSerializer(read_only=True)
     client_count = serializers.SerializerMethodField()
     team_member_count = serializers.SerializerMethodField()
+    project_count = serializers.SerializerMethodField()
+    bookings_this_month_count = serializers.SerializerMethodField()
+    storage_used_mb = serializers.SerializerMethodField()
+    usage_warnings = serializers.SerializerMethodField()
     stripe_connected = serializers.SerializerMethodField()
 
     class Meta:
@@ -127,7 +132,9 @@ class WorkspaceSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "slug", "logo", "currency", "country", "timezone",
             "brand_color", "reminder_hours_before", "plan", "client_count",
-            "team_member_count", "stripe_connected", "public_booking_enabled",
+            "team_member_count", "project_count", "bookings_this_month_count",
+            "storage_used_mb", "usage_warnings", "stripe_connected",
+            "public_booking_enabled",
         ]
         read_only_fields = ["id", "slug"]
 
@@ -136,6 +143,41 @@ class WorkspaceSerializer(serializers.ModelSerializer):
 
     def get_team_member_count(self, obj):
         return obj.team_members.count()
+
+    def get_project_count(self, obj):
+        return obj.projects.count()
+
+    def get_bookings_this_month_count(self, obj):
+        return obj.bookings_this_month_count()
+
+    def get_storage_used_mb(self, obj):
+        return obj.storage_used_mb()
+
+    def get_usage_warnings(self, obj):
+        """LIMIT-02: which usage types are at 80%+ of the plan's
+        limit, so the frontend can show a warning banner without
+        having to duplicate this math against every limit field
+        itself. Empty list when there's no plan, no limit set on a
+        given type, or usage is comfortably under it.
+        """
+        plan = obj.plan
+        if not plan:
+            return []
+        warnings = []
+        checks = (
+            ("clients", plan.max_clients, obj.clients.count()),
+            ("team_members", plan.max_team_members, obj.team_members.count()),
+            ("projects", plan.max_projects, obj.projects.count()),
+            (
+                "bookings_this_month", plan.max_bookings_per_month,
+                obj.bookings_this_month_count(),
+            ),
+            ("storage", plan.max_storage_mb, obj.storage_used_mb()),
+        )
+        for key, limit, used in checks:
+            if limit and used / limit >= 0.8:
+                warnings.append(key)
+        return warnings
 
     def get_stripe_connected(self, obj):
         # stripe_account_id itself is never exposed to the frontend -
@@ -196,6 +238,29 @@ class ChangePlanSerializer(serializers.Serializer):
                 f"plan allows. Remove some team members before "
                 f"switching."
             )
+        if (
+            value.max_projects is not None
+            and workspace.projects.count() > value.max_projects
+        ):
+            raise serializers.ValidationError(
+                f"You have more projects than the {value.name} plan "
+                f"allows. Archive or remove some projects before "
+                f"switching."
+            )
+        if (
+            value.max_storage_mb is not None
+            and workspace.storage_used_mb() > value.max_storage_mb
+        ):
+            raise serializers.ValidationError(
+                f"You're using more storage than the {value.name} "
+                f"plan allows. Remove some documents or attachments "
+                f"before switching."
+            )
+        # Bookings-this-month isn't checked here - it's a rolling
+        # window that resets every month regardless of plan, so a
+        # downgrade today doesn't retroactively invalidate bookings
+        # already made this month; it just caps how many more can be
+        # made until the month rolls over.
         return value
 
 
@@ -404,11 +469,17 @@ class AcceptTeamInviteSerializer(serializers.Serializer):
 
 
 class TeamMemberSerializer(serializers.ModelSerializer):
-    """Read-only view of a team member for the owner's team list."""
+    """Read-only view of a team member for the owner's team list,
+    except `restricted` (TEAM-02), which the owner can toggle via
+    PATCH /api/team/<id>/ to scope that person to only the clients
+    they're assigned to (see permissions.staff_scope) instead of
+    the whole workspace.
+    """
 
     class Meta:
         model = User
-        fields = ["id", "email", "first_name"]
+        fields = ["id", "email", "first_name", "restricted"]
+        read_only_fields = ["id", "email", "first_name"]
 
 
 class MilestoneSerializer(serializers.ModelSerializer):
@@ -1713,6 +1784,25 @@ class BookingSerializer(serializers.ModelSerializer):
         resource = validated_data.get("resource")
         start = validated_data["start_time"]
         end = validated_data["end_time"]
+
+        # LIMIT-01/03: a rolling monthly cap, not locked the way
+        # resource/service capacity is - an off-by-one here under a
+        # true simultaneous race is a low-stakes plan-limit nuance,
+        # not a double-booked physical resource, so it doesn't
+        # warrant the same select_for_update() treatment.
+        workspace = validated_data.get("workspace")
+        plan = workspace.plan if workspace else None
+        if (
+            plan
+            and plan.max_bookings_per_month is not None
+            and workspace.bookings_this_month_count()
+            >= plan.max_bookings_per_month
+        ):
+            raise serializers.ValidationError(
+                f"You've reached the {plan.name} plan's limit of "
+                f"{plan.max_bookings_per_month} bookings this month. "
+                f"Upgrade your plan to create more."
+            )
 
         with transaction.atomic():
             lock_ids = self._locked_resource_ids(service, resource, resource_ids)

@@ -295,7 +295,10 @@
     "memberRemoved": "Team member removed.",
     "noTeamMembers": "No team members yet.",
     "welcomeBackStaff": "Welcome back",
-    "emailAlreadyExists": "An account with this email already exists."
+    "emailAlreadyExists": "An account with this email already exists.",
+    "restrictToAssignedClients": "Restrict to assigned clients only",
+    "restrictedBadge": "Restricted to assigned clients",
+    "couldNotUpdateAccess": "Could not update this team member's access."
   },
   "landing": {
     "signIn": "Sign in",
@@ -541,6 +544,12 @@
     "unlimited": "Unlimited",
     "nearingLimit_clients": "You're using {{used}} of {{limit}} clients on your plan.",
     "nearingLimit_teamMembers": "You're using {{used}} of {{limit}} team members on your plan.",
+    "projectsUsed": "Projects",
+    "bookingsThisMonthUsed": "Bookings this month",
+    "storageUsed": "Storage",
+    "nearingLimit_projects": "You're using {{used}} of {{limit}} projects on your plan.",
+    "nearingLimit_bookingsThisMonth": "You've made {{used}} of {{limit}} bookings this month on your plan.",
+    "nearingLimit_storage": "You're using {{used}} of {{limit}} MB of storage on your plan.",
     "changePlan": "Change plan",
     "switchTo": "Switch to",
     "planChanged": "Plan updated.",

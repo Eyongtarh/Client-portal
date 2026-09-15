@@ -558,6 +558,17 @@ function TeamSection({ isOwner }) {
     load();
   }
 
+  async function toggleRestricted(member) {
+    try {
+      await api.patch(`/team/${member.id}/`, {
+        restricted: !member.restricted,
+      });
+      load();
+    } catch (err) {
+      setStatusMsg({ key: "team.couldNotUpdateAccess", type: "error" });
+    }
+  }
+
   return (
     <section>
       <div className="flex justify-between items-center mb-6">
@@ -629,15 +640,34 @@ function TeamSection({ isOwner }) {
               <p className="font-medium text-ink">{member.first_name}</p>
               <p className="text-sm text-ink-soft">{member.email}</p>
             </div>
-            {isOwner && (
-              <button
-                onClick={() => removeMember(member.id)}
-                aria-label={`${t("team.removeMember")} ${member.first_name}`}
-                className="bg-red-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
-              >
-                {t("team.removeMember")}
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {isOwner ? (
+                <label className="flex items-center gap-1.5 text-sm text-ink-soft cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={member.restricted}
+                    onChange={() => toggleRestricted(member)}
+                    className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                  />
+                  {t("team.restrictToAssignedClients")}
+                </label>
+              ) : (
+                member.restricted && (
+                  <span className="text-xs bg-surface-2 text-ink-soft px-2 py-1 rounded">
+                    {t("team.restrictedBadge")}
+                  </span>
+                )
+              )}
+              {isOwner && (
+                <button
+                  onClick={() => removeMember(member.id)}
+                  aria-label={`${t("team.removeMember")} ${member.first_name}`}
+                  className="bg-red-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                >
+                  {t("team.removeMember")}
+                </button>
+              )}
+            </div>
           </div>
         ))}
         {members.length === 0 && (
@@ -686,34 +716,43 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
   if (!workspace) return null;
 
   const plan = workspace.plan;
-  const clientLimit =
-    plan?.max_clients === null || plan?.max_clients === undefined
-      ? null
-      : plan.max_clients;
-  const teamLimit =
-    plan?.max_team_members === null || plan?.max_team_members === undefined
-      ? null
-      : plan.max_team_members;
+  const limitOrNull = (value) =>
+    value === null || value === undefined ? null : value;
+  const clientLimit = limitOrNull(plan?.max_clients);
+  const teamLimit = limitOrNull(plan?.max_team_members);
+  const projectLimit = limitOrNull(plan?.max_projects);
+  const bookingLimit = limitOrNull(plan?.max_bookings_per_month);
+  const storageLimit = limitOrNull(plan?.max_storage_mb);
 
   // Warn once usage reaches 80% of a limit (LIMIT-02), well before
-  // the hard block in InviteClientView/TeamInviteView kicks in at
-  // 100% - the point is to give the owner time to upgrade instead
-  // of finding out mid-invite.
-  const nearingLimits = [];
-  if (clientLimit !== null && workspace.client_count / clientLimit >= 0.8) {
-    nearingLimits.push({
-      key: "clients",
-      used: workspace.client_count,
-      limit: clientLimit,
+  // the hard block in InviteClientView/TeamInviteView/etc. kicks in
+  // at 100% - the point is to give the owner time to upgrade instead
+  // of finding out mid-invite/mid-upload. usage_warnings itself
+  // (computed server-side, see WorkspaceSerializer.get_usage_warnings)
+  // tells us WHICH keys crossed the threshold; the used/limit numbers
+  // for the message still come from the same fields the plan card
+  // below already displays.
+  const usageByKey = {
+    clients: [workspace.client_count, clientLimit],
+    teamMembers: [workspace.team_member_count, teamLimit],
+    projects: [workspace.project_count, projectLimit],
+    bookingsThisMonth: [workspace.bookings_this_month_count, bookingLimit],
+    storage: [workspace.storage_used_mb, storageLimit],
+  };
+  const warningKeyMap = {
+    clients: "clients",
+    team_members: "teamMembers",
+    projects: "projects",
+    bookings_this_month: "bookingsThisMonth",
+    storage: "storage",
+  };
+  const nearingLimits = (workspace.usage_warnings || [])
+    .map((backendKey) => warningKeyMap[backendKey])
+    .filter(Boolean)
+    .map((key) => {
+      const [used, limit] = usageByKey[key];
+      return { key, used, limit };
     });
-  }
-  if (teamLimit !== null && workspace.team_member_count / teamLimit >= 0.8) {
-    nearingLimits.push({
-      key: "teamMembers",
-      used: workspace.team_member_count,
-      limit: teamLimit,
-    });
-  }
 
   return (
     <section>
@@ -808,6 +847,39 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
               {workspace.team_member_count}
               {teamLimit !== null
                 ? ` / ${teamLimit}`
+                : ` (${t("subscription.unlimited")})`}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-ink-soft">
+              {t("subscription.projectsUsed")}
+            </span>
+            <span className="font-medium text-ink">
+              {workspace.project_count}
+              {projectLimit !== null
+                ? ` / ${projectLimit}`
+                : ` (${t("subscription.unlimited")})`}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-ink-soft">
+              {t("subscription.bookingsThisMonthUsed")}
+            </span>
+            <span className="font-medium text-ink">
+              {workspace.bookings_this_month_count}
+              {bookingLimit !== null
+                ? ` / ${bookingLimit}`
+                : ` (${t("subscription.unlimited")})`}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-ink-soft">
+              {t("subscription.storageUsed")}
+            </span>
+            <span className="font-medium text-ink">
+              {workspace.storage_used_mb} MB
+              {storageLimit !== null
+                ? ` / ${storageLimit} MB`
                 : ` (${t("subscription.unlimited")})`}
             </span>
           </div>

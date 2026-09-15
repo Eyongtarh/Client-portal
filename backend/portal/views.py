@@ -31,7 +31,7 @@ from .activity import (
 from .calendar_invite import build_ics
 from .currencies import COUNTRIES
 from .payments import create_checkout_session
-from .permissions import IsOwnerOrStaffForWrite
+from .permissions import IsOwnerOrStaffForWrite, staff_scope
 from .resource_availability import (
     FULL_DAY_WINDOWS, resource_availability_windows,
     resource_blocked_windows, resource_has_capacity, resource_is_bookable,
@@ -94,6 +94,25 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _check_storage_limit(workspace, incoming_bytes):
+    """LIMIT-01/03: shared by DocumentViewSet and MessageViewSet -
+    the two places that add to Workspace.storage_used_mb(). Checked
+    against the size the new upload would add, not just current
+    usage, so the workspace can't tip over the limit on the upload
+    that crosses it.
+    """
+    plan = workspace.plan
+    if not plan or plan.max_storage_mb is None:
+        return
+    incoming_mb = incoming_bytes / (1024 * 1024)
+    if workspace.storage_used_mb() + incoming_mb > plan.max_storage_mb:
+        raise ValidationError(
+            f"This upload would put you over the {plan.name} plan's "
+            f"{plan.max_storage_mb} MB storage limit. Upgrade your "
+            f"plan or remove some files first."
+        )
 
 
 class RegisterView(generics.CreateAPIView):
@@ -323,18 +342,27 @@ class AcceptTeamInviteView(generics.CreateAPIView):
 
 
 class TeamViewSet(viewsets.ModelViewSet):
-    """List and remove team members. Owner-only: staff can see
-    who else is on the team but can't add or remove anyone.
+    """List, restrict (TEAM-02), and remove team members. Owner-
+    only for every write: staff can see who else is on the team but
+    can't add, restrict, or remove anyone.
     """
     serializer_class = TeamMemberSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "delete"]
+    http_method_names = ["get", "patch", "delete"]
 
     def get_queryset(self):
         workspace = self.request.user.get_workspace()
         return User.objects.filter(
             role="staff", staff_workspace=workspace
         )
+
+    def perform_update(self, serializer):
+        if self.request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the workspace owner can change a team member's "
+                "access."
+            )
+        serializer.save()
 
     def perform_destroy(self, instance):
         if self.request.user.role != "owner":
@@ -622,6 +650,7 @@ class ProjectViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         user = self.request.user
         if user.role in ("owner", "staff"):
             qs = Project.objects.filter(workspace=user.get_workspace())
+            qs = staff_scope(qs, user, path="client")
             if (
                 user.role == "staff"
                 and self.request.query_params.get("assigned_to_me") == "true"
@@ -646,7 +675,19 @@ class ProjectViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        project = serializer.save(workspace=self.request.user.get_workspace())
+        workspace = self.request.user.get_workspace()
+        plan = workspace.plan
+        if (
+            plan
+            and plan.max_projects is not None
+            and workspace.projects.count() >= plan.max_projects
+        ):
+            raise ValidationError(
+                f"You've reached the {plan.name} plan's limit of "
+                f"{plan.max_projects} projects. Upgrade your plan to "
+                f"create more."
+            )
+        project = serializer.save(workspace=workspace)
         log_activity(
             project.workspace,
             self.request.user,
@@ -684,6 +725,7 @@ class MilestoneViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             qs = Milestone.objects.filter(
                 project__workspace=user.get_workspace()
             )
+            qs = staff_scope(qs, user, path="project__client")
         else:
             qs = Milestone.objects.filter(
                 project__client=user.client_profile
@@ -718,6 +760,7 @@ class TaskViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             qs = Task.objects.filter(
                 project__workspace=user.get_workspace()
             )
+            qs = staff_scope(qs, user, path="project__client")
         else:
             qs = Task.objects.filter(
                 project__client=user.client_profile
@@ -754,6 +797,7 @@ class ApprovalViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             qs = Approval.objects.filter(
                 project__workspace=user.get_workspace()
             )
+            qs = staff_scope(qs, user, path="project__client")
         else:
             qs = Approval.objects.filter(
                 project__client=user.client_profile
@@ -853,6 +897,7 @@ class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             qs = Document.objects.filter(
                 project__workspace=user.get_workspace()
             )
+            qs = staff_scope(qs, user, path="project__client")
         else:
             qs = Document.objects.filter(
                 project__client=user.client_profile, is_private=False
@@ -864,10 +909,13 @@ class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         uploaded_file = self.request.FILES.get("file")
+        size_bytes = uploaded_file.size if uploaded_file else 0
+        project = serializer.validated_data["project"]
+        _check_storage_limit(project.workspace, size_bytes)
         extra = {
             "uploaded_by": self.request.user,
             "original_name": uploaded_file.name if uploaded_file else "",
-            "size_bytes": uploaded_file.size if uploaded_file else 0,
+            "size_bytes": size_bytes,
         }
         if self.request.user.role == "client":
             extra["is_private"] = False
@@ -931,6 +979,7 @@ class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             qs = Message.objects.filter(
                 project__workspace=user.get_workspace()
             )
+            qs = staff_scope(qs, user, path="project__client")
         else:
             qs = Message.objects.filter(
                 project__client=user.client_profile
@@ -941,6 +990,10 @@ class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         uploaded_file = self.request.FILES.get("attachment")
         extra = {"sender": self.request.user}
         if uploaded_file:
+            _check_storage_limit(
+                serializer.validated_data["project"].workspace,
+                uploaded_file.size,
+            )
             extra["attachment_name"] = uploaded_file.name
             extra["attachment_size_bytes"] = uploaded_file.size
         message = serializer.save(**extra)
@@ -1012,6 +1065,7 @@ class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
         user = self.request.user
         if user.role in ("owner", "staff"):
             qs = Invoice.objects.filter(workspace=user.get_workspace())
+            qs = staff_scope(qs, user, path="client")
         else:
             qs = Invoice.objects.filter(client=user.client_profile)
         qs = self.filter_by_query_param(qs)
@@ -1110,6 +1164,7 @@ class InvoicePDFView(APIView):
         user = request.user
         if user.role in ("owner", "staff"):
             qs = Invoice.objects.filter(workspace=user.get_workspace())
+            qs = staff_scope(qs, user, path="client")
         else:
             qs = Invoice.objects.filter(client=user.client_profile)
         invoice = generics.get_object_or_404(qs, pk=pk)
@@ -1302,10 +1357,11 @@ class ClientViewSet(viewsets.ModelViewSet):
     status via this endpoint. By default, archived clients (CLIENT-
     04) are hidden from the list; ?archived=true shows only those.
     ?assigned_to_me=true (staff only) narrows the list to clients
-    that staff member is assigned to (TEAM-04) - it's an opt-in
-    filter, not a default restriction, since staff still see the
-    whole workspace by default the same as an owner does everywhere
-    else in this API.
+    that staff member is assigned to (TEAM-04) - an opt-in filter
+    any staff member can apply themselves, separate from
+    User.restricted (TEAM-02), which enforces the same scoping on
+    every request for a staff member the owner has explicitly
+    marked restricted, rather than leaving it to their own choice.
     """
     permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
 
@@ -1318,6 +1374,7 @@ class ClientViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role in ("owner", "staff"):
             qs = Client.objects.filter(workspace=user.get_workspace())
+            qs = staff_scope(qs, user)
             if (
                 user.role == "staff"
                 and self.request.query_params.get("assigned_to_me") == "true"
@@ -1464,6 +1521,7 @@ class ResourceReservationViewSet(viewsets.ReadOnlyModelViewSet):
         )
         if user.role in ("owner", "staff"):
             qs = qs.filter(workspace=user.get_workspace())
+            qs = staff_scope(qs, user, path="booking__client")
         else:
             qs = qs.filter(booking__client=user.client_profile)
 
@@ -1523,6 +1581,8 @@ class ResourceRentalViewSet(viewsets.ReadOnlyModelViewSet):
         )
         if user.role == "client":
             qs = qs.filter(booking__client=user.client_profile)
+        else:
+            qs = staff_scope(qs, user, path="booking__client")
         status_param = self.request.query_params.get("status")
         if status_param:
             qs = qs.filter(rental_status=status_param)
@@ -1734,6 +1794,17 @@ class BookingViewSet(viewsets.ModelViewSet):
         ).update(status="completed")
         if user.role in ("owner", "staff"):
             qs = Booking.objects.filter(workspace=workspace)
+            if user.role == "staff" and user.restricted:
+                # A restricted staff member sees bookings for their
+                # own assigned clients AND anything they're directly
+                # handling (staff=user) even for a client someone
+                # else manages - matches this app's existing "a
+                # booking's staff field is its own assignment,
+                # separate from Client.assigned_staff" reasoning
+                # (see TeamAssignmentTestCase's docstring).
+                qs = qs.filter(
+                    Q(client__assigned_staff=user) | Q(staff=user)
+                )
             params = self.request.query_params
             date_param = parse_date(params.get("date", ""))
             if date_param:
@@ -1943,6 +2014,10 @@ class BookingICSView(APIView):
         user = request.user
         if user.role in ("owner", "staff"):
             qs = Booking.objects.filter(workspace=user.get_workspace())
+            if user.role == "staff" and user.restricted:
+                qs = qs.filter(
+                    Q(client__assigned_staff=user) | Q(staff=user)
+                )
         else:
             qs = Booking.objects.filter(client=user.client_profile)
         booking = generics.get_object_or_404(qs, pk=pk)
@@ -2159,7 +2234,8 @@ class WaitlistEntryViewSet(viewsets.ModelViewSet):
             workspace=workspace, start_time__lt=timezone.now()
         ).delete()
         if user.role in ("owner", "staff"):
-            return WaitlistEntry.objects.filter(workspace=workspace)
+            qs = WaitlistEntry.objects.filter(workspace=workspace)
+            return staff_scope(qs, user, path="client")
         return WaitlistEntry.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
@@ -2201,7 +2277,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role in ("owner", "staff"):
-            return Review.objects.filter(workspace=user.get_workspace())
+            qs = Review.objects.filter(workspace=user.get_workspace())
+            return staff_scope(qs, user, path="client")
         return Review.objects.filter(client=user.client_profile)
 
     def perform_create(self, serializer):
@@ -2312,6 +2389,14 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
         user = self.request.user
         if user.role in ("owner", "staff"):
             qs = Activity.objects.filter(workspace=user.get_workspace())
+            if user.role == "staff" and user.restricted:
+                # client is nullable (a workspace-internal event, e.g.
+                # a team member joining, has none) - those still
+                # reach a restricted staff member; only events tied
+                # to a client they're not assigned to are hidden.
+                qs = qs.filter(
+                    Q(client__isnull=True) | Q(client__assigned_staff=user)
+                )
             client_id = self.request.query_params.get("client")
             if client_id:
                 qs = qs.filter(client_id=client_id)
@@ -2419,29 +2504,30 @@ class SearchView(APIView):
                 }
             )
         workspace = request.user.get_workspace()
+        user = request.user
 
-        clients = Client.objects.filter(workspace=workspace).filter(
+        clients = staff_scope(Client.objects.filter(workspace=workspace).filter(
             Q(company_name__icontains=query)
             | Q(contact_email__icontains=query)
-        )[:10]
-        projects = Project.objects.filter(
+        ), user)[:10]
+        projects = staff_scope(Project.objects.filter(
             workspace=workspace, name__icontains=query
-        )[:10]
-        bookings = Booking.objects.filter(workspace=workspace).filter(
+        ), user, path="client")[:10]
+        bookings = staff_scope(Booking.objects.filter(workspace=workspace).filter(
             Q(service__name__icontains=query)
             | Q(resource__name__icontains=query)
             | Q(client__company_name__icontains=query)
-        )[:10]
-        documents = Document.objects.filter(
+        ), user, path="client")[:10]
+        documents = staff_scope(Document.objects.filter(
             project__workspace=workspace, original_name__icontains=query
-        ).select_related("project")[:10]
-        invoices = Invoice.objects.filter(workspace=workspace).filter(
+        ), user, path="project__client").select_related("project")[:10]
+        invoices = staff_scope(Invoice.objects.filter(workspace=workspace).filter(
             Q(number__icontains=query)
             | Q(client__company_name__icontains=query)
-        )[:10]
-        messages = Message.objects.filter(
+        ), user, path="client")[:10]
+        messages = staff_scope(Message.objects.filter(
             project__workspace=workspace, body__icontains=query
-        ).select_related("project")[:10]
+        ), user, path="project__client").select_related("project")[:10]
 
         return Response(
             {

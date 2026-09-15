@@ -34,6 +34,16 @@ class User(AbstractUser):
         "turned off in their notification bell. Empty = notified "
         "about everything.",
     )
+    restricted = models.BooleanField(
+        default=False,
+        help_text="TEAM-02: only meaningful for role=STAFF. False "
+        "(the default) is today's behavior unchanged - this team "
+        "member sees the whole workspace. True scopes them, "
+        "everywhere, to only the clients (and everything hanging "
+        "off those clients - projects, documents, messages, "
+        "invoices, bookings) they're listed in Client.assigned_staff "
+        "for - see permissions.staff_scope().",
+    )
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
@@ -135,6 +145,32 @@ class Workspace(models.Model):
             self.slug = slug
         super().save(*args, **kwargs)
 
+    def storage_used_mb(self):
+        """LIMIT-01: documents + message attachments combined,
+        across every project in the workspace, in megabytes.
+        """
+        from django.db.models import Sum
+        doc_bytes = self.projects.aggregate(
+            total=Sum("documents__size_bytes")
+        )["total"] or 0
+        msg_bytes = self.projects.aggregate(
+            total=Sum("messages__attachment_size_bytes")
+        )["total"] or 0
+        return round((doc_bytes + msg_bytes) / (1024 * 1024), 2)
+
+    def bookings_this_month_count(self):
+        """LIMIT-01: confirmed bookings created so far in the
+        current calendar month, the same rolling window
+        max_bookings_per_month is enforced against.
+        """
+        from django.utils import timezone
+        now = timezone.now()
+        return self.bookings.filter(
+            status="confirmed",
+            created_at__year=now.year,
+            created_at__month=now.month,
+        ).count()
+
     def __str__(self):
         return self.name
 
@@ -151,6 +187,17 @@ class SubscriptionPlan(models.Model):
     )
     max_team_members = models.PositiveIntegerField(
         null=True, blank=True, help_text="Blank = unlimited"
+    )
+    max_projects = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Blank = unlimited"
+    )
+    max_bookings_per_month = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Blank = unlimited"
+    )
+    max_storage_mb = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Blank = unlimited. Documents + message attachments "
+        "combined, across every project in the workspace.",
     )
 
     class Meta:

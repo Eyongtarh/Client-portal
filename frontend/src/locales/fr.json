@@ -295,7 +295,10 @@
     "memberRemoved": "Membre retir\u00e9 de l'\u00e9quipe.",
     "noTeamMembers": "Aucun membre pour le moment.",
     "welcomeBackStaff": "Bon retour",
-    "emailAlreadyExists": "Un compte avec cet e-mail existe d\u00e9j\u00e0."
+    "emailAlreadyExists": "Un compte avec cet e-mail existe d\u00e9j\u00e0.",
+    "restrictToAssignedClients": "Limiter aux clients assign\u00e9s",
+    "restrictedBadge": "Limit\u00e9 aux clients assign\u00e9s",
+    "couldNotUpdateAccess": "Impossible de modifier l'acc\u00e8s de ce membre."
   },
   "landing": {
     "signIn": "Se connecter",
@@ -541,6 +544,12 @@
     "unlimited": "Illimit\u00e9",
     "nearingLimit_clients": "Vous utilisez {{used}} client(s) sur {{limit}} inclus dans votre forfait.",
     "nearingLimit_teamMembers": "Vous utilisez {{used}} membre(s) d'\u00e9quipe sur {{limit}} inclus dans votre forfait.",
+    "projectsUsed": "Projets",
+    "bookingsThisMonthUsed": "R\u00e9servations ce mois-ci",
+    "storageUsed": "Stockage",
+    "nearingLimit_projects": "Vous utilisez {{used}} projet(s) sur {{limit}} inclus dans votre forfait.",
+    "nearingLimit_bookingsThisMonth": "Vous avez fait {{used}} r\u00e9servation(s) sur {{limit}} incluses ce mois-ci dans votre forfait.",
+    "nearingLimit_storage": "Vous utilisez {{used}} Mo de stockage sur {{limit}} Mo inclus dans votre forfait.",
     "changePlan": "Changer de forfait",
     "switchTo": "Passer \u00e0",
     "planChanged": "Forfait mis \u00e0 jour.",

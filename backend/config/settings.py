@@ -172,6 +172,14 @@ STATICFILES_STORAGE = (
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = "/media/"
+# Real requests never touch this - STORAGES["default"] is Cloudinary
+# (see above) - but tests deliberately override STORAGES to local
+# FileSystemStorage to avoid hitting real Cloudinary, and without
+# MEDIA_ROOT set that falls back to the current working directory,
+# scattering test-generated upload dirs (e.g. workspaces/<id>/...)
+# straight into the backend/ source tree instead of a confined,
+# gitignored location.
+MEDIA_ROOT = BASE_DIR / "media"
 
 FRONTEND_URL = config(
     "FRONTEND_URL", default="http://localhost:5173"
