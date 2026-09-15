@@ -27,7 +27,7 @@ def build_ics(booking, cancelled=False):
     app that already added the original invite removes it, rather
     than a second PUBLISH the app would just add as a duplicate.
     """
-    name = booking.service.name if booking.service else booking.resource.name
+    name = booking.display_name
     method = "CANCEL" if cancelled else "PUBLISH"
     status = "CANCELLED" if cancelled else "CONFIRMED"
 

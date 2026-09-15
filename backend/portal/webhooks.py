@@ -136,9 +136,7 @@ def _mark_booking_paid(booking_id, payment_intent_id):
         booking,
         client=booking.client,
     )
-    booked_name = (
-        booking.service.name if booking.service else booking.resource.name
-    )
+    booked_name = booking.display_name
     send_mail(
         subject=f"Payment received: {booked_name}",
         message=(

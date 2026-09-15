@@ -32,11 +32,19 @@ from .calendar_invite import build_ics
 from .currencies import COUNTRIES
 from .payments import create_checkout_session
 from .permissions import IsOwnerOrStaffForWrite
+from .resource_availability import (
+    FULL_DAY_WINDOWS, resource_availability_windows,
+    resource_blocked_windows, resource_has_capacity, resource_is_bookable,
+    resource_overlapping_reservations, reservations_overlap_count,
+    service_resource_requirements,
+)
 from .models import (
     Activity, Approval, BlockedTime, Booking, Client, Document, Invoice,
     Message, Milestone, PaymentMethod, Project, RecurringSeries, Resource,
-    Review, Service, ServiceQuestion, SubscriptionPlan, Task, User,
-    WaitlistEntry, WorkingHours, Workspace,
+    ResourceAvailability, ResourceRental, ResourceRentalPolicy,
+    ResourceReservation, Review, Service, ServiceQuestion,
+    ServiceResourceRequirement, SubscriptionPlan, Task, User, WaitlistEntry,
+    WorkingHours, Workspace,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -66,10 +74,15 @@ from .serializers import (
     PublicWorkspaceSerializer,
     RecurringSeriesCreateSerializer,
     RegisterSerializer,
+    ResourceAvailabilitySerializer,
+    ResourceRentalPolicySerializer,
+    ResourceRentalSerializer,
+    ResourceReservationSerializer,
     ResourceSerializer,
     ReviewResponseSerializer,
     ReviewSerializer,
     ServiceQuestionSerializer,
+    ServiceResourceRequirementSerializer,
     ServiceSerializer,
     SubscriptionPlanSerializer,
     TaskSerializer,
@@ -1256,9 +1269,7 @@ class BookingCheckoutView(APIView):
                 "This business hasn't connected a payment account yet. "
                 "Please contact them directly to pay for this booking."
             )
-        booked_name = (
-            booking.service.name if booking.service else booking.resource.name
-        )
+        booked_name = booking.display_name
         try:
             session = create_checkout_session(
                 amount=booking.payment_amount,
@@ -1363,6 +1374,218 @@ class ResourceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(workspace=self.request.user.get_workspace())
+
+    @action(detail=True, methods=["get"])
+    def calendar(self, request, pk=None):
+        """GET /api/resources/<id>/calendar/?from=&to= - BOOK-82: the
+        booked events for this one resource, for a per-resource
+        calendar view. `from`/`to` are ISO dates; both optional
+        (unbounded when omitted).
+        """
+        resource = self.get_object()
+        qs = ResourceReservation.objects.filter(
+            resource=resource
+        ).select_related("booking", "booking__client")
+        from_str = request.query_params.get("from")
+        to_str = request.query_params.get("to")
+        if from_str:
+            qs = qs.filter(booking__end_time__gte=from_str)
+        if to_str:
+            qs = qs.filter(booking__start_time__lte=to_str)
+        return Response(
+            ResourceReservationSerializer(qs, many=True).data
+        )
+
+
+class ResourceAvailabilityViewSet(viewsets.ModelViewSet):
+    """Owners and staff manage a resource's weekly hours (BOOK-57/
+    58); clients get read-only access, same reasoning as
+    WorkingHoursViewSet.
+    """
+    serializer_class = ResourceAvailabilitySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = ResourceAvailability.objects.select_related("resource")
+        workspace = (
+            user.get_workspace()
+            if user.role in ("owner", "staff")
+            else user.client_profile.workspace
+        )
+        qs = qs.filter(workspace=workspace)
+        resource_id = self.request.query_params.get("resource")
+        if resource_id:
+            qs = qs.filter(resource_id=resource_id)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(workspace=self.request.user.get_workspace())
+
+
+class ServiceResourceRequirementViewSet(viewsets.ModelViewSet):
+    """Owner/staff-only management of a service's explicit required/
+    optional/alternative resource requirements (BOOK-72) - see the
+    model's own docstring for the fallback-to-legacy-M2M behavior.
+    """
+    serializer_class = ServiceResourceRequirementSerializer
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
+
+    def get_queryset(self):
+        user = self.request.user
+        workspace = (
+            user.get_workspace()
+            if user.role in ("owner", "staff")
+            else user.client_profile.workspace
+        )
+        qs = ServiceResourceRequirement.objects.filter(
+            service__workspace=workspace
+        ).select_related("resource", "service")
+        service_id = self.request.query_params.get("service")
+        if service_id:
+            qs = qs.filter(service_id=service_id)
+        return qs
+
+
+class ResourceReservationViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only - a ResourceReservation only ever exists as a side
+    effect of a confirmed booking (see BookingSerializer.
+    _apply_resource_plan); this backs the combined resource calendar
+    and filter views (BOOK-83/84/85/86). Owner/staff see every
+    reservation in their workspace; clients see only their own.
+    """
+    serializer_class = ResourceReservationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = ResourceReservation.objects.select_related(
+            "resource", "booking", "booking__client"
+        )
+        if user.role in ("owner", "staff"):
+            qs = qs.filter(workspace=user.get_workspace())
+        else:
+            qs = qs.filter(booking__client=user.client_profile)
+
+        params = self.request.query_params
+        if params.get("resource"):
+            qs = qs.filter(resource_id=params["resource"])
+        if params.get("booking"):
+            qs = qs.filter(booking_id=params["booking"])
+        if params.get("client"):
+            qs = qs.filter(booking__client_id=params["client"])
+        if params.get("status"):
+            qs = qs.filter(booking__status=params["status"])
+        if params.get("type"):
+            qs = qs.filter(resource__type=params["type"])
+        if params.get("date_from"):
+            qs = qs.filter(booking__end_time__gte=params["date_from"])
+        if params.get("date_to"):
+            qs = qs.filter(booking__start_time__lte=params["date_to"])
+        return qs.order_by("-booking__start_time")
+
+
+class ResourceRentalPolicyViewSet(viewsets.ModelViewSet):
+    """Owner/staff-only per-resource rental configuration (BOOK-93..
+    98) - deposits, min/max duration, cancellation/reschedule notice.
+    """
+    serializer_class = ResourceRentalPolicySerializer
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
+
+    def get_queryset(self):
+        return ResourceRentalPolicy.objects.filter(
+            resource__workspace=self.request.user.get_workspace()
+        )
+
+
+class ResourceRentalViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only list/retrieve plus the check-out/check-in/mark-
+    overdue actions (BOOK-99..103) - a ResourceRental is created
+    implicitly whenever a RENTAL-mode resource is booked, never
+    directly through this endpoint. Owner/staff only: check-in/out
+    is a staff operation, handing over or receiving back a physical
+    resource.
+    """
+    serializer_class = ResourceRentalSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        workspace = (
+            user.get_workspace()
+            if user.role in ("owner", "staff")
+            else user.client_profile.workspace
+        )
+        qs = ResourceRental.objects.filter(
+            booking__workspace=workspace
+        ).select_related(
+            "resource_reservation__resource", "booking__client"
+        )
+        if user.role == "client":
+            qs = qs.filter(booking__client=user.client_profile)
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            qs = qs.filter(rental_status=status_param)
+        return qs.order_by("-created_at")
+
+    def _require_staff(self, request):
+        if request.user.role not in ("owner", "staff"):
+            raise PermissionDenied(
+                "Only the business can check a rental in or out."
+            )
+
+    @action(detail=True, methods=["post"], url_path="check-out")
+    def check_out(self, request, pk=None):
+        self._require_staff(request)
+        rental = self.get_object()
+        rental.checked_out_at = timezone.now()
+        rental.checked_out_by = request.user
+        rental.condition_notes_out = request.data.get(
+            "condition_notes_out", rental.condition_notes_out
+        )
+        rental.rental_status = ResourceRental.RentalStatus.ACTIVE
+        rental.save(update_fields=[
+            "checked_out_at", "checked_out_by", "condition_notes_out",
+            "rental_status",
+        ])
+        log_activity(
+            rental.booking.workspace, request.user, "resource_checked_out",
+            rental, client=rental.booking.client,
+        )
+        return Response(ResourceRentalSerializer(rental).data)
+
+    @action(detail=True, methods=["post"], url_path="check-in")
+    def check_in(self, request, pk=None):
+        self._require_staff(request)
+        rental = self.get_object()
+        rental.checked_in_at = timezone.now()
+        rental.checked_in_by = request.user
+        rental.condition_notes_in = request.data.get(
+            "condition_notes_in", rental.condition_notes_in
+        )
+        rental.rental_status = ResourceRental.RentalStatus.RETURNED
+        rental.save(update_fields=[
+            "checked_in_at", "checked_in_by", "condition_notes_in",
+            "rental_status",
+        ])
+        log_activity(
+            rental.booking.workspace, request.user, "resource_checked_in",
+            rental, client=rental.booking.client,
+        )
+        return Response(ResourceRentalSerializer(rental).data)
+
+    @action(detail=True, methods=["post"], url_path="mark-overdue")
+    def mark_overdue(self, request, pk=None):
+        """Manual override mirroring BookingViewSet.mark_no_show -
+        the mark_overdue_rentals management command does this
+        automatically on a schedule; this lets staff flag one by
+        hand too.
+        """
+        self._require_staff(request)
+        rental = self.get_object()
+        rental.rental_status = ResourceRental.RentalStatus.OVERDUE
+        rental.save(update_fields=["rental_status"])
+        return Response(ResourceRentalSerializer(rental).data)
 
 
 class PaymentMethodViewSet(viewsets.ModelViewSet):
@@ -1541,9 +1764,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 workspace=user.client_profile.workspace,
                 client=user.client_profile,
             )
-        booked_name = (
-            booking.service.name if booking.service else booking.resource.name
-        )
+        booked_name = booking.display_name
         log_activity(
             booking.workspace,
             user,
@@ -1576,9 +1797,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         booking = serializer.save()
-        booked_name = (
-            booking.service.name if booking.service else booking.resource.name
-        )
+        booked_name = booking.display_name
         if booking.status == "cancelled":
             fee_percent = (
                 booking.service.late_cancellation_fee_percent
@@ -2246,9 +2465,7 @@ class SearchView(APIView):
                 "bookings": [
                     {
                         "id": b.id,
-                        "label": (
-                            b.service.name if b.service else b.resource.name
-                        ),
+                        "label": b.display_name,
                         "start_time": b.start_time,
                         "client_id": b.client_id,
                         "client_name": b.client.company_name,
@@ -2392,18 +2609,48 @@ def compute_service_availability(workspace, service_id, date_str, staff_id):
         for b in blocked_qs
     ]
 
-    resources = list(service.resources.all())
-    resource_bookings = {}
-    for resource in resources:
-        resource_bookings[resource.id] = list(
-            Booking.objects.filter(
-                workspace=workspace,
-                service__resources=resource,
-                status="confirmed",
-                start_time__gte=day_start_local - timedelta(hours=24),
-                start_time__lt=day_end_local + timedelta(hours=24),
-            )
+    # BOOK-72/73: required resources must ALL have room; an
+    # alternative group (requirement_type=alternative, a shared
+    # non-blank alternative_group) is satisfied by any ONE member
+    # having room; optional requirements never block a slot. A
+    # service with no ServiceResourceRequirement rows falls back to
+    # its legacy `resources` M2M as implicit required/qty-1 rows,
+    # so behavior here is unchanged for every service that predates
+    # that model.
+    requirements = service_resource_requirements(service)
+    resource_reservations_map = {
+        req.resource.id: resource_overlapping_reservations(
+            req.resource,
+            day_start_local - timedelta(hours=24),
+            day_end_local + timedelta(hours=24),
         )
+        for req in {req.resource.id: req for req in requirements}.values()
+    }
+
+    def _resources_have_room(window_start, window_end):
+        group_results = {}
+        for req in requirements:
+            reservations = resource_reservations_map[req.resource.id]
+            overlap = reservations_overlap_count(
+                reservations, window_start, window_end, tz,
+                req.resource.capacity_mode,
+            )
+            limit = (
+                req.resource.capacity
+                if (
+                    req.resource.capacity_mode == Resource.CapacityMode.SHARED
+                    and req.resource.capacity
+                )
+                else req.resource.quantity
+            )
+            has_room = overlap + req.quantity <= limit
+            if req.requirement_type == "alternative" and req.alternative_group:
+                group_results.setdefault(req.alternative_group, []).append(
+                    has_room
+                )
+            elif req.requirement_type == "required" and not has_room:
+                return False
+        return all(any(results) for results in group_results.values())
 
     slot_length = timedelta(minutes=service.duration_minutes)
     slots = []
@@ -2435,20 +2682,7 @@ def compute_service_availability(workspace, service_id, date_str, staff_id):
                 for b_start, b_end in blocked_windows
             )
             is_full = overlap_count >= service.capacity
-
-            resource_full = False
-            for resource in resources:
-                resource_overlap = sum(
-                    1
-                    for b in resource_bookings[resource.id]
-                    if cursor
-                    < b.end_time.astimezone(tz).replace(tzinfo=None)
-                    and slot_end
-                    > b.start_time.astimezone(tz).replace(tzinfo=None)
-                )
-                if resource_overlap >= resource.quantity:
-                    resource_full = True
-                    break
+            resource_full = not _resources_have_room(cursor, slot_end)
 
             if (
                 not is_full
@@ -2487,10 +2721,20 @@ class AvailabilityView(APIView):
     block, staff set) removes that slot regardless of working hours.
 
     Resource mode: a resource booking is direct and not tied to
-    staff time, so slots cover the FULL 24-hour day (not limited
-    to working hours) at the resource's own duration_minutes,
-    checking the resource's own quantity against both direct
-    resource bookings and any service bookings that use it.
+    staff time. A resource with no ResourceAvailability rows of its
+    own is bookable across the FULL 24-hour day (unchanged from
+    this system's original behavior); one with configured windows
+    is restricted to them, each slot required to fit entirely
+    inside a window. Either way, slots are at the resource's own
+    duration_minutes, apply its booking buffers/min-notice/max-
+    advance rules, exclude any resource-specific or workspace-wide
+    BlockedTime, and check capacity (EXCLUSIVE: resource.quantity,
+    SHARED: resource.capacity) against every ResourceReservation -
+    both a direct reservation of this resource and one made because
+    a service that requires it was booked. A resource that's
+    unbookable (BOOK-80: blocked/maintenance/cleaning/inactive/
+    retired) or reservable only via a service
+    (reservation_mode=BOOKING) returns no slots here.
     """
     permission_classes = [IsAuthenticated]
 
@@ -2524,11 +2768,24 @@ class AvailabilityView(APIView):
             resource = generics.get_object_or_404(
                 Resource, pk=resource_id, workspace=workspace
             )
+            if (
+                not resource_is_bookable(resource)
+                or resource.reservation_mode == Resource.ReservationMode.BOOKING
+            ):
+                return Response({"date": date_str, "slots": []})
+            if resource.max_advance_days is not None:
+                latest = now_local.date() + timedelta(
+                    days=resource.max_advance_days
+                )
+                if target_date > latest:
+                    return Response({"date": date_str, "slots": []})
+
             slot_length = timedelta(minutes=resource.duration_minutes)
             day_start_local = datetime.combine(
                 target_date, datetime.min.time(), tzinfo=tz
             )
             day_end_local = day_start_local + timedelta(days=1)
+            day_end_naive = day_end_local.replace(tzinfo=None)
             # A slot only needs to *start* within the selected day; it
             # may run for many hours or days past midnight (e.g. a
             # multi-day resource rental), so the overlap search window
@@ -2539,43 +2796,64 @@ class AvailabilityView(APIView):
             # conflict from earlier bookings that run into this day).
             query_start = day_start_local - slot_length
             query_end = day_end_local + slot_length
-            direct_bookings = list(
-                Booking.objects.filter(
-                    workspace=workspace,
-                    resource=resource,
-                    status="confirmed",
-                    start_time__lt=query_end,
-                    end_time__gt=query_start,
-                )
+            reservations = resource_overlapping_reservations(
+                resource, query_start, query_end
             )
-            via_service_bookings = list(
-                Booking.objects.filter(
-                    workspace=workspace,
-                    service__resources=resource,
-                    status="confirmed",
-                    start_time__lt=query_end,
-                    end_time__gt=query_start,
-                )
+            blocked_windows = resource_blocked_windows(
+                resource, query_start, query_end, tz
             )
-            all_bookings = direct_bookings + via_service_bookings
+            windows = resource_availability_windows(resource, target_date)
+            unconfigured = windows == FULL_DAY_WINDOWS
+
+            buffer_before = timedelta(
+                minutes=resource.booking_buffer_before_minutes
+            )
+            buffer_after = timedelta(
+                minutes=resource.booking_buffer_after_minutes
+            )
+            min_notice = timedelta(hours=resource.min_booking_notice_hours)
+            limit = (
+                resource.capacity
+                if (
+                    resource.capacity_mode == Resource.CapacityMode.SHARED
+                    and resource.capacity
+                )
+                else resource.quantity
+            )
 
             slots = []
-            cursor = day_start_local.replace(tzinfo=None)
-            day_end_naive = day_end_local.replace(tzinfo=None)
-            while cursor < day_end_naive:
-                slot_end = cursor + slot_length
-                overlap_count = sum(
-                    1
-                    for b in all_bookings
-                    if cursor
-                    < b.end_time.astimezone(tz).replace(tzinfo=None)
-                    and slot_end
-                    > b.start_time.astimezone(tz).replace(tzinfo=None)
+            for window_start_t, window_end_t in windows:
+                cursor = datetime.combine(target_date, window_start_t)
+                window_end = (
+                    day_end_naive
+                    if unconfigured
+                    else datetime.combine(target_date, window_end_t)
                 )
-                in_the_past = cursor < now_local
-                if overlap_count < resource.quantity and not in_the_past:
-                    slots.append(cursor.strftime("%H:%M"))
-                cursor += slot_length
+                while (
+                    cursor < window_end
+                    if unconfigured
+                    else cursor + slot_length <= window_end
+                ):
+                    slot_end = cursor + slot_length
+                    overlap_count = reservations_overlap_count(
+                        reservations,
+                        cursor - buffer_after,
+                        slot_end + buffer_before,
+                        tz,
+                        resource.capacity_mode,
+                    )
+                    too_soon = cursor < now_local + min_notice
+                    is_blocked = any(
+                        cursor < b_end and slot_end > b_start
+                        for b_start, b_end in blocked_windows
+                    )
+                    if (
+                        overlap_count + 1 <= limit
+                        and not too_soon
+                        and not is_blocked
+                    ):
+                        slots.append(cursor.strftime("%H:%M"))
+                    cursor += slot_length
 
             return Response({"date": date_str, "slots": slots})
 
@@ -2653,9 +2931,7 @@ class PublicBookingCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         booking = serializer.save()
-        booked_name = (
-            booking.service.name if booking.service else booking.resource.name
-        )
+        booked_name = booking.display_name
         log_activity(
             booking.workspace,
             None,

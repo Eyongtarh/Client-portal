@@ -106,6 +106,7 @@ export default function Booking() {
       <main id="main-content" className="max-w-2xl mx-auto px-8 py-8 space-y-6">
         <ServicesSection />
         <ResourcesSection />
+        <ResourceRulesSection />
         <WorkingHoursSection />
         <BlockedTimeSection />
         <IntakeQuestionsSection />
@@ -1502,6 +1503,21 @@ function PaymentMethodsSection() {
   );
 }
 
+const RESOURCE_TYPES = [
+  "chair", "table", "car", "van", "hotel_room", "meeting_room", "studio",
+  "desk", "office", "equipment", "machine", "court", "field", "boat",
+  "bike", "parking_space", "room", "facility", "other", "custom",
+];
+const RESERVATION_MODES = ["reservation", "rental", "booking"];
+const PRICING_MODES = [
+  "none", "hourly", "daily", "nightly", "weekly", "monthly", "per_use",
+  "custom",
+];
+const CAPACITY_MODES = ["exclusive", "shared"];
+const RESOURCE_STATUSES = [
+  "available", "blocked", "maintenance", "cleaning", "inactive", "retired",
+];
+
 function ResourcesSection() {
   const { t } = useTranslation();
   const [resources, setResources] = useState([]);
@@ -1516,12 +1532,41 @@ function ResourcesSection() {
   const [selectedServices, setSelectedServices] = useState([]);
   const [newPhoto, setNewPhoto] = useState(null);
   const [newPhotoPreview, setNewPhotoPreview] = useState(null);
+  const [type, setType] = useState("other");
+  const [customType, setCustomType] = useState("");
+  const [category, setCategory] = useState("");
+  const [location, setLocation] = useState("");
+  const [reservationMode, setReservationMode] = useState("reservation");
+  const [pricingMode, setPricingMode] = useState("none");
+  const [capacity, setCapacity] = useState("");
+  const [capacityMode, setCapacityMode] = useState("exclusive");
+  const [bufferBefore, setBufferBefore] = useState("0");
+  const [bufferAfter, setBufferAfter] = useState("0");
+  const [minNotice, setMinNotice] = useState("0");
+  const [maxAdvance, setMaxAdvance] = useState("");
+  const [minDuration, setMinDuration] = useState("");
+  const [maxDuration, setMaxDuration] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editQuantity, setEditQuantity] = useState("1");
   const [editPrice, setEditPrice] = useState("");
   const [editServices, setEditServices] = useState([]);
+  const [editType, setEditType] = useState("other");
+  const [editCustomType, setEditCustomType] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editStatus, setEditStatus] = useState("available");
+  const [editReservationMode, setEditReservationMode] = useState("reservation");
+  const [editPricingMode, setEditPricingMode] = useState("none");
+  const [editCapacity, setEditCapacity] = useState("");
+  const [editCapacityMode, setEditCapacityMode] = useState("exclusive");
+  const [editBufferBefore, setEditBufferBefore] = useState("0");
+  const [editBufferAfter, setEditBufferAfter] = useState("0");
+  const [editMinNotice, setEditMinNotice] = useState("0");
+  const [editMaxAdvance, setEditMaxAdvance] = useState("");
+  const [editMinDuration, setEditMinDuration] = useState("");
+  const [editMaxDuration, setEditMaxDuration] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
 
   async function load() {
@@ -1561,6 +1606,20 @@ function ResourcesSection() {
         duration_minutes: minutes,
         price: price || null,
         services: selectedServices,
+        type,
+        custom_type: type === "custom" ? customType : "",
+        category,
+        location,
+        reservation_mode: reservationMode,
+        pricing_mode: pricingMode,
+        capacity: capacity || null,
+        capacity_mode: capacityMode,
+        booking_buffer_before_minutes: bufferBefore || 0,
+        booking_buffer_after_minutes: bufferAfter || 0,
+        min_booking_notice_hours: minNotice || 0,
+        max_advance_days: maxAdvance || null,
+        min_duration_minutes: minDuration || null,
+        max_duration_minutes: maxDuration || null,
       });
       if (newPhoto) {
         const formData = new FormData();
@@ -1578,14 +1637,31 @@ function ResourcesSection() {
       setSelectedServices([]);
       setNewPhoto(null);
       setNewPhotoPreview(null);
+      setType("other");
+      setCustomType("");
+      setCategory("");
+      setLocation("");
+      setReservationMode("reservation");
+      setPricingMode("none");
+      setCapacity("");
+      setCapacityMode("exclusive");
+      setBufferBefore("0");
+      setBufferAfter("0");
+      setMinNotice("0");
+      setMaxAdvance("");
+      setMinDuration("");
+      setMaxDuration("");
       setShowForm(false);
       setStatusMsg({ key: "resources.resourceCreated", type: "success" });
       load();
     } catch (err) {
-      setStatusMsg({
-        key: "resources.couldNotCreateResource",
-        type: "error",
-      });
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "resources.couldNotCreateResource", type: "error" },
+      );
     }
   }
 
@@ -1606,6 +1682,21 @@ function ResourcesSection() {
     setEditQuantity(String(resource.quantity));
     setEditPrice(resource.price || "");
     setEditServices(resource.services);
+    setEditType(resource.type || "other");
+    setEditCustomType(resource.custom_type || "");
+    setEditCategory(resource.category || "");
+    setEditLocation(resource.location || "");
+    setEditStatus(resource.status || "available");
+    setEditReservationMode(resource.reservation_mode || "reservation");
+    setEditPricingMode(resource.pricing_mode || "none");
+    setEditCapacity(resource.capacity ?? "");
+    setEditCapacityMode(resource.capacity_mode || "exclusive");
+    setEditBufferBefore(String(resource.booking_buffer_before_minutes ?? 0));
+    setEditBufferAfter(String(resource.booking_buffer_after_minutes ?? 0));
+    setEditMinNotice(String(resource.min_booking_notice_hours ?? 0));
+    setEditMaxAdvance(resource.max_advance_days ?? "");
+    setEditMinDuration(resource.min_duration_minutes ?? "");
+    setEditMaxDuration(resource.max_duration_minutes ?? "");
   }
   function cancelEdit() {
     setEditingId(null);
@@ -1618,15 +1709,33 @@ function ResourcesSection() {
         quantity: editQuantity,
         price: editPrice || null,
         services: editServices,
+        type: editType,
+        custom_type: editType === "custom" ? editCustomType : "",
+        category: editCategory,
+        location: editLocation,
+        status: editStatus,
+        reservation_mode: editReservationMode,
+        pricing_mode: editPricingMode,
+        capacity: editCapacity || null,
+        capacity_mode: editCapacityMode,
+        booking_buffer_before_minutes: editBufferBefore || 0,
+        booking_buffer_after_minutes: editBufferAfter || 0,
+        min_booking_notice_hours: editMinNotice || 0,
+        max_advance_days: editMaxAdvance || null,
+        min_duration_minutes: editMinDuration || null,
+        max_duration_minutes: editMaxDuration || null,
       });
       setEditingId(null);
       setStatusMsg({ key: "resources.resourceUpdated", type: "success" });
       load();
     } catch (err) {
-      setStatusMsg({
-        key: "resources.couldNotUpdateResource",
-        type: "error",
-      });
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "resources.couldNotUpdateResource", type: "error" },
+      );
     }
   }
 
@@ -1677,7 +1786,7 @@ function ResourcesSection() {
               : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
           }
         >
-          {t(statusMsg.key)}
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
         </div>
       )}
 
@@ -1811,6 +1920,210 @@ function ResourcesSection() {
               className="w-24 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
             />
           </div>
+
+          <div className="flex flex-wrap gap-2 mb-2">
+            <label htmlFor="resource-type" className="sr-only">
+              {t("resources.type")}
+            </label>
+            <select
+              id="resource-type"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              title={t("resources.type")}
+              className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              {RESOURCE_TYPES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`resources.types.${value}`)}
+                </option>
+              ))}
+            </select>
+            {type === "custom" && (
+              <>
+                <label htmlFor="resource-custom-type" className="sr-only">
+                  {t("resources.customTypePlaceholder")}
+                </label>
+                <input
+                  id="resource-custom-type"
+                  required
+                  placeholder={t("resources.customTypePlaceholder")}
+                  value={customType}
+                  onChange={(e) => setCustomType(e.target.value)}
+                  className="w-40 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                />
+              </>
+            )}
+            <label htmlFor="resource-category" className="sr-only">
+              {t("resources.categoryOptional")}
+            </label>
+            <input
+              id="resource-category"
+              placeholder={t("resources.categoryOptional")}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="flex-1 min-w-32 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+            <label htmlFor="resource-location" className="sr-only">
+              {t("resources.locationOptional")}
+            </label>
+            <input
+              id="resource-location"
+              placeholder={t("resources.locationOptional")}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="flex-1 min-w-32 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-3">
+            <label htmlFor="resource-reservation-mode" className="sr-only">
+              {t("resources.reservationMode")}
+            </label>
+            <select
+              id="resource-reservation-mode"
+              value={reservationMode}
+              onChange={(e) => setReservationMode(e.target.value)}
+              title={t("resources.reservationMode")}
+              className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              {RESERVATION_MODES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`resources.reservationModes.${value}`)}
+                </option>
+              ))}
+            </select>
+            <label htmlFor="resource-pricing-mode" className="sr-only">
+              {t("resources.pricingMode")}
+            </label>
+            <select
+              id="resource-pricing-mode"
+              value={pricingMode}
+              onChange={(e) => setPricingMode(e.target.value)}
+              title={t("resources.pricingMode")}
+              className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              {PRICING_MODES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`resources.pricingModes.${value}`)}
+                </option>
+              ))}
+            </select>
+            <label htmlFor="resource-capacity" className="sr-only">
+              {t("resources.capacityOptional")}
+            </label>
+            <input
+              id="resource-capacity"
+              type="number"
+              min="1"
+              placeholder={t("resources.capacityOptional")}
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              className="w-32 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+            <label htmlFor="resource-capacity-mode" className="sr-only">
+              {t("resources.capacityMode")}
+            </label>
+            <select
+              id="resource-capacity-mode"
+              value={capacityMode}
+              onChange={(e) => setCapacityMode(e.target.value)}
+              title={t("resources.capacityMode")}
+              className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              {CAPACITY_MODES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`resources.capacityModes.${value}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <details className="mb-3">
+            <summary className="text-xs text-ink-soft cursor-pointer select-none mb-2">
+              {t("resources.advancedRules")}
+            </summary>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <label htmlFor="resource-buffer-before" className="sr-only">
+                {t("resources.bufferBeforeMinutes")}
+              </label>
+              <input
+                id="resource-buffer-before"
+                type="number"
+                min="0"
+                placeholder={t("resources.bufferBeforeMinutes")}
+                title={t("resources.bufferBeforeMinutes")}
+                value={bufferBefore}
+                onChange={(e) => setBufferBefore(e.target.value)}
+                className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+              <label htmlFor="resource-buffer-after" className="sr-only">
+                {t("resources.bufferAfterMinutes")}
+              </label>
+              <input
+                id="resource-buffer-after"
+                type="number"
+                min="0"
+                placeholder={t("resources.bufferAfterMinutes")}
+                title={t("resources.bufferAfterMinutes")}
+                value={bufferAfter}
+                onChange={(e) => setBufferAfter(e.target.value)}
+                className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+              <label htmlFor="resource-min-notice" className="sr-only">
+                {t("resources.minNoticeHours")}
+              </label>
+              <input
+                id="resource-min-notice"
+                type="number"
+                min="0"
+                placeholder={t("resources.minNoticeHours")}
+                title={t("resources.minNoticeHours")}
+                value={minNotice}
+                onChange={(e) => setMinNotice(e.target.value)}
+                className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+              <label htmlFor="resource-max-advance" className="sr-only">
+                {t("resources.maxAdvanceDays")}
+              </label>
+              <input
+                id="resource-max-advance"
+                type="number"
+                min="0"
+                placeholder={t("resources.maxAdvanceDays")}
+                title={t("resources.maxAdvanceDays")}
+                value={maxAdvance}
+                onChange={(e) => setMaxAdvance(e.target.value)}
+                className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+              <label htmlFor="resource-min-duration" className="sr-only">
+                {t("resources.minDurationMinutes")}
+              </label>
+              <input
+                id="resource-min-duration"
+                type="number"
+                min="0"
+                placeholder={t("resources.minDurationMinutes")}
+                title={t("resources.minDurationMinutes")}
+                value={minDuration}
+                onChange={(e) => setMinDuration(e.target.value)}
+                className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+              <label htmlFor="resource-max-duration" className="sr-only">
+                {t("resources.maxDurationMinutes")}
+              </label>
+              <input
+                id="resource-max-duration"
+                type="number"
+                min="0"
+                placeholder={t("resources.maxDurationMinutes")}
+                title={t("resources.maxDurationMinutes")}
+                value={maxDuration}
+                onChange={(e) => setMaxDuration(e.target.value)}
+                className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+              />
+            </div>
+          </details>
+
           <p className="text-xs text-ink-soft mb-1">
             {t("resources.assignServices")}
           </p>
@@ -1907,6 +2220,271 @@ function ResourcesSection() {
                     className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
                   />
                 </div>
+
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <label
+                    htmlFor={`edit-resource-type-${resource.id}`}
+                    className="sr-only"
+                  >
+                    {t("resources.type")}
+                  </label>
+                  <select
+                    id={`edit-resource-type-${resource.id}`}
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value)}
+                    title={t("resources.type")}
+                    className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {RESOURCE_TYPES.map((value) => (
+                      <option key={value} value={value}>
+                        {t(`resources.types.${value}`)}
+                      </option>
+                    ))}
+                  </select>
+                  {editType === "custom" && (
+                    <>
+                      <label
+                        htmlFor={`edit-resource-custom-type-${resource.id}`}
+                        className="sr-only"
+                      >
+                        {t("resources.customTypePlaceholder")}
+                      </label>
+                      <input
+                        id={`edit-resource-custom-type-${resource.id}`}
+                        required
+                        placeholder={t("resources.customTypePlaceholder")}
+                        value={editCustomType}
+                        onChange={(e) => setEditCustomType(e.target.value)}
+                        className="w-40 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                      />
+                    </>
+                  )}
+                  <label
+                    htmlFor={`edit-resource-category-${resource.id}`}
+                    className="sr-only"
+                  >
+                    {t("resources.categoryOptional")}
+                  </label>
+                  <input
+                    id={`edit-resource-category-${resource.id}`}
+                    placeholder={t("resources.categoryOptional")}
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="flex-1 min-w-32 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                  <label
+                    htmlFor={`edit-resource-location-${resource.id}`}
+                    className="sr-only"
+                  >
+                    {t("resources.locationOptional")}
+                  </label>
+                  <input
+                    id={`edit-resource-location-${resource.id}`}
+                    placeholder={t("resources.locationOptional")}
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    className="flex-1 min-w-32 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <label
+                    htmlFor={`edit-resource-status-${resource.id}`}
+                    className="sr-only"
+                  >
+                    {t("resources.status")}
+                  </label>
+                  <select
+                    id={`edit-resource-status-${resource.id}`}
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    title={t("resources.status")}
+                    className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {RESOURCE_STATUSES.map((value) => (
+                      <option key={value} value={value}>
+                        {t(`resources.statuses.${value}`)}
+                      </option>
+                    ))}
+                  </select>
+                  <label
+                    htmlFor={`edit-resource-reservation-mode-${resource.id}`}
+                    className="sr-only"
+                  >
+                    {t("resources.reservationMode")}
+                  </label>
+                  <select
+                    id={`edit-resource-reservation-mode-${resource.id}`}
+                    value={editReservationMode}
+                    onChange={(e) => setEditReservationMode(e.target.value)}
+                    title={t("resources.reservationMode")}
+                    className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {RESERVATION_MODES.map((value) => (
+                      <option key={value} value={value}>
+                        {t(`resources.reservationModes.${value}`)}
+                      </option>
+                    ))}
+                  </select>
+                  <label
+                    htmlFor={`edit-resource-pricing-mode-${resource.id}`}
+                    className="sr-only"
+                  >
+                    {t("resources.pricingMode")}
+                  </label>
+                  <select
+                    id={`edit-resource-pricing-mode-${resource.id}`}
+                    value={editPricingMode}
+                    onChange={(e) => setEditPricingMode(e.target.value)}
+                    title={t("resources.pricingMode")}
+                    className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {PRICING_MODES.map((value) => (
+                      <option key={value} value={value}>
+                        {t(`resources.pricingModes.${value}`)}
+                      </option>
+                    ))}
+                  </select>
+                  <label
+                    htmlFor={`edit-resource-capacity-${resource.id}`}
+                    className="sr-only"
+                  >
+                    {t("resources.capacityOptional")}
+                  </label>
+                  <input
+                    id={`edit-resource-capacity-${resource.id}`}
+                    type="number"
+                    min="1"
+                    placeholder={t("resources.capacityOptional")}
+                    value={editCapacity}
+                    onChange={(e) => setEditCapacity(e.target.value)}
+                    className="w-32 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                  <label
+                    htmlFor={`edit-resource-capacity-mode-${resource.id}`}
+                    className="sr-only"
+                  >
+                    {t("resources.capacityMode")}
+                  </label>
+                  <select
+                    id={`edit-resource-capacity-mode-${resource.id}`}
+                    value={editCapacityMode}
+                    onChange={(e) => setEditCapacityMode(e.target.value)}
+                    title={t("resources.capacityMode")}
+                    className="px-2 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    {CAPACITY_MODES.map((value) => (
+                      <option key={value} value={value}>
+                        {t(`resources.capacityModes.${value}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <details className="mb-3">
+                  <summary className="text-xs text-ink-soft cursor-pointer select-none mb-2">
+                    {t("resources.advancedRules")}
+                  </summary>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <label
+                      htmlFor={`edit-resource-buffer-before-${resource.id}`}
+                      className="sr-only"
+                    >
+                      {t("resources.bufferBeforeMinutes")}
+                    </label>
+                    <input
+                      id={`edit-resource-buffer-before-${resource.id}`}
+                      type="number"
+                      min="0"
+                      placeholder={t("resources.bufferBeforeMinutes")}
+                      title={t("resources.bufferBeforeMinutes")}
+                      value={editBufferBefore}
+                      onChange={(e) => setEditBufferBefore(e.target.value)}
+                      className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                    <label
+                      htmlFor={`edit-resource-buffer-after-${resource.id}`}
+                      className="sr-only"
+                    >
+                      {t("resources.bufferAfterMinutes")}
+                    </label>
+                    <input
+                      id={`edit-resource-buffer-after-${resource.id}`}
+                      type="number"
+                      min="0"
+                      placeholder={t("resources.bufferAfterMinutes")}
+                      title={t("resources.bufferAfterMinutes")}
+                      value={editBufferAfter}
+                      onChange={(e) => setEditBufferAfter(e.target.value)}
+                      className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                    <label
+                      htmlFor={`edit-resource-min-notice-${resource.id}`}
+                      className="sr-only"
+                    >
+                      {t("resources.minNoticeHours")}
+                    </label>
+                    <input
+                      id={`edit-resource-min-notice-${resource.id}`}
+                      type="number"
+                      min="0"
+                      placeholder={t("resources.minNoticeHours")}
+                      title={t("resources.minNoticeHours")}
+                      value={editMinNotice}
+                      onChange={(e) => setEditMinNotice(e.target.value)}
+                      className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                    <label
+                      htmlFor={`edit-resource-max-advance-${resource.id}`}
+                      className="sr-only"
+                    >
+                      {t("resources.maxAdvanceDays")}
+                    </label>
+                    <input
+                      id={`edit-resource-max-advance-${resource.id}`}
+                      type="number"
+                      min="0"
+                      placeholder={t("resources.maxAdvanceDays")}
+                      title={t("resources.maxAdvanceDays")}
+                      value={editMaxAdvance}
+                      onChange={(e) => setEditMaxAdvance(e.target.value)}
+                      className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                    <label
+                      htmlFor={`edit-resource-min-duration-${resource.id}`}
+                      className="sr-only"
+                    >
+                      {t("resources.minDurationMinutes")}
+                    </label>
+                    <input
+                      id={`edit-resource-min-duration-${resource.id}`}
+                      type="number"
+                      min="0"
+                      placeholder={t("resources.minDurationMinutes")}
+                      title={t("resources.minDurationMinutes")}
+                      value={editMinDuration}
+                      onChange={(e) => setEditMinDuration(e.target.value)}
+                      className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                    <label
+                      htmlFor={`edit-resource-max-duration-${resource.id}`}
+                      className="sr-only"
+                    >
+                      {t("resources.maxDurationMinutes")}
+                    </label>
+                    <input
+                      id={`edit-resource-max-duration-${resource.id}`}
+                      type="number"
+                      min="0"
+                      placeholder={t("resources.maxDurationMinutes")}
+                      title={t("resources.maxDurationMinutes")}
+                      value={editMaxDuration}
+                      onChange={(e) => setEditMaxDuration(e.target.value)}
+                      className="w-28 px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                    />
+                  </div>
+                </details>
+
                 <p className="text-xs text-ink-soft mb-1">
                   {t("resources.assignServices")}
                 </p>
@@ -1985,10 +2563,27 @@ function ResourcesSection() {
                   <div>
                     <span className="font-medium">{resource.name}</span>
                     {" \u00b7 "}
+                    {t(`resources.types.${resource.type || "other"}`)}
+                    {resource.type === "custom" && resource.custom_type
+                      ? ` (${resource.custom_type})`
+                      : ""}
+                    {resource.status && resource.status !== "available" && (
+                      <span className="ml-1.5 text-xs bg-surface-2 text-ink-soft px-1.5 py-0.5 rounded">
+                        {t(`resources.statuses.${resource.status}`)}
+                      </span>
+                    )}
+                    {" \u00b7 "}
                     {formatDuration(resource.duration_minutes)}
                     {resource.price && ` \u00b7 ${resource.price}`}
                     {" \u00b7 "}
                     {t("resources.quantity")}: {resource.quantity}
+                    {(resource.category || resource.location) && (
+                      <p className="text-ink-soft mt-0.5">
+                        {[resource.category, resource.location]
+                          .filter(Boolean)
+                          .join(" \u00b7 ")}
+                      </p>
+                    )}
                     {resource.services.length > 0 && (
                       <p className="text-ink-soft mt-0.5">
                         {serviceNames(resource.services)}
@@ -2374,19 +2969,347 @@ function WorkingHoursSection() {
   );
 }
 
+// Per-resource weekly hours (BOOK-57/58) - a resource with no rows
+// here is bookable across the full 24h day (see the backend's
+// resource_availability.py); adding rows restricts it to them.
+function ResourceRulesSection() {
+  const { t } = useTranslation();
+  const [windows, setWindows] = useState([]);
+  const [resources, setResources] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [resourceId, setResourceId] = useState("");
+  const [weekday, setWeekday] = useState("0");
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("17:00");
+  const [editingId, setEditingId] = useState(null);
+  const [editWeekday, setEditWeekday] = useState("0");
+  const [editStartTime, setEditStartTime] = useState("09:00");
+  const [editEndTime, setEditEndTime] = useState("17:00");
+  const [statusMsg, setStatusMsg] = useState(null);
+
+  async function load() {
+    const res = await api.get("/resource-availability/");
+    setWindows(res.data);
+  }
+  async function loadResources() {
+    const res = await api.get("/resources/");
+    setResources(res.data);
+    if (res.data.length > 0) setResourceId(String(res.data[0].id));
+  }
+  useEffect(() => {
+    load();
+    loadResources();
+  }, []);
+
+  function resourceName(id) {
+    return resources.find((r) => r.id === id)?.name || "";
+  }
+
+  async function onCreate(e) {
+    e.preventDefault();
+    if (!resourceId) return;
+    try {
+      await api.post("/resource-availability/", {
+        resource: resourceId,
+        weekday,
+        start_time: `${startTime}:00`,
+        end_time: `${endTime}:00`,
+      });
+      setShowForm(false);
+      setStatusMsg({ key: "resources.hoursAdded", type: "success" });
+      load();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "resources.couldNotAddHours", type: "error" },
+      );
+    }
+  }
+
+  function startEdit(window) {
+    setEditingId(window.id);
+    setEditWeekday(String(window.weekday));
+    setEditStartTime(window.start_time.slice(0, 5));
+    setEditEndTime(window.end_time.slice(0, 5));
+  }
+  function cancelEdit() {
+    setEditingId(null);
+  }
+  async function saveEdit(windowId) {
+    await api.patch(`/resource-availability/${windowId}/`, {
+      weekday: editWeekday,
+      start_time: `${editStartTime}:00`,
+      end_time: `${editEndTime}:00`,
+    });
+    setEditingId(null);
+    setStatusMsg({ key: "resources.hoursUpdated", type: "success" });
+    load();
+  }
+
+  async function deleteWindow(windowId) {
+    if (!window.confirm(t("resources.confirmRemoveHours"))) return;
+    await api.delete(`/resource-availability/${windowId}/`);
+    setStatusMsg({ key: "resources.hoursRemoved", type: "error" });
+    load();
+  }
+
+  if (resources.length === 0) return null;
+
+  return (
+    <section className="bg-surface border border-line rounded-2xl p-6">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="font-medium text-ink">{t("resources.rulesTitle")}</h2>
+        <button
+          onClick={() => {
+            setShowForm(!showForm);
+            setStatusMsg(null);
+          }}
+          aria-expanded={showForm}
+          aria-label={t("resources.addHours")}
+          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+        >
+          <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+          {t("resources.addHours")}
+        </button>
+      </div>
+
+      {statusMsg && (
+        <div
+          role="status"
+          className={
+            statusMsg.type === "success"
+              ? "mb-4 text-sm text-green-700 bg-green-50 border border-green-200 rounded p-3"
+              : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+          }
+        >
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
+        </div>
+      )}
+
+      {showForm && (
+        <form
+          onSubmit={onCreate}
+          className="border border-line rounded-lg p-4 mb-4 flex flex-wrap gap-2 items-end"
+        >
+          <div>
+            <label
+              htmlFor="rr-resource"
+              className="block text-xs text-ink-soft mb-1"
+            >
+              {t("resources.resourceName")}
+            </label>
+            <select
+              id="rr-resource"
+              value={resourceId}
+              onChange={(e) => setResourceId(e.target.value)}
+              className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            >
+              {resources.map((resource) => (
+                <option key={resource.id} value={resource.id}>
+                  {resource.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="rr-weekday"
+              className="block text-xs text-ink-soft mb-1"
+            >
+              {t("booking.weekday")}
+            </label>
+            <select
+              id="rr-weekday"
+              value={weekday}
+              onChange={(e) => setWeekday(e.target.value)}
+              className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            >
+              {WEEKDAY_KEYS.map((key, index) => (
+                <option key={key} value={index}>
+                  {t(`booking.${key}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="rr-start"
+              className="block text-xs text-ink-soft mb-1"
+            >
+              {t("booking.startTime")}
+            </label>
+            <input
+              id="rr-start"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="rr-end"
+              className="block text-xs text-ink-soft mb-1"
+            >
+              {t("booking.endTime")}
+            </label>
+            <input
+              id="rr-end"
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+            />
+          </div>
+          <button
+            aria-label={t("booking.saveHours")}
+            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          >
+            <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+            {t("booking.saveHours")}
+          </button>
+        </form>
+      )}
+
+      <ul className="divide-y divide-line">
+        {windows.map((window) => (
+          <li key={window.id} className="py-2 text-sm">
+            {editingId === window.id ? (
+              <div className="border border-brand-200 rounded-lg p-3 flex flex-wrap gap-2 items-end">
+                <div>
+                  <label
+                    htmlFor={`edit-rr-weekday-${window.id}`}
+                    className="block text-xs text-ink-soft mb-1"
+                  >
+                    {t("booking.weekday")}
+                  </label>
+                  <select
+                    id={`edit-rr-weekday-${window.id}`}
+                    value={editWeekday}
+                    onChange={(e) => setEditWeekday(e.target.value)}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  >
+                    {WEEKDAY_KEYS.map((key, index) => (
+                      <option key={key} value={index}>
+                        {t(`booking.${key}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor={`edit-rr-start-${window.id}`}
+                    className="block text-xs text-ink-soft mb-1"
+                  >
+                    {t("booking.startTime")}
+                  </label>
+                  <input
+                    id={`edit-rr-start-${window.id}`}
+                    type="time"
+                    value={editStartTime}
+                    onChange={(e) => setEditStartTime(e.target.value)}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor={`edit-rr-end-${window.id}`}
+                    className="block text-xs text-ink-soft mb-1"
+                  >
+                    {t("booking.endTime")}
+                  </label>
+                  <input
+                    id={`edit-rr-end-${window.id}`}
+                    type="time"
+                    value={editEndTime}
+                    onChange={(e) => setEditEndTime(e.target.value)}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-400"
+                  />
+                </div>
+                <button
+                  onClick={() => saveEdit(window.id)}
+                  aria-label={t("booking.save")}
+                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                  {t("booking.save")}
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  aria-label={t("booking.cancel")}
+                  className="bg-surface-2 text-ink-soft px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  <FiX className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                  {t("booking.cancel")}
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center">
+                <span>
+                  <span className="font-medium">
+                    {window.resource_name || resourceName(window.resource)}
+                  </span>
+                  {" · "}
+                  {t(`booking.${WEEKDAY_KEYS[window.weekday]}`)}
+                  {" · "}
+                  {window.start_time.slice(0, 5)}
+                  {"–"}
+                  {window.end_time.slice(0, 5)}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startEdit(window)}
+                    aria-label={`${t("booking.edit")} ${window.resource_name}`}
+                    className="bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    <FiEdit2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                    {t("booking.edit")}
+                  </button>
+                  <button
+                    onClick={() => deleteWindow(window.id)}
+                    aria-label={`${t("booking.remove")} ${window.resource_name}`}
+                    className="text-white text-sm bg-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  >
+                    <FiTrash2 className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+                    {t("booking.remove")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </li>
+        ))}
+        {windows.length === 0 && (
+          <p className="text-ink-soft text-sm">{t("resources.noHours")}</p>
+        )}
+      </ul>
+    </section>
+  );
+}
+
 // Holidays (BOOK-11, no staff set - blocks the whole workspace) and
 // specific blocks (BOOK-12, staff set - blocks only that person),
 // both the same BlockedTime row under the hood.
+const BLOCK_TYPES = [
+  "other", "holiday", "personal", "maintenance", "cleaning", "repair",
+  "private_use",
+];
+
 function BlockedTimeSection() {
   const { t } = useTranslation();
   const [blockedTimes, setBlockedTimes] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [resources, setResources] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("00:00");
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("23:59");
   const [staffId, setStaffId] = useState("");
+  const [resourceId, setResourceId] = useState("");
+  const [blockType, setBlockType] = useState("other");
   const [reason, setReason] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editStartDate, setEditStartDate] = useState("");
@@ -2394,6 +3317,8 @@ function BlockedTimeSection() {
   const [editEndDate, setEditEndDate] = useState("");
   const [editEndTime, setEditEndTime] = useState("23:59");
   const [editStaffId, setEditStaffId] = useState("");
+  const [editResourceId, setEditResourceId] = useState("");
+  const [editBlockType, setEditBlockType] = useState("other");
   const [editReason, setEditReason] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
 
@@ -2405,28 +3330,47 @@ function BlockedTimeSection() {
     const res = await api.get("/team/");
     setTeamMembers(res.data);
   }
+  async function loadResources() {
+    const res = await api.get("/resources/");
+    setResources(res.data);
+  }
   useEffect(() => {
     load();
     loadTeamMembers();
+    loadResources();
   }, []);
 
   async function onCreate(e) {
     e.preventDefault();
-    await api.post("/blocked-times/", {
-      start_time: new Date(`${startDate}T${startTime}:00`).toISOString(),
-      end_time: new Date(`${endDate}T${endTime}:00`).toISOString(),
-      staff: staffId || null,
-      reason,
-    });
-    setShowForm(false);
-    setStartDate("");
-    setStartTime("00:00");
-    setEndDate("");
-    setEndTime("23:59");
-    setStaffId("");
-    setReason("");
-    setStatusMsg({ key: "booking.blockedTimeAdded", type: "success" });
-    load();
+    try {
+      await api.post("/blocked-times/", {
+        start_time: new Date(`${startDate}T${startTime}:00`).toISOString(),
+        end_time: new Date(`${endDate}T${endTime}:00`).toISOString(),
+        staff: staffId || null,
+        resource: resourceId || null,
+        block_type: blockType,
+        reason,
+      });
+      setShowForm(false);
+      setStartDate("");
+      setStartTime("00:00");
+      setEndDate("");
+      setEndTime("23:59");
+      setStaffId("");
+      setResourceId("");
+      setBlockType("other");
+      setReason("");
+      setStatusMsg({ key: "booking.blockedTimeAdded", type: "success" });
+      load();
+    } catch (err) {
+      const data = err.response?.data;
+      const message = data ? Object.values(data).flat().join(" ") : null;
+      setStatusMsg(
+        message
+          ? { raw: message, type: "error" }
+          : { key: "booking.blockedTimeAdded", type: "error" },
+      );
+    }
   }
 
   function startEdit(entry) {
@@ -2438,6 +3382,8 @@ function BlockedTimeSection() {
     setEditEndDate(end.toISOString().slice(0, 10));
     setEditEndTime(end.toTimeString().slice(0, 5));
     setEditStaffId(entry.staff ? String(entry.staff) : "");
+    setEditResourceId(entry.resource ? String(entry.resource) : "");
+    setEditBlockType(entry.block_type || "other");
     setEditReason(entry.reason || "");
   }
 
@@ -2452,6 +3398,8 @@ function BlockedTimeSection() {
       ).toISOString(),
       end_time: new Date(`${editEndDate}T${editEndTime}:00`).toISOString(),
       staff: editStaffId || null,
+      resource: editResourceId || null,
+      block_type: editBlockType,
       reason: editReason,
     });
     setEditingId(null);
@@ -2493,7 +3441,7 @@ function BlockedTimeSection() {
               : "mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
           }
         >
-          {t(statusMsg.key)}
+          {statusMsg.key ? t(statusMsg.key, statusMsg.params) : statusMsg.raw}
         </div>
       )}
 
@@ -2565,7 +3513,10 @@ function BlockedTimeSection() {
               <select
                 id="bt-staff"
                 value={staffId}
-                onChange={(e) => setStaffId(e.target.value)}
+                onChange={(e) => {
+                  setStaffId(e.target.value);
+                  if (e.target.value) setResourceId("");
+                }}
                 className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
                 <option value="">{t("booking.wholeWorkspace")}</option>
@@ -2577,6 +3528,46 @@ function BlockedTimeSection() {
               </select>
             </div>
           )}
+          {resources.length > 0 && (
+            <div>
+              <label htmlFor="bt-resource" className="block text-xs text-ink-soft mb-1">
+                {t("resources.blockThisResource")}
+              </label>
+              <select
+                id="bt-resource"
+                value={resourceId}
+                onChange={(e) => {
+                  setResourceId(e.target.value);
+                  if (e.target.value) setStaffId("");
+                }}
+                className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                <option value="">{t("resources.noResourceSelected")}</option>
+                {resources.map((resource) => (
+                  <option key={resource.id} value={resource.id}>
+                    {resource.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div>
+            <label htmlFor="bt-block-type" className="block text-xs text-ink-soft mb-1">
+              {t("resources.blockType")}
+            </label>
+            <select
+              id="bt-block-type"
+              value={blockType}
+              onChange={(e) => setBlockType(e.target.value)}
+              className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+            >
+              {BLOCK_TYPES.map((value) => (
+                <option key={value} value={value}>
+                  {t(`resources.blockTypes.${value}`)}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             aria-label={t("booking.saveBlockedTime")}
             className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
@@ -2642,7 +3633,10 @@ function BlockedTimeSection() {
                   <select
                     aria-label={t("booking.blockedTimeForStaff")}
                     value={editStaffId}
-                    onChange={(e) => setEditStaffId(e.target.value)}
+                    onChange={(e) => {
+                      setEditStaffId(e.target.value);
+                      if (e.target.value) setEditResourceId("");
+                    }}
                     className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <option value="">{t("booking.wholeWorkspace")}</option>
@@ -2653,6 +3647,36 @@ function BlockedTimeSection() {
                     ))}
                   </select>
                 )}
+                {resources.length > 0 && (
+                  <select
+                    aria-label={t("resources.blockThisResource")}
+                    value={editResourceId}
+                    onChange={(e) => {
+                      setEditResourceId(e.target.value);
+                      if (e.target.value) setEditStaffId("");
+                    }}
+                    className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  >
+                    <option value="">{t("resources.noResourceSelected")}</option>
+                    {resources.map((resource) => (
+                      <option key={resource.id} value={resource.id}>
+                        {resource.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <select
+                  aria-label={t("resources.blockType")}
+                  value={editBlockType}
+                  onChange={(e) => setEditBlockType(e.target.value)}
+                  className="px-3 py-2 bg-canvas border border-line rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {BLOCK_TYPES.map((value) => (
+                    <option key={value} value={value}>
+                      {t(`resources.blockTypes.${value}`)}
+                    </option>
+                  ))}
+                </select>
                 <button
                   onClick={() => saveEdit(entry.id)}
                   aria-label={t("booking.save")}
@@ -2679,7 +3703,14 @@ function BlockedTimeSection() {
                   {" – "}
                   {new Date(entry.end_time).toLocaleString()}
                   {" · "}
-                  {entry.staff_name || t("booking.wholeWorkspace")}
+                  {entry.resource_name ||
+                    entry.staff_name ||
+                    t("booking.wholeWorkspace")}
+                  {entry.block_type && entry.block_type !== "other" && (
+                    <span className="ml-1.5 text-xs bg-surface-2 text-ink-soft px-1.5 py-0.5 rounded">
+                      {t(`resources.blockTypes.${entry.block_type}`)}
+                    </span>
+                  )}
                 </span>
                 <div className="flex gap-2">
                   <button

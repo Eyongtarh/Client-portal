@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import {
   FiAlertTriangle,
   FiArchive,
+  FiBox,
   FiCalendar,
   FiDownload,
   FiFolder,
@@ -265,6 +266,14 @@ export default function OwnerDashboard() {
           >
             <FiFolder className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("dashboard.projects")}
+          </Link>
+          <Link
+            to="/resources"
+            aria-label={t("resourceDashboard.title")}
+            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          >
+            <FiBox className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
+            {t("resourceDashboard.title")}
           </Link>
           <Link
             to="/booking"

@@ -16,6 +16,7 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import Landing from "./pages/Landing.jsx";
 import Booking from "./pages/Booking.jsx";
+import ResourceDashboard from "./pages/ResourceDashboard.jsx";
 import PublicBooking from "./pages/PublicBooking.jsx";
 import Projects from "./pages/Projects.jsx";
 import Account from "./pages/Account.jsx";
@@ -61,6 +62,16 @@ export default function App() {
         path="/booking"
         element={
           isOwnerOrStaff ? <Booking /> : <Navigate to="/login" replace />
+        }
+      />
+      <Route
+        path="/resources"
+        element={
+          isOwnerOrStaff ? (
+            <ResourceDashboard />
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
       <Route

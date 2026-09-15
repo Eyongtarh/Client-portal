@@ -28,16 +28,14 @@ class Command(BaseCommand):
             status="confirmed",
             reminder_sent_at__isnull=True,
             start_time__gt=now,
-        ).select_related("workspace", "client", "service", "resource")
+        ).select_related(
+            "workspace", "client", "service", "resource"
+        ).prefetch_related("resource_reservations__resource")
         for booking in bookings:
             window = timedelta(hours=booking.workspace.reminder_hours_before)
             if now < booking.start_time - window:
                 continue
-            booked_name = (
-                booking.service.name
-                if booking.service
-                else booking.resource.name
-            )
+            booked_name = booking.display_name
             send_mail(
                 subject=(
                     f"Reminder: {booked_name} on "

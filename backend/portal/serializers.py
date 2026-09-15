@@ -2,13 +2,19 @@ from decimal import Decimal
 
 from .currencies import VALID_CURRENCIES
 from .models import (
-    Activity, Approval, BlockedTime, Client, ClientInvite, Document,
-    Invoice, InvoiceItem, Message, Milestone, PaymentMethod, Project,
-    RecurringSeries, Resource, Review, Service, ServiceQuestion,
-    SubscriptionPlan, Task, TeamInvite, User, WaitlistEntry, WorkingHours,
-    Booking, Workspace,
+    Activity, Approval, BlockedTime, BookingResourceCharge, Client,
+    ClientInvite, Document, Invoice, InvoiceItem, Message, Milestone,
+    PaymentMethod, Project, RecurringSeries, Resource, ResourceAvailability,
+    ResourceRental, ResourceRentalPolicy, ResourceReservation, Review,
+    Service, ServiceQuestion, ServiceResourceRequirement, SubscriptionPlan,
+    Task, TeamInvite, User, WaitlistEntry, WorkingHours, Booking, Workspace,
+)
+from .resource_availability import (
+    ResourceRequirement, resource_has_capacity, resource_is_bookable,
+    service_resource_requirements,
 )
 from rest_framework import serializers
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from django.contrib.auth.tokens import default_token_generator
@@ -777,12 +783,25 @@ class ResourceSerializer(serializers.ModelSerializer):
     """Full CRUD for a bookable resource. `services` is a list of
     service IDs this resource is tied to - a booking for any of
     those services reserves one unit of this resource for its
-    time slot. `duration_minutes` is the slot length used when
-    this resource is booked directly, without a service - can
-    span multiple days (e.g. booking a room for a week) with no
-    upper limit; `price` is optional and only applies to that
-    direct booking.
+    time slot (superseded per-service by ServiceResourceRequirement
+    rows when any exist, see service_resource_requirements()).
+    `duration_minutes` is the slot length used when this resource
+    is booked directly, without a service - can span multiple days
+    (e.g. booking a room for a week) with no upper limit; `price`
+    is optional and, since the Resource Reservation System, is
+    interpreted per `pricing_mode` and folded into the booking's
+    payment_amount (see BookingSerializer._apply_resource_plan).
+    `type`/`reservation_mode`/`status`/`capacity_mode` are all
+    plain choice fields - see the Resource model's own docstring
+    for what each controls.
     """
+
+    type_display = serializers.CharField(
+        source="get_type_display", read_only=True
+    )
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True
+    )
 
     class Meta:
         model = Resource
@@ -790,6 +809,12 @@ class ResourceSerializer(serializers.ModelSerializer):
             "id", "workspace", "name", "description", "photo",
             "quantity", "price", "duration_minutes", "services",
             "created_at",
+            "type", "type_display", "custom_type", "category", "location",
+            "status", "status_display", "reservation_mode", "pricing_mode",
+            "capacity", "capacity_mode",
+            "booking_buffer_before_minutes", "booking_buffer_after_minutes",
+            "min_booking_notice_hours", "max_advance_days",
+            "min_duration_minutes", "max_duration_minutes", "extra_rules",
         ]
         read_only_fields = ["workspace", "created_at"]
 
@@ -799,6 +824,64 @@ class ResourceSerializer(serializers.ModelSerializer):
                 "Duration must be at least 1 minute."
             )
         return value
+
+    def validate(self, attrs):
+        resource_type = attrs.get(
+            "type", self.instance.type if self.instance else None
+        )
+        custom_type = attrs.get(
+            "custom_type", self.instance.custom_type if self.instance else ""
+        )
+        if resource_type == Resource.ResourceType.CUSTOM and not custom_type:
+            raise serializers.ValidationError(
+                {"custom_type": "Required when type is \"Custom\"."}
+            )
+        return attrs
+
+
+class ResourceAvailabilitySerializer(serializers.ModelSerializer):
+    """Per-resource weekly working hours (BOOK-57/58) - structurally
+    the same idea as WorkingHoursSerializer, scoped to a resource
+    instead of a staff member. No rows for a resource means it's
+    bookable the full 24h day (see resource_availability.py).
+    """
+    resource_name = serializers.SerializerMethodField()
+    resource = serializers.PrimaryKeyRelatedField(
+        queryset=Resource.objects.all()
+    )
+
+    class Meta:
+        model = ResourceAvailability
+        fields = [
+            "id", "workspace", "resource", "resource_name", "weekday",
+            "start_time", "end_time",
+        ]
+        read_only_fields = ["workspace"]
+
+    def get_resource_name(self, obj):
+        return obj.resource.name
+
+    def validate_resource(self, value):
+        workspace = self.context["request"].user.get_workspace()
+        if value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only set hours for a resource in your own "
+                "workspace."
+            )
+        return value
+
+    def validate(self, attrs):
+        start = attrs.get(
+            "start_time", self.instance.start_time if self.instance else None
+        )
+        end = attrs.get(
+            "end_time", self.instance.end_time if self.instance else None
+        )
+        if start and end and end <= start:
+            raise serializers.ValidationError(
+                "End time must be after start time."
+            )
+        return attrs
 
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
@@ -842,28 +925,38 @@ class WorkingHoursSerializer(serializers.ModelSerializer):
 
 
 class BlockedTimeSerializer(serializers.ModelSerializer):
-    """A holiday (BOOK-11, staff left blank) or a specific block
-    (BOOK-12, usually staff set) - AvailabilityView and booking
-    creation both treat any overlapping row as fully unavailable,
-    regardless of working hours.
+    """A holiday (BOOK-11, staff and resource both left blank), a
+    specific staff block (BOOK-12, staff set), or a resource block
+    (BOOK-60, resource set - maintenance/cleaning/repair/private
+    use) - AvailabilityView and booking creation all treat any
+    overlapping row as fully unavailable, regardless of working/
+    resource hours. `staff` and `resource` are never both set.
     """
     staff_name = serializers.SerializerMethodField()
+    resource_name = serializers.SerializerMethodField()
     staff = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role="staff"),
         required=False,
         allow_null=True,
     )
+    resource = serializers.PrimaryKeyRelatedField(
+        queryset=Resource.objects.all(), required=False, allow_null=True
+    )
 
     class Meta:
         model = BlockedTime
         fields = [
-            "id", "workspace", "staff", "staff_name", "start_time",
+            "id", "workspace", "staff", "staff_name", "resource",
+            "resource_name", "block_type", "start_time",
             "end_time", "reason", "created_at",
         ]
         read_only_fields = ["workspace", "created_at"]
 
     def get_staff_name(self, obj):
         return obj.staff.first_name if obj.staff else None
+
+    def get_resource_name(self, obj):
+        return obj.resource.name if obj.resource else None
 
     def validate_staff(self, value):
         if value is None:
@@ -873,6 +966,16 @@ class BlockedTimeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Can only block time for a team member in your own "
                 "workspace."
+            )
+        return value
+
+    def validate_resource(self, value):
+        if value is None:
+            return value
+        workspace = self.context["request"].user.get_workspace()
+        if value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only block a resource in your own workspace."
             )
         return value
 
@@ -887,7 +990,156 @@ class BlockedTimeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "End time must be after start time."
             )
+        staff = attrs.get(
+            "staff", self.instance.staff if self.instance else None
+        )
+        resource = attrs.get(
+            "resource", self.instance.resource if self.instance else None
+        )
+        if staff and resource:
+            raise serializers.ValidationError(
+                "A block can target a team member or a resource, "
+                "not both."
+            )
         return attrs
+
+
+class ServiceResourceRequirementSerializer(serializers.ModelSerializer):
+    """BOOK-72: an explicit required/optional/alternative resource
+    requirement for a service - see the model's own docstring for
+    the fallback-to-legacy-M2M behavior when a service has none of
+    these rows.
+    """
+    resource_name = serializers.SerializerMethodField()
+    service = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all())
+    resource = serializers.PrimaryKeyRelatedField(
+        queryset=Resource.objects.all()
+    )
+
+    class Meta:
+        model = ServiceResourceRequirement
+        fields = [
+            "id", "service", "resource", "resource_name",
+            "requirement_type", "alternative_group", "quantity",
+        ]
+
+    def get_resource_name(self, obj):
+        return obj.resource.name
+
+    def _workspace(self):
+        return self.context["request"].user.get_workspace()
+
+    def validate_service(self, value):
+        if value.workspace_id != self._workspace().id:
+            raise serializers.ValidationError(
+                "Can only set requirements for a service in your "
+                "own workspace."
+            )
+        return value
+
+    def validate_resource(self, value):
+        if value.workspace_id != self._workspace().id:
+            raise serializers.ValidationError(
+                "Can only require a resource from your own workspace."
+            )
+        return value
+
+
+class ResourceReservationSerializer(serializers.ModelSerializer):
+    """Read-only: a ResourceReservation is only ever created as a
+    side effect of a booking being confirmed (see BookingSerializer.
+    _apply_resource_plan) - this just exposes the resulting rows for
+    the resource calendar/filter views (BOOK-82..86).
+    """
+    resource_name = serializers.SerializerMethodField()
+    booking_start_time = serializers.DateTimeField(
+        source="booking.start_time", read_only=True
+    )
+    booking_end_time = serializers.DateTimeField(
+        source="booking.end_time", read_only=True
+    )
+    booking_status = serializers.CharField(
+        source="booking.status", read_only=True
+    )
+    client_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ResourceReservation
+        fields = [
+            "id", "workspace", "booking", "resource", "resource_name",
+            "requirement_type", "quantity", "party_size", "created_at",
+            "booking_start_time", "booking_end_time", "booking_status",
+            "client_name",
+        ]
+        read_only_fields = fields
+
+    def get_resource_name(self, obj):
+        return obj.resource.name
+
+    def get_client_name(self, obj):
+        return obj.booking.client.company_name
+
+
+class ResourceRentalPolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceRentalPolicy
+        fields = [
+            "id", "resource", "rental_unit", "min_rental_duration_minutes",
+            "max_rental_duration_minutes", "deposit_required",
+            "deposit_amount", "late_fee_per_hour", "allow_recurring",
+            "cancellation_notice_hours", "reschedule_notice_hours",
+            "extra_rules",
+        ]
+
+    def validate_resource(self, value):
+        workspace = self.context["request"].user.get_workspace()
+        if value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only configure a rental policy for a resource "
+                "in your own workspace."
+            )
+        return value
+
+
+class ResourceRentalSerializer(serializers.ModelSerializer):
+    """Read-only except for the check-in/check-out/mark-overdue
+    actions on ResourceRentalViewSet - a ResourceRental is created
+    implicitly whenever a RENTAL-mode resource is booked (see
+    BookingSerializer._apply_resource_plan), never directly through
+    this serializer.
+    """
+    resource_name = serializers.SerializerMethodField()
+    client_name = serializers.SerializerMethodField()
+    checked_out_by_name = serializers.SerializerMethodField()
+    checked_in_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ResourceRental
+        fields = [
+            "id", "booking", "resource_reservation", "resource_name",
+            "client_name", "rental_status", "deposit_status",
+            "deposit_amount", "checked_out_at", "checked_out_by",
+            "checked_out_by_name", "checked_in_at", "checked_in_by",
+            "checked_in_by_name", "condition_notes_out",
+            "condition_notes_in", "recurring_series", "created_at",
+        ]
+        read_only_fields = [
+            "booking", "resource_reservation", "checked_out_at",
+            "checked_out_by", "checked_in_at", "checked_in_by",
+            "created_at",
+        ]
+
+    def get_resource_name(self, obj):
+        return obj.resource_reservation.resource.name
+
+    def get_client_name(self, obj):
+        return obj.booking.client.company_name
+
+    def get_checked_out_by_name(self, obj):
+        return obj.checked_out_by.first_name if obj.checked_out_by else None
+
+    def get_checked_in_by_name(self, obj):
+        return obj.checked_in_by.first_name if obj.checked_in_by else None
 
 
 class BookingSerializer(serializers.ModelSerializer):
@@ -920,6 +1172,15 @@ class BookingSerializer(serializers.ModelSerializer):
     resource = serializers.PrimaryKeyRelatedField(
         queryset=Resource.objects.all(), required=False, allow_null=True
     )
+    resource_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Resource.objects.all(),
+        many=True,
+        required=False,
+        write_only=True,
+        help_text="BOOK-71: reserve several resources directly in "
+        "one booking (no service), e.g. 2 chairs + 1 table. Ignored "
+        "when `service` or the legacy `resource` field is set.",
+    )
     staff = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.filter(role="staff"),
         required=False,
@@ -931,7 +1192,8 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = [
             "id", "workspace", "service", "service_name",
             "service_location", "service_is_online",
-            "service_meeting_link", "resource", "resource_name", "client",
+            "service_meeting_link", "resource", "resource_ids",
+            "resource_name", "client",
             "client_name", "staff", "staff_name", "series", "start_time",
             "end_time", "status", "notes", "created_at",
             "remaining_capacity", "payment_status", "payment_amount",
@@ -941,6 +1203,33 @@ class BookingSerializer(serializers.ModelSerializer):
             "workspace", "end_time", "payment_status", "payment_amount",
             "is_late_cancellation",
         ]
+
+    def validate_resource_ids(self, value):
+        if not value:
+            return value
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            # The guest-facing PublicBookingSerializer has no
+            # request.user to scope by - multi-resource booking is
+            # an authenticated-only capability for now, matching the
+            # legacy singular `resource` field's own guest support
+            # (one resource at a time, no scoping issue there since
+            # PublicBookingSerializer.validate() checks it directly).
+            raise serializers.ValidationError(
+                "Multiple resources can only be reserved when signed in."
+            )
+        user = request.user
+        workspace = (
+            user.get_workspace()
+            if user.role in ("owner", "staff")
+            else user.client_profile.workspace
+        )
+        for res in value:
+            if res.workspace_id != workspace.id:
+                raise serializers.ValidationError(
+                    "Can only reserve resources from your own workspace."
+                )
+        return value
 
     def get_staff_name(self, obj):
         return obj.staff.first_name if obj.staff else None
@@ -978,7 +1267,10 @@ class BookingSerializer(serializers.ModelSerializer):
         return obj.service.meeting_link if obj.service else ""
 
     def get_resource_name(self, obj):
-        return obj.resource.name if obj.resource else None
+        if obj.resource:
+            return obj.resource.name
+        names = [rr.resource.name for rr in obj.resource_reservations.all()]
+        return ", ".join(names) if names else None
 
     def get_client_name(self, obj):
         return obj.client.company_name
@@ -992,6 +1284,10 @@ class BookingSerializer(serializers.ModelSerializer):
                 start_time=obj.start_time,
             ).count()
             return max(obj.service.capacity - taken, 0)
+        if not obj.resource:
+            # A multi-resource booking (BOOK-71) has no single legacy
+            # `resource` FK to report a scalar capacity for.
+            return None
         taken = Booking.objects.filter(
             workspace=obj.workspace,
             resource=obj.resource,
@@ -1009,13 +1305,19 @@ class BookingSerializer(serializers.ModelSerializer):
         resource = attrs.get(
             "resource", self.instance.resource if self.instance else None
         )
+        # BOOK-71: resource_ids is an alternative to the legacy
+        # singular `resource` field for reserving several resources
+        # directly (no service) in one booking - write-only, so on
+        # update it's only present in attrs when the client actually
+        # sent a new set this time.
+        resource_ids = attrs.get("resource_ids")
         start = attrs.get("start_time") or self.instance.start_time
 
-        if not service and not resource:
+        if not service and not resource and not resource_ids:
             raise serializers.ValidationError(
                 "Either a service or a resource must be selected."
             )
-        if service and resource:
+        if service and (resource or resource_ids):
             raise serializers.ValidationError(
                 "Choose either a service or a resource, not both."
             )
@@ -1222,60 +1524,287 @@ class BookingSerializer(serializers.ModelSerializer):
                     "This time slot is fully booked."
                 )
 
-            # A booking for this service also reserves one unit of
-            # every resource tied to it - if any resource is already
-            # at capacity for this overlapping window, the booking
-            # can't be confirmed either.
-            for res in service.resources.all():
-                resource_overlap = Booking.objects.filter(
-                    workspace=service.workspace,
-                    service__resources=res,
-                    status="confirmed",
-                    start_time__lt=attrs["end_time"],
-                    end_time__gt=start,
-                )
-                if self.instance:
-                    resource_overlap = resource_overlap.exclude(
-                        pk=self.instance.pk
-                    )
-                if resource_overlap.count() >= res.quantity:
-                    raise serializers.ValidationError(
-                        f'"{res.name}" is fully booked for this time.'
-                    )
+            # A booking for this service also reserves whatever
+            # resources it requires (BOOK-72/73: required/optional/
+            # alternative) - if a required one (or every candidate
+            # in an alternative group) is already at capacity for
+            # this window, the booking can't be confirmed either.
+            # This is the same fast, advisory check
+            # _plan_resource_reservations() re-runs under lock in
+            # create()/update() - see that method's docstring.
+            self._plan_resource_reservations(
+                service=service,
+                resource=None,
+                resource_ids=None,
+                start=start,
+                end=attrs["end_time"],
+                exclude_pk=self.instance.pk if self.instance else None,
+            )
         else:
+            resources = resource_ids or ([resource] if resource else [])
+            # A direct (no-service) resource booking uses the first
+            # resource's own duration for the slot length - matches
+            # the pre-multi-resource behavior exactly when there's
+            # only one; resource_ids beyond the first don't lengthen
+            # or shorten the shared window.
             attrs["end_time"] = start + timedelta(
-                minutes=resource.duration_minutes
+                minutes=resources[0].duration_minutes
             )
-            # A direct resource booking competes with both other
-            # direct bookings of this resource AND any service
-            # booking that uses this resource, for the same window.
-            direct_overlap = Booking.objects.filter(
-                workspace=resource.workspace,
+            for res in resources:
+                if res.reservation_mode == Resource.ReservationMode.BOOKING:
+                    raise serializers.ValidationError(
+                        f'"{res.name}" can only be booked as part of '
+                        "a service."
+                    )
+                if not resource_is_bookable(res):
+                    raise serializers.ValidationError(
+                        f'"{res.name}" is not currently available.'
+                    )
+            self._plan_resource_reservations(
+                service=None,
                 resource=resource,
-                status="confirmed",
-                start_time__lt=attrs["end_time"],
-                end_time__gt=start,
+                resource_ids=resource_ids,
+                start=start,
+                end=attrs["end_time"],
+                exclude_pk=self.instance.pk if self.instance else None,
             )
-            via_service_overlap = Booking.objects.filter(
-                workspace=resource.workspace,
-                service__resources=resource,
-                status="confirmed",
-                start_time__lt=attrs["end_time"],
-                end_time__gt=start,
-            )
-            if self.instance:
-                direct_overlap = direct_overlap.exclude(pk=self.instance.pk)
-                via_service_overlap = via_service_overlap.exclude(
-                    pk=self.instance.pk
-                )
-            total_overlap = (
-                direct_overlap.count() + via_service_overlap.count()
-            )
-            if total_overlap >= resource.quantity:
-                raise serializers.ValidationError(
-                    "This resource is fully booked for this time."
-                )
         return attrs
+
+    def _plan_resource_reservations(
+        self, *, service, resource, resource_ids, start, end, exclude_pk,
+    ):
+        """The single place that decides which resources a booking
+        reserves and checks their capacity - shared by validate()
+        (called unlocked, advisory/UX-only) and create()/update()
+        (called again inside a transaction.atomic()+select_for_update
+        block, where it's the authoritative, race-safe check). Raises
+        serializers.ValidationError exactly like the capacity checks
+        it replaces if a required resource (or every member of an
+        alternative group) has no room; returns the concrete
+        (resource, requirement_type, quantity) plan to reserve,
+        picking the first available candidate (by id) for each
+        alternative group and skipping optional resources with no
+        room rather than blocking on them.
+        """
+        if service:
+            requirements = service_resource_requirements(service)
+        elif resource_ids:
+            requirements = [
+                ResourceRequirement(res, "required", "", 1)
+                for res in resource_ids
+            ]
+        elif resource:
+            requirements = [ResourceRequirement(resource, "required", "", 1)]
+        else:
+            requirements = []
+
+        plan = []
+        groups = {}
+        for req in requirements:
+            has_room = resource_has_capacity(
+                req.resource, start, end,
+                needed_quantity=req.quantity, exclude_booking_id=exclude_pk,
+            )
+            if req.requirement_type == "alternative" and req.alternative_group:
+                groups.setdefault(req.alternative_group, []).append(
+                    (req, has_room)
+                )
+                continue
+            if req.requirement_type == "required":
+                if not has_room:
+                    raise serializers.ValidationError(
+                        f'"{req.resource.name}" is fully booked for '
+                        "this time."
+                    )
+                plan.append((req.resource, req.requirement_type, req.quantity))
+            elif req.requirement_type == "optional" and has_room:
+                plan.append((req.resource, req.requirement_type, req.quantity))
+
+        for group, candidates in groups.items():
+            chosen = next(
+                (req for req, has_room in candidates if has_room), None
+            )
+            if chosen is None:
+                names = ", ".join(req.resource.name for req, _ in candidates)
+                raise serializers.ValidationError(
+                    f"No available resource among: {names}."
+                )
+            plan.append((chosen.resource, chosen.requirement_type, chosen.quantity))
+
+        return plan
+
+    def _locked_resource_ids(self, service, resource, resource_ids):
+        """Every Resource row this write could reserve, so they can
+        all be select_for_update()'d together in one stable order -
+        avoids deadlocking against a concurrent write that locks an
+        overlapping resource set in a different order.
+        """
+        ids = set()
+        if service:
+            ids.update(
+                req.resource.id for req in service_resource_requirements(service)
+            )
+        if resource:
+            ids.add(resource.id)
+        if resource_ids:
+            ids.update(res.id for res in resource_ids)
+        return sorted(ids)
+
+    def _apply_resource_plan(self, booking, plan):
+        """Creates the ResourceReservation (and, where priced/rental,
+        BookingResourceCharge/ResourceRental) rows for a finalized
+        plan from _plan_resource_reservations(), and - for a direct
+        (no-service) booking - folds any resource charges into the
+        booking's own payment_amount/payment_status so
+        BookingCheckoutView/Stripe/webhooks need no changes to
+        support resource payments (closes the pre-existing gap where
+        a priced resource was silently always free).
+        """
+        total_amount = Decimal("0")
+        has_priced = False
+        for res, requirement_type, quantity in plan:
+            reservation = ResourceReservation.objects.create(
+                workspace_id=booking.workspace_id,
+                booking=booking,
+                resource=res,
+                requirement_type=requirement_type,
+                quantity=quantity,
+            )
+            if res.pricing_mode != Resource.PricingMode.NONE and res.price:
+                BookingResourceCharge.objects.create(
+                    booking=booking,
+                    resource_reservation=reservation,
+                    amount=res.price,
+                    description=(
+                        f"{res.name} ({res.get_pricing_mode_display()})"
+                    ),
+                )
+                total_amount += res.price
+                has_priced = True
+            if res.reservation_mode == Resource.ReservationMode.RENTAL:
+                policy = getattr(res, "rental_policy", None)
+                ResourceRental.objects.create(
+                    booking=booking,
+                    resource_reservation=reservation,
+                    deposit_status=(
+                        ResourceRental.DepositStatus.PENDING
+                        if policy and policy.deposit_required
+                        else ResourceRental.DepositStatus.NOT_REQUIRED
+                    ),
+                    deposit_amount=policy.deposit_amount if policy else None,
+                )
+
+        # Only a direct resource booking's price flows into
+        # Booking.payment_amount here - a service booking's price
+        # already comes from the service itself (see the
+        # payment_requirement branch above in validate()); resource
+        # charges attached to a service booking are tracked via
+        # BookingResourceCharge but don't change what the service
+        # itself charges, matching BOOK-92 ("connected to bookings
+        # and invoices") without conflating the two prices.
+        if not booking.service and has_priced:
+            booking.payment_amount = total_amount
+            booking.payment_status = Booking.PaymentStatus.PENDING
+            booking.save(update_fields=["payment_amount", "payment_status"])
+
+    def create(self, validated_data):
+        resource_ids = validated_data.pop("resource_ids", None)
+        service = validated_data.get("service")
+        resource = validated_data.get("resource")
+        start = validated_data["start_time"]
+        end = validated_data["end_time"]
+
+        with transaction.atomic():
+            lock_ids = self._locked_resource_ids(service, resource, resource_ids)
+            if lock_ids:
+                # Materialize under lock - the queryset itself must be
+                # evaluated here, or the SELECT ... FOR UPDATE never
+                # actually runs.
+                list(
+                    Resource.objects.select_for_update()
+                    .filter(id__in=lock_ids).order_by("id")
+                )
+            if service:
+                service = Service.objects.select_for_update().get(pk=service.id)
+                validated_data["service"] = service
+
+            plan = self._plan_resource_reservations(
+                service=service, resource=resource, resource_ids=resource_ids,
+                start=start, end=end, exclude_pk=None,
+            )
+            # A single reserved resource keeps populating the legacy
+            # `resource` FK (old exports, __str__, existing frontend);
+            # more than one leaves it null and relies entirely on
+            # ResourceReservation, same as a service booking already
+            # does.
+            if not service and len(plan) == 1:
+                validated_data["resource"] = plan[0][0]
+            elif not service:
+                validated_data["resource"] = None
+
+            booking = Booking.objects.create(**validated_data)
+            self._apply_resource_plan(booking, plan)
+
+        return booking
+
+    def update(self, instance, validated_data):
+        resource_ids = validated_data.pop("resource_ids", None)
+        resource_set_changed = (
+            resource_ids is not None or "resource" in validated_data
+        )
+        time_changed = "start_time" in validated_data
+        service = validated_data.get("service", instance.service)
+        resource = validated_data.get("resource", instance.resource)
+        start = validated_data.get("start_time", instance.start_time)
+        end = validated_data.get("end_time", instance.end_time)
+
+        with transaction.atomic():
+            if time_changed or resource_set_changed:
+                lock_ids = self._locked_resource_ids(
+                    service, resource, resource_ids
+                )
+                if lock_ids:
+                    list(
+                        Resource.objects.select_for_update()
+                        .filter(id__in=lock_ids).order_by("id")
+                    )
+                if service:
+                    service = Service.objects.select_for_update().get(
+                        pk=service.id
+                    )
+                plan = self._plan_resource_reservations(
+                    service=service, resource=resource,
+                    resource_ids=resource_ids if resource_set_changed else None,
+                    start=start, end=end, exclude_pk=instance.pk,
+                )
+                if not service and len(plan) == 1:
+                    validated_data["resource"] = plan[0][0]
+                elif not service:
+                    validated_data["resource"] = None
+
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+
+            if time_changed or resource_set_changed:
+                # The old plan's reservations (and anything chained
+                # off them - charges, rentals) are superseded by the
+                # new one; ResourceReservation.resource is PROTECT,
+                # but deleting the reservation row itself is exactly
+                # what "release on reschedule" (BOOK-68) means - the
+                # Booking row this history hung off keeps existing,
+                # so nothing about past reservations is lost, only
+                # this booking's current holds.
+                # NOTE: this recreates ResourceRental rows too, which
+                # would discard check-in/out or deposit state on an
+                # already-active rental being rescheduled - the
+                # rental lifecycle phase (BOOK-98's reschedule-notice
+                # rules) should special-case that rather than this
+                # generic reschedule path.
+                instance.resource_reservations.all().delete()
+                self._apply_resource_plan(instance, plan)
+
+        return instance
 
 
 class PublicWorkspaceSerializer(serializers.ModelSerializer):

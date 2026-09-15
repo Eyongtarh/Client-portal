@@ -17,7 +17,7 @@ NOTIFICATION_CATEGORIES = {
     "payments": ["invoice_paid", "booking_payment_received"],
     "bookings": [
         "booking_created", "booking_cancelled", "booking_cancelled_late",
-        "booking_no_show",
+        "booking_no_show", "resource_checked_out", "resource_checked_in",
     ],
     "approvals": [
         "approval_requested", "approval_approved",

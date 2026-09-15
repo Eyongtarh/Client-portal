@@ -566,8 +566,22 @@ class BlockedTime(models.Model):
     no staff set (blocks the entire workspace); a specific block
     (BOOK-12, e.g. a dentist appointment) is the same model with a
     narrower window and, usually, a staff member set so it only
-    blocks that person.
+    blocks that person. `resource`, added for BOOK-60, generalizes
+    the same idea one step further: set it to block just that
+    resource (maintenance, cleaning, repair, private use) instead
+    of a person or the whole workspace. `staff` and `resource` are
+    never both set on the same row.
     """
+
+    class BlockType(models.TextChoices):
+        OTHER = "other", "Other"
+        HOLIDAY = "holiday", "Holiday"
+        PERSONAL = "personal", "Personal"
+        MAINTENANCE = "maintenance", "Maintenance"
+        CLEANING = "cleaning", "Cleaning"
+        REPAIR = "repair", "Repair"
+        PRIVATE_USE = "private_use", "Private use"
+
     workspace = models.ForeignKey(
         Workspace, on_delete=models.CASCADE, related_name="blocked_times"
     )
@@ -580,6 +594,19 @@ class BlockedTime(models.Model):
         limit_choices_to={"role": "staff"},
         help_text="Blank blocks the whole workspace (a holiday); set "
         "to block only that team member's own calendar.",
+    )
+    resource = models.ForeignKey(
+        "Resource",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="blocked_times",
+        help_text="Set to block only this resource (maintenance, "
+        "cleaning, repair, private use) rather than a person or the "
+        "whole workspace.",
+    )
+    block_type = models.CharField(
+        max_length=20, choices=BlockType.choices, default=BlockType.OTHER,
     )
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
@@ -613,7 +640,82 @@ class Resource(models.Model):
     hour, or a room for a full 24-hour day - with slots offered
     across the full day rather than the workspace's working
     hours, since a resource booking isn't tied to staff time.
+
+    The full resource-reservation system (BOOK-51 through
+    BOOK-108) layers on top of this same model rather than a
+    parallel one: `type`/`category`/`location`/`status` classify
+    and track it, `reservation_mode`/`pricing_mode` describe how
+    it's reserved and charged, `capacity`/`capacity_mode` are a
+    second axis from `quantity` (how many people/things one unit
+    holds, vs. how many identical units exist), and the
+    buffer/notice/duration fields are per-resource booking rules
+    mirroring Service's own. `ResourceReservation` is the
+    system-of-record for multi-resource bookings and conflict
+    checking; this model's own `quantity`/`price`/
+    `duration_minutes`/`services` keep their original meaning for
+    existing single-resource bookings and callers.
     """
+
+    class ResourceType(models.TextChoices):
+        CHAIR = "chair", "Chair"
+        TABLE = "table", "Table"
+        CAR = "car", "Car"
+        VAN = "van", "Van"
+        HOTEL_ROOM = "hotel_room", "Hotel room"
+        MEETING_ROOM = "meeting_room", "Meeting room"
+        STUDIO = "studio", "Studio"
+        DESK = "desk", "Desk"
+        OFFICE = "office", "Office"
+        EQUIPMENT = "equipment", "Equipment"
+        MACHINE = "machine", "Machine"
+        COURT = "court", "Court"
+        FIELD = "field", "Field"
+        BOAT = "boat", "Boat"
+        BIKE = "bike", "Bike"
+        PARKING_SPACE = "parking_space", "Parking space"
+        ROOM = "room", "Room"
+        FACILITY = "facility", "Facility"
+        OTHER = "other", "Other"
+        CUSTOM = "custom", "Custom"
+
+    class Status(models.TextChoices):
+        AVAILABLE = "available", "Available"
+        RESERVED = "reserved", "Reserved"
+        OCCUPIED = "occupied", "Occupied"
+        BLOCKED = "blocked", "Blocked"
+        MAINTENANCE = "maintenance", "Maintenance"
+        CLEANING = "cleaning", "Cleaning"
+        INACTIVE = "inactive", "Inactive"
+        RETIRED = "retired", "Retired"
+
+    #: Statuses that make a resource unbookable everywhere - used by
+    #: resource_availability.resource_is_bookable(). AVAILABLE/
+    #: RESERVED/OCCUPIED are advisory display states only; nothing
+    #: auto-sets them in v1.
+    UNBOOKABLE_STATUSES = {
+        Status.BLOCKED, Status.MAINTENANCE, Status.CLEANING,
+        Status.INACTIVE, Status.RETIRED,
+    }
+
+    class ReservationMode(models.TextChoices):
+        BOOKING = "booking", "Via service only"
+        RESERVATION = "reservation", "Direct reservation"
+        RENTAL = "rental", "Rental"
+
+    class PricingMode(models.TextChoices):
+        NONE = "none", "None"
+        HOURLY = "hourly", "Hourly"
+        DAILY = "daily", "Daily"
+        NIGHTLY = "nightly", "Nightly"
+        WEEKLY = "weekly", "Weekly"
+        MONTHLY = "monthly", "Monthly"
+        PER_USE = "per_use", "Per use"
+        CUSTOM = "custom", "Custom"
+
+    class CapacityMode(models.TextChoices):
+        EXCLUSIVE = "exclusive", "Exclusive (one booking per unit)"
+        SHARED = "shared", "Shared (multiple bookings up to capacity)"
+
     workspace = models.ForeignKey(
         Workspace, on_delete=models.CASCADE, related_name="resources"
     )
@@ -641,6 +743,71 @@ class Resource(models.Model):
         Service, blank=True, related_name="resources"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    type = models.CharField(
+        max_length=30, choices=ResourceType.choices,
+        default=ResourceType.OTHER,
+    )
+    custom_type = models.CharField(
+        max_length=50, blank=True, default="",
+        help_text="Free-text label when type=CUSTOM, e.g. "
+        "\"Golf cart\" or \"Sauna\".",
+    )
+    category = models.CharField(
+        max_length=100, blank=True, default="", db_index=True,
+        help_text="Workspace-defined grouping label, e.g. "
+        "\"Deluxe rooms\" or \"Power tools\".",
+    )
+    location = models.CharField(
+        max_length=255, blank=True, default="",
+        help_text="Free-text location for now (a first-class "
+        "Location entity is a later phase).",
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.AVAILABLE,
+        help_text="Only BLOCKED/MAINTENANCE/CLEANING/INACTIVE/"
+        "RETIRED are authoritative and exclude this resource from "
+        "availability and new reservations. Retire a resource by "
+        "setting this rather than deleting it, to keep its "
+        "reservation history intact.",
+    )
+    reservation_mode = models.CharField(
+        max_length=20, choices=ReservationMode.choices,
+        default=ReservationMode.RESERVATION,
+        help_text="BOOKING: only reservable as part of a service. "
+        "RESERVATION: reservable directly (today's behavior). "
+        "RENTAL: reservable directly with rental-lifecycle "
+        "tracking (deposits, check-in/out, overdue).",
+    )
+    pricing_mode = models.CharField(
+        max_length=20, choices=PricingMode.choices,
+        default=PricingMode.NONE,
+    )
+    capacity = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="How many people/things one unit holds, e.g. 8 "
+        "seats in a meeting room. Distinct from quantity (how many "
+        "identical units exist). Used when capacity_mode=SHARED.",
+    )
+    capacity_mode = models.CharField(
+        max_length=20, choices=CapacityMode.choices,
+        default=CapacityMode.EXCLUSIVE,
+    )
+    booking_buffer_before_minutes = models.PositiveIntegerField(default=0)
+    booking_buffer_after_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Also used as cleaning/turnover time between "
+        "reservations.",
+    )
+    min_booking_notice_hours = models.PositiveIntegerField(default=0)
+    max_advance_days = models.PositiveIntegerField(null=True, blank=True)
+    min_duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+    max_duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+    extra_rules = models.JSONField(
+        default=dict, blank=True,
+        help_text="Escape hatch for resource-specific rules that "
+        "don't warrant their own column yet.",
+    )
 
     def __str__(self):
         return self.name
@@ -891,9 +1058,26 @@ class Booking(models.Model):
     class Meta:
         ordering = ["start_time"]
 
+    @property
+    def display_name(self):
+        """Service name, or the name(s) of every resource this
+        booking holds via ResourceReservation, falling back to the
+        legacy single `resource` FK. Unlike `service.name if service
+        else resource.name`, this never raises when a booking holds
+        resources only through ResourceReservation and has no
+        legacy `resource` set (e.g. a multi-resource booking).
+        """
+        if self.service:
+            return self.service.name
+        names = [
+            rr.resource.name for rr in self.resource_reservations.all()
+        ]
+        if names:
+            return ", ".join(names)
+        return self.resource.name if self.resource else ""
+
     def __str__(self):
-        target = self.service.name if self.service else self.resource.name
-        return f"{target} - {self.client.company_name}"
+        return f"{self.display_name} - {self.client.company_name}"
 
 
 class Review(models.Model):
@@ -1108,3 +1292,284 @@ class Activity(models.Model):
     def __str__(self):
         who = self.actor.email if self.actor else "Someone"
         return f"{who} - {self.verb} - {self.target_repr}"
+
+
+class ResourceAvailability(models.Model):
+    """One weekly recurring availability window for a single
+    resource, shaped exactly like WorkingHours. Deliberately
+    opt-in: a resource with zero rows here is bookable the full
+    24h day, exactly like Resource behaved before this model
+    existed (see resource_availability.resource_availability_windows) -
+    so adding this model never changes any existing resource's
+    behavior unless someone deliberately adds rows for it.
+    """
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name="resource_availability",
+    )
+    resource = models.ForeignKey(
+        Resource,
+        on_delete=models.CASCADE,
+        related_name="availability_windows",
+    )
+    weekday = models.IntegerField(choices=WorkingHours.Weekday.choices)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    class Meta:
+        ordering = ["weekday", "start_time"]
+        verbose_name_plural = "resource availability"
+
+    def __str__(self):
+        return (
+            f"{self.resource.name} "
+            f"{self.get_weekday_display()} {self.start_time}-{self.end_time}"
+        )
+
+
+class ServiceResourceRequirement(models.Model):
+    """Explicit required/optional/alternative resource requirement
+    for a service (BOOK-72). Additive alongside Service.resources
+    (the existing M2M), which keeps meaning exactly what it means
+    today - implicit REQUIRED, quantity 1. The availability/booking
+    engine (see resource_availability.service_resource_requirements)
+    reads rows from THIS model when any exist for a service, and
+    falls back to the legacy M2M when none do, so every service
+    created before this model existed keeps working unmodified.
+    Rows that share a non-blank `alternative_group` and
+    requirement_type=ALTERNATIVE are satisfied by reserving any one
+    of them (BOOK-73).
+    """
+
+    class RequirementType(models.TextChoices):
+        REQUIRED = "required", "Required"
+        OPTIONAL = "optional", "Optional"
+        ALTERNATIVE = "alternative", "Alternative"
+
+    service = models.ForeignKey(
+        Service, on_delete=models.CASCADE, related_name="resource_requirements"
+    )
+    resource = models.ForeignKey(
+        Resource, on_delete=models.CASCADE, related_name="service_requirements"
+    )
+    requirement_type = models.CharField(
+        max_length=20, choices=RequirementType.choices,
+        default=RequirementType.REQUIRED,
+    )
+    alternative_group = models.CharField(
+        max_length=100, blank=True, default="",
+        help_text="Rows sharing a non-blank group + "
+        "requirement_type=ALTERNATIVE are satisfied by reserving "
+        "any one of them.",
+    )
+    quantity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        unique_together = [("service", "resource")]
+
+    def __str__(self):
+        return f"{self.service.name} requires {self.resource.name}"
+
+
+class ResourceReservation(models.Model):
+    """The through-model letting one Booking reserve many resources
+    (BOOK-71). Deliberately has no start_time/end_time of its own -
+    it always reads through booking.start_time/end_time, so
+    rescheduling a Booking automatically reschedules every resource
+    it holds, and cancelling/completing a Booking automatically
+    frees its resources (availability queries only count
+    booking.status="confirmed" rows) without ever deleting this
+    row - retaining reservation history across cancel/reschedule/
+    complete (BOOK-102, BOOK-108) for free.
+
+    `resource` uses on_delete=PROTECT (unlike Booking.resource's
+    CASCADE) so a resource with reservation history can't be
+    silently hard-deleted from under its bookings; retire it via
+    Resource.status instead.
+    """
+
+    class RequirementType(models.TextChoices):
+        REQUIRED = "required", "Required"
+        OPTIONAL = "optional", "Optional"
+        ALTERNATIVE = "alternative", "Alternative"
+
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name="resource_reservations",
+    )
+    booking = models.ForeignKey(
+        Booking, on_delete=models.CASCADE, related_name="resource_reservations"
+    )
+    resource = models.ForeignKey(
+        Resource, on_delete=models.PROTECT, related_name="reservations"
+    )
+    requirement_type = models.CharField(
+        max_length=20, choices=RequirementType.choices,
+        default=RequirementType.REQUIRED,
+    )
+    quantity = models.PositiveIntegerField(
+        default=1,
+        help_text="Units of the resource consumed - used for "
+        "EXCLUSIVE capacity math against Resource.quantity.",
+    )
+    party_size = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="People/slots consumed - used for SHARED "
+        "capacity math against Resource.capacity.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("booking", "resource")]
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.resource.name} for booking #{self.booking_id}"
+
+
+class ResourceRentalPolicy(models.Model):
+    """Optional per-resource rental configuration, meaningful when
+    Resource.reservation_mode=RENTAL (BOOK-93 through BOOK-98).
+    """
+
+    class RentalUnit(models.TextChoices):
+        HOURLY = "hourly", "Hourly"
+        DAILY = "daily", "Daily"
+        NIGHTLY = "nightly", "Nightly"
+        WEEKLY = "weekly", "Weekly"
+        MONTHLY = "monthly", "Monthly"
+        CUSTOM = "custom", "Custom"
+
+    resource = models.OneToOneField(
+        Resource, on_delete=models.CASCADE, related_name="rental_policy"
+    )
+    rental_unit = models.CharField(
+        max_length=20, choices=RentalUnit.choices, default=RentalUnit.DAILY,
+    )
+    min_rental_duration_minutes = models.PositiveIntegerField(
+        null=True, blank=True
+    )
+    max_rental_duration_minutes = models.PositiveIntegerField(
+        null=True, blank=True
+    )
+    deposit_required = models.BooleanField(default=False)
+    deposit_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    late_fee_per_hour = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    allow_recurring = models.BooleanField(default=False)
+    cancellation_notice_hours = models.PositiveIntegerField(default=0)
+    reschedule_notice_hours = models.PositiveIntegerField(default=0)
+    extra_rules = models.JSONField(default=dict, blank=True)
+
+    def __str__(self):
+        return f"Rental policy for {self.resource.name}"
+
+
+class ResourceRental(models.Model):
+    """Rental-lifecycle state layered on top of a Booking +
+    ResourceReservation pair (BOOK-99 through BOOK-103) - reuses
+    the exact same conflict-checking/Stripe/cancel/reschedule
+    machinery every other booking already goes through, rather than
+    duplicating it.
+    """
+
+    class RentalStatus(models.TextChoices):
+        SCHEDULED = "scheduled", "Scheduled"
+        ACTIVE = "active", "Active"
+        OVERDUE = "overdue", "Overdue"
+        RETURNED = "returned", "Returned"
+        CANCELLED = "cancelled", "Cancelled"
+        COMPLETED = "completed", "Completed"
+
+    class DepositStatus(models.TextChoices):
+        NOT_REQUIRED = "not_required", "Not required"
+        PENDING = "pending", "Pending"
+        HELD = "held", "Held"
+        REFUNDED = "refunded", "Refunded"
+        FORFEITED = "forfeited", "Forfeited"
+
+    booking = models.OneToOneField(
+        Booking, on_delete=models.CASCADE, related_name="rental"
+    )
+    resource_reservation = models.OneToOneField(
+        ResourceReservation, on_delete=models.CASCADE, related_name="rental"
+    )
+    rental_status = models.CharField(
+        max_length=20, choices=RentalStatus.choices,
+        default=RentalStatus.SCHEDULED,
+    )
+    deposit_status = models.CharField(
+        max_length=20, choices=DepositStatus.choices,
+        default=DepositStatus.NOT_REQUIRED,
+    )
+    deposit_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    checked_out_at = models.DateTimeField(null=True, blank=True)
+    checked_out_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="+",
+    )
+    checked_in_at = models.DateTimeField(null=True, blank=True)
+    checked_in_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="+",
+    )
+    condition_notes_out = models.TextField(blank=True)
+    condition_notes_in = models.TextField(blank=True)
+    recurring_series = models.ForeignKey(
+        RecurringSeries, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="resource_rentals",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Rental of {self.resource_reservation.resource.name}"
+
+
+class BookingResourceCharge(models.Model):
+    """A priced line item for one resource on one booking - created
+    only when Resource.pricing_mode != NONE, and folded into
+    Booking.payment_amount at booking-creation time so
+    BookingCheckoutView/Stripe/webhooks need zero changes to
+    support resource charges.
+    """
+    booking = models.ForeignKey(
+        Booking, on_delete=models.CASCADE, related_name="resource_charges"
+    )
+    resource_reservation = models.ForeignKey(
+        ResourceReservation, on_delete=models.CASCADE, related_name="charges"
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.description or 'Resource charge'}: {self.amount}"
+
+
+class ResourceGroup(models.Model):
+    """Lets staff combine resources that can be reserved together as
+    one unit (BOOK-74), e.g. two joined restaurant tables. Reserving
+    a group is sugar over the normal atomic multi-resource booking
+    path - it fans out into a normal ResourceReservation row per
+    member resource rather than being a second conflict-checking
+    code path of its own.
+    """
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="resource_groups"
+    )
+    name = models.CharField(max_length=255)
+    resources = models.ManyToManyField(
+        Resource, related_name="groups", blank=True
+    )
+    combined_capacity = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name

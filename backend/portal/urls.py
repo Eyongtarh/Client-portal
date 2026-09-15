@@ -54,6 +54,27 @@ router.register(
     "resources", views.ResourceViewSet, basename="resource"
 )
 router.register(
+    "resource-availability", views.ResourceAvailabilityViewSet,
+    basename="resourceavailability"
+)
+router.register(
+    "service-resource-requirements",
+    views.ServiceResourceRequirementViewSet,
+    basename="serviceresourcerequirement"
+)
+router.register(
+    "resource-reservations", views.ResourceReservationViewSet,
+    basename="resourcereservation"
+)
+router.register(
+    "resource-rental-policies", views.ResourceRentalPolicyViewSet,
+    basename="resourcerentalpolicy"
+)
+router.register(
+    "resource-rentals", views.ResourceRentalViewSet,
+    basename="resourcerental"
+)
+router.register(
     "payment-methods", views.PaymentMethodViewSet, basename="paymentmethod"
 )
 router.register(
