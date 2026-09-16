@@ -19,6 +19,7 @@ secret in the Dashboard:
 import stripe
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import transaction
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -84,18 +85,25 @@ class StripeConnectWebhookView(View):
 
 
 def _mark_invoice_paid(invoice_id, payment_intent_id):
-    try:
-        invoice = Invoice.objects.get(pk=invoice_id)
-    except (Invoice.DoesNotExist, ValueError, TypeError):
-        return
-    if invoice.status == "paid":
-        return
-    invoice.status = "paid"
-    invoice.paid_at = timezone.now()
-    invoice.stripe_payment_intent_id = payment_intent_id
-    invoice.save(
-        update_fields=["status", "paid_at", "stripe_payment_intent_id"]
-    )
+    # select_for_update() + atomic closes a real (if narrow) race: two
+    # near-simultaneous webhook deliveries for the same event (Stripe
+    # does redeliver) could otherwise both read status != "paid"
+    # before either write commits, and both send the "you got paid"
+    # email. Locking the row makes the second delivery wait for the
+    # first to commit, so its own check-then-act sees the update.
+    with transaction.atomic():
+        try:
+            invoice = Invoice.objects.select_for_update().get(pk=invoice_id)
+        except (Invoice.DoesNotExist, ValueError, TypeError):
+            return
+        if invoice.status == "paid":
+            return
+        invoice.status = "paid"
+        invoice.paid_at = timezone.now()
+        invoice.stripe_payment_intent_id = payment_intent_id
+        invoice.save(
+            update_fields=["status", "paid_at", "stripe_payment_intent_id"]
+        )
     log_activity(
         invoice.workspace,
         None,
@@ -118,17 +126,20 @@ def _mark_invoice_paid(invoice_id, payment_intent_id):
 
 
 def _mark_booking_paid(booking_id, payment_intent_id):
-    try:
-        booking = Booking.objects.get(pk=booking_id)
-    except (Booking.DoesNotExist, ValueError, TypeError):
-        return
-    if booking.payment_status == "paid":
-        return
-    booking.payment_status = "paid"
-    booking.stripe_payment_intent_id = payment_intent_id
-    booking.save(
-        update_fields=["payment_status", "stripe_payment_intent_id"]
-    )
+    # See the matching comment in _mark_invoice_paid - same narrow
+    # duplicate-delivery race, same fix.
+    with transaction.atomic():
+        try:
+            booking = Booking.objects.select_for_update().get(pk=booking_id)
+        except (Booking.DoesNotExist, ValueError, TypeError):
+            return
+        if booking.payment_status == "paid":
+            return
+        booking.payment_status = "paid"
+        booking.stripe_payment_intent_id = payment_intent_id
+        booking.save(
+            update_fields=["payment_status", "stripe_payment_intent_id"]
+        )
     log_activity(
         booking.workspace,
         None,
