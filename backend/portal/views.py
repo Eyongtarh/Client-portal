@@ -29,7 +29,7 @@ from .activity import (
     NOTIFICATION_CATEGORIES, VERB_TO_CATEGORY, log as log_activity,
 )
 from .calendar_invite import build_ics
-from .currencies import COUNTRIES
+from .currencies import COUNTRIES, from_stripe_amount
 from .payments import create_checkout_session
 from .permissions import IsOwnerOrStaffForWrite, staff_scope
 from .resource_availability import (
@@ -43,8 +43,13 @@ from .models import (
     Location, Message, Milestone, PaymentMethod, Project, RecurringSeries,
     Resource, ResourceAvailability, ResourceRental, ResourceRentalPolicy,
     ResourceReservation, Review, Service, ServiceQuestion,
-    ServiceResourceRequirement, SubscriptionPlan, Task, User, WaitlistEntry,
-    WorkingHours, Workspace,
+    ServiceResourceRequirement, Subscription, SubscriptionPlan, Task, User,
+    WaitlistEntry, WorkingHours, Workspace,
+)
+from .platform_billing import (
+    cancel_subscription, create_billing_portal_session,
+    create_subscription_checkout_session, list_billing_history,
+    modify_subscription_price,
 )
 from .serializers import (
     AcceptInviteSerializer,
@@ -86,6 +91,7 @@ from .serializers import (
     ServiceResourceRequirementSerializer,
     ServiceSerializer,
     SubscriptionPlanSerializer,
+    SubscriptionSerializer,
     TaskSerializer,
     TeamInviteCreateSerializer,
     TeamMemberSerializer,
@@ -553,9 +559,27 @@ class WorkspaceStripeConnectDisconnectView(APIView):
 
 
 class ChangePlanView(APIView):
-    """POST /api/workspace/change-plan/ - owner switches their
-    workspace to a different plan. Blocked if current usage
-    exceeds the new plan's limits.
+    """POST /api/workspace/change-plan/ - owner switches plans.
+    Blocked if current usage exceeds the new plan's limits (see
+    ChangePlanSerializer). What actually happens with Stripe depends
+    on what's being switched between:
+
+    - Anything -> Free: cancels any active Stripe subscription
+      IMMEDIATELY (not at period end) and switches to Free right
+      away - the owner asked to leave the paid plan now, not at
+      renewal. Use PlatformSubscriptionCancelView instead for a
+      "stop future billing but keep my paid plan until it ends"
+      cancellation (SUB-05).
+    - Free -> Pro/Business (SUB-02), or any switch with no active
+      Stripe subscription yet: blocked here with a clear error -
+      starting to pay requires a real Checkout Session, see
+      PlatformSubscriptionCheckoutView.
+    - Pro <-> Business with an already-active subscription: updates
+      the existing Stripe subscription's price in place (SUB-04),
+      prorating the difference; webhooks.py syncs status once
+      Stripe confirms, but the plan switch itself is applied here so
+      the owner sees it immediately rather than waiting on a
+      webhook round-trip.
     """
     permission_classes = [IsAuthenticated]
 
@@ -569,9 +593,277 @@ class ChangePlanView(APIView):
             data=request.data, context={"workspace": workspace}
         )
         serializer.is_valid(raise_exception=True)
-        workspace.plan = serializer.validated_data["plan_id"]
+        new_plan = serializer.validated_data["plan_id"]
+
+        subscription = getattr(workspace, "subscription", None)
+        has_active_subscription = bool(
+            subscription
+            and subscription.stripe_subscription_id
+            and subscription.status
+            in (
+                Subscription.Status.ACTIVE,
+                Subscription.Status.TRIALING,
+                Subscription.Status.PAST_DUE,
+            )
+        )
+
+        if new_plan.price_per_month == 0:
+            if has_active_subscription:
+                try:
+                    cancel_subscription(subscription, at_period_end=False)
+                except stripe.error.StripeError:
+                    logger.exception(
+                        "Stripe subscription cancel failed for "
+                        "workspace %s", workspace.id,
+                    )
+                    raise ValidationError(
+                        "We couldn't cancel your Stripe subscription. "
+                        "Please try again."
+                    )
+                subscription.status = Subscription.Status.CANCELED
+                subscription.cancel_at_period_end = False
+                subscription.save(
+                    update_fields=["status", "cancel_at_period_end"]
+                )
+        elif has_active_subscription:
+            if not new_plan.stripe_price_id:
+                raise ValidationError(
+                    f"The {new_plan.name} plan isn't connected to "
+                    "Stripe yet. Please contact support."
+                )
+            try:
+                modify_subscription_price(
+                    subscription, new_plan.stripe_price_id
+                )
+            except stripe.error.StripeError:
+                logger.exception(
+                    "Stripe subscription price change failed for "
+                    "workspace %s", workspace.id,
+                )
+                raise ValidationError(
+                    "We couldn't update your subscription. Please "
+                    "try again."
+                )
+            subscription.plan = new_plan
+            subscription.save(update_fields=["plan"])
+        else:
+            raise ValidationError(
+                "Starting a paid plan requires checkout. Use the "
+                "upgrade button to pay through Stripe."
+            )
+
+        workspace.plan = new_plan
         workspace.save(update_fields=["plan"])
+        log_activity(
+            workspace, request.user, "plan_changed", workspace,
+            metadata={"plan": new_plan.name},
+        )
         return Response(WorkspaceSerializer(workspace).data)
+
+
+class PlatformSubscriptionCheckoutView(APIView):
+    """POST /api/workspace/subscription/checkout/ - owner starts
+    Stripe Checkout to move onto Pro or Business for the first time
+    (SUB-02). Only for a workspace with no active Stripe subscription
+    yet; switching between two already-paid plans goes through
+    ChangePlanView instead (SUB-04), which updates the existing
+    subscription in place rather than starting a second one.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the owner can manage the subscription."
+            )
+        if not settings.STRIPE_SECRET_KEY:
+            raise ValidationError(
+                "Subscription billing isn't configured yet."
+            )
+        workspace = request.user.workspace
+        try:
+            plan_id = int(request.data.get("plan_id"))
+        except (TypeError, ValueError):
+            raise ValidationError({"plan_id": "A valid plan is required."})
+        plan = generics.get_object_or_404(SubscriptionPlan, pk=plan_id)
+        if plan.price_per_month == 0:
+            raise ValidationError(
+                "The Free plan doesn't need checkout - use "
+                "\"Switch plan\" instead."
+            )
+        if not plan.stripe_price_id:
+            # Falls back to the env-configured test-mode price ids
+            # (see settings.STRIPE_PRICE_ID_PRO/_BUSINESS) so
+            # checkout still works even if 0052_seed_platform_
+            # billing ran before those env vars were set - the
+            # plan's own field always wins once an admin sets it.
+            fallback = {
+                "Pro": settings.STRIPE_PRICE_ID_PRO,
+                "Business": settings.STRIPE_PRICE_ID_BUSINESS,
+            }.get(plan.name, "")
+            if fallback:
+                plan.stripe_price_id = fallback
+                plan.save(update_fields=["stripe_price_id"])
+            else:
+                raise ValidationError(
+                    f"The {plan.name} plan isn't connected to Stripe "
+                    "yet."
+                )
+        subscription = getattr(workspace, "subscription", None)
+        if subscription and subscription.status in (
+            Subscription.Status.ACTIVE,
+            Subscription.Status.TRIALING,
+            Subscription.Status.PAST_DUE,
+        ):
+            raise ValidationError(
+                "You already have an active subscription. Use "
+                "\"Switch plan\" to change between paid plans."
+            )
+        try:
+            session = create_subscription_checkout_session(
+                workspace=workspace,
+                plan=plan,
+                success_url=(
+                    f"{settings.FRONTEND_URL}/"
+                    "?subscription=success"
+                ),
+                cancel_url=(
+                    f"{settings.FRONTEND_URL}/"
+                    "?subscription=cancelled"
+                ),
+            )
+        except stripe.error.StripeError:
+            logger.exception(
+                "Stripe subscription checkout failed for workspace %s",
+                workspace.id,
+            )
+            raise ValidationError(
+                "We couldn't start checkout. Please try again."
+            )
+        return Response({"url": session.url})
+
+
+class PlatformBillingPortalView(APIView):
+    """POST /api/workspace/subscription/portal/ - SUB-08: owner
+    manages their payment method or downloads Stripe-hosted receipts
+    through Stripe's own hosted portal.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != "owner":
+            raise PermissionDenied("Only the owner can manage billing.")
+        workspace = request.user.workspace
+        if not workspace.stripe_customer_id:
+            raise ValidationError(
+                "You don't have a Stripe billing profile yet."
+            )
+        try:
+            session = create_billing_portal_session(
+                workspace=workspace,
+                return_url=f"{settings.FRONTEND_URL}/",
+            )
+        except stripe.error.StripeError:
+            logger.exception(
+                "Stripe billing portal session failed for workspace %s",
+                workspace.id,
+            )
+            raise ValidationError(
+                "We couldn't open the billing portal. Please try again."
+            )
+        return Response({"url": session.url})
+
+
+class PlatformSubscriptionCancelView(APIView):
+    """POST /api/workspace/subscription/cancel/ - SUB-05: cancels at
+    the end of the period already paid for, so the owner keeps their
+    current plan's access until then. This is a direct in-app cancel
+    that works even if the Stripe billing portal isn't configured in
+    the Dashboard; webhooks.py reverts the workspace to Free once
+    Stripe confirms the subscription actually ended. For an
+    immediate downgrade instead, use ChangePlanView with plan_id set
+    to Free.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the owner can cancel the subscription."
+            )
+        workspace = request.user.workspace
+        subscription = getattr(workspace, "subscription", None)
+        if (
+            not subscription
+            or not subscription.stripe_subscription_id
+            or subscription.status not in (
+                Subscription.Status.ACTIVE,
+                Subscription.Status.TRIALING,
+                Subscription.Status.PAST_DUE,
+            )
+        ):
+            raise ValidationError(
+                "There's no active subscription to cancel."
+            )
+        try:
+            cancel_subscription(subscription, at_period_end=True)
+        except stripe.error.StripeError:
+            logger.exception(
+                "Stripe subscription cancel failed for workspace %s",
+                workspace.id,
+            )
+            raise ValidationError(
+                "We couldn't cancel your subscription. Please try "
+                "again."
+            )
+        subscription.cancel_at_period_end = True
+        subscription.save(update_fields=["cancel_at_period_end"])
+        log_activity(
+            workspace, request.user, "subscription_cancel_requested",
+            subscription,
+        )
+        return Response(SubscriptionSerializer(subscription).data)
+
+
+class PlatformBillingHistoryView(APIView):
+    """GET /api/workspace/subscription/invoices/ - SUB-07: past
+    platform subscription charges for this workspace, read straight
+    from Stripe.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != "owner":
+            raise PermissionDenied(
+                "Only the owner can view billing history."
+            )
+        workspace = request.user.workspace
+        try:
+            invoices = list_billing_history(workspace)
+        except stripe.error.StripeError:
+            logger.exception(
+                "Stripe billing history fetch failed for workspace %s",
+                workspace.id,
+            )
+            raise ValidationError(
+                "We couldn't load your billing history. Please try "
+                "again."
+            )
+        return Response(
+            [
+                {
+                    "id": inv["id"],
+                    "total": from_stripe_amount(
+                        inv["total"], inv["currency"]
+                    ),
+                    "currency": inv["currency"].upper(),
+                    "status": inv["status"],
+                    "hosted_invoice_url": inv.get("hosted_invoice_url"),
+                    "created": inv["created"],
+                }
+                for inv in invoices
+            ]
+        )
 
 
 class PasswordResetRequestView(generics.CreateAPIView):

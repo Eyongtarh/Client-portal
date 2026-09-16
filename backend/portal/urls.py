@@ -112,6 +112,22 @@ urlpatterns = [
         views.ChangePlanView.as_view(),
     ),
     path(
+        "workspace/subscription/checkout/",
+        views.PlatformSubscriptionCheckoutView.as_view(),
+    ),
+    path(
+        "workspace/subscription/portal/",
+        views.PlatformBillingPortalView.as_view(),
+    ),
+    path(
+        "workspace/subscription/cancel/",
+        views.PlatformSubscriptionCancelView.as_view(),
+    ),
+    path(
+        "workspace/subscription/invoices/",
+        views.PlatformBillingHistoryView.as_view(),
+    ),
+    path(
         "workspace/stripe/connect/",
         views.WorkspaceStripeConnectStartView.as_view(),
     ),

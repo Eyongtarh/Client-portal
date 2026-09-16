@@ -679,7 +679,7 @@ function TeamSection({ isOwner }) {
 }
 
 function PlanSection({ isOwner, workspace, onPlanChanged }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [plans, setPlans] = useState([]);
   const [showPlans, setShowPlans] = useState(false);
   const [statusMsg, setStatusMsg] = useState(null);
@@ -693,6 +693,38 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
     loadPlans();
   }, []);
 
+  // Stripe redirects back to "/" with ?subscription=success|cancelled
+  // after PlatformSubscriptionCheckoutView's Checkout Session (SUB-
+  // 02) - surface that once, then strip it from the URL so refreshing
+  // the page doesn't re-show it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get("subscription");
+    if (!outcome) return;
+    setStatusMsg(
+      outcome === "success"
+        ? { key: "subscription.checkoutSuccess", type: "success" }
+        : { key: "subscription.checkoutCancelled", type: "error" },
+    );
+    if (outcome === "success") onPlanChanged();
+    params.delete("subscription");
+    const query = params.toString();
+    window.history.replaceState(
+      {}, "", window.location.pathname + (query ? `?${query}` : ""),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function showError(err, fallbackKey) {
+    const data = err.response?.data;
+    const message = data ? Object.values(data).flat().join(" ") : null;
+    setStatusMsg(
+      message
+        ? { raw: message, type: "error" }
+        : { key: fallbackKey, type: "error" },
+    );
+  }
+
   async function switchPlan(planId) {
     setBusy(true);
     try {
@@ -701,13 +733,66 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
       setStatusMsg({ key: "subscription.planChanged", type: "success" });
       onPlanChanged();
     } catch (err) {
-      const data = err.response?.data;
-      const message = data ? Object.values(data).flat().join(" ") : null;
-      setStatusMsg(
-        message
-          ? { raw: message, type: "error" }
-          : { key: "subscription.couldNotChangePlan", type: "error" },
-      );
+      showError(err, "subscription.couldNotChangePlan");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startCheckout(planId) {
+    setBusy(true);
+    try {
+      const res = await api.post("/workspace/subscription/checkout/", {
+        plan_id: planId,
+      });
+      window.location.assign(res.data.url);
+    } catch (err) {
+      showError(err, "subscription.couldNotStartCheckout");
+      setBusy(false);
+    }
+  }
+
+  // Free <-> a plan with no active Stripe subscription yet always
+  // goes through change-plan (no payment involved either way);
+  // moving between two ALREADY-paid plans also stays on change-plan
+  // since the backend updates the existing subscription in place
+  // (SUB-04). Only starting to pay for the first time needs real
+  // Stripe Checkout.
+  function choosePlan(p) {
+    if (p.id === plan?.id) return;
+    const hasActiveSubscription = ["active", "trialing", "past_due"].includes(
+      workspace.subscription?.status,
+    );
+    if (!p.is_paid || hasActiveSubscription) {
+      switchPlan(p.id);
+    } else {
+      startCheckout(p.id);
+    }
+  }
+
+  async function openBillingPortal() {
+    setBusy(true);
+    try {
+      const res = await api.post("/workspace/subscription/portal/");
+      window.location.assign(res.data.url);
+    } catch (err) {
+      showError(err, "subscription.couldNotOpenPortal");
+      setBusy(false);
+    }
+  }
+
+  async function cancelSubscription() {
+    if (!window.confirm(t("subscription.cancelSubscriptionConfirm"))) return;
+    setBusy(true);
+    try {
+      await api.post("/workspace/subscription/cancel/");
+      setStatusMsg({
+        key: "subscription.subscriptionCancelScheduled",
+        type: "success",
+      });
+      onPlanChanged();
+    } catch (err) {
+      showError(err, "subscription.couldNotCancelSubscription");
     } finally {
       setBusy(false);
     }
@@ -887,34 +972,100 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
         </div>
       </div>
 
+      {isOwner && plan?.is_paid && workspace.subscription && (
+        <div className="bg-surface border border-line rounded-2xl p-6 mb-4">
+          <p className="text-xs text-ink-soft mb-1">
+            {t("subscription.billingStatusTitle")}
+          </p>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <p className="font-medium text-ink">
+                {t(
+                  `subscription.billingStatus.${workspace.subscription.status}`,
+                  { defaultValue: workspace.subscription.status },
+                )}
+              </p>
+              {workspace.subscription.current_period_end && (
+                <p className="text-sm text-ink-soft">
+                  {t(
+                    workspace.subscription.cancel_at_period_end
+                      ? "subscription.endsOn"
+                      : "subscription.renewsOn",
+                    {
+                      date: new Date(
+                        workspace.subscription.current_period_end,
+                      ).toLocaleDateString(i18n.language),
+                    },
+                  )}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={openBillingPortal}
+                disabled={busy}
+                className="bg-surface-2 text-ink px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-line disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              >
+                {t("subscription.manageBilling")}
+              </button>
+              {!workspace.subscription.cancel_at_period_end &&
+                ["active", "trialing", "past_due"].includes(
+                  workspace.subscription.status,
+                ) && (
+                  <button
+                    onClick={cancelSubscription}
+                    disabled={busy}
+                    className="bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-red-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-red-400"
+                  >
+                    {t("subscription.cancelSubscription")}
+                  </button>
+                )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {isOwner && showPlans && (
         <div className="grid gap-3 sm:grid-cols-3">
-          {plans.map((p) => (
-            <div
-              key={p.id}
-              className={
-                p.id === plan?.id
-                  ? "border-2 border-brand-600 bg-brand-50 rounded-2xl p-4"
-                  : "border border-line rounded-2xl p-4"
-              }
-            >
-              <p className="font-medium text-ink">{p.name}</p>
-              <p className="text-sm text-ink-soft mb-3">
-                {p.price_per_month} {workspace.currency}{" "}
-                {t("subscription.perMonth")}
-              </p>
-              <button
-                onClick={() => switchPlan(p.id)}
-                disabled={busy || p.id === plan?.id}
-                aria-label={`${t("subscription.switchTo")} ${p.name}`}
-                className="w-full bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600-solid focus:outline-none focus:ring-2 focus:ring-brand-400"
+          {plans.map((p) => {
+            const isCurrent = p.id === plan?.id;
+            const needsStripe = p.is_paid && !p.stripe_configured;
+            const label = isCurrent
+              ? t("subscription.currentPlan")
+              : p.is_paid
+                ? `${t("subscription.upgradeTo")} ${p.name}`
+                : `${t("subscription.switchTo")} ${p.name}`;
+            return (
+              <div
+                key={p.id}
+                className={
+                  isCurrent
+                    ? "border-2 border-brand-600 bg-brand-50 rounded-2xl p-4"
+                    : "border border-line rounded-2xl p-4"
+                }
               >
-                {p.id === plan?.id
-                  ? t("subscription.currentPlan")
-                  : `${t("subscription.switchTo")} ${p.name}`}
-              </button>
-            </div>
-          ))}
+                <p className="font-medium text-ink">{p.name}</p>
+                <p className="text-sm text-ink-soft mb-3">
+                  {p.price_per_month} {workspace.currency}{" "}
+                  {t("subscription.perMonth")}
+                </p>
+                <button
+                  onClick={() => choosePlan(p)}
+                  disabled={busy || isCurrent || needsStripe}
+                  title={
+                    needsStripe
+                      ? t("subscription.notConnectedToStripe")
+                      : undefined
+                  }
+                  className="w-full bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600-solid focus:outline-none focus:ring-2 focus:ring-brand-400"
+                >
+                  {needsStripe
+                    ? t("subscription.notConnectedToStripe")
+                    : label}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

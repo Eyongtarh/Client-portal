@@ -565,7 +565,30 @@
     "switchTo": "Switch to",
     "planChanged": "Plan updated.",
     "couldNotChangePlan": "Could not change plan.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "upgradeTo": "Upgrade to",
+    "notConnectedToStripe": "Not available yet",
+    "billingStatusTitle": "Billing",
+    "billingStatus": {
+      "active": "Active",
+      "trialing": "Trial",
+      "past_due": "Payment past due",
+      "canceled": "Canceled",
+      "incomplete": "Incomplete",
+      "incomplete_expired": "Expired",
+      "unpaid": "Unpaid"
+    },
+    "renewsOn": "Renews {{date}}",
+    "endsOn": "Ends {{date}}",
+    "manageBilling": "Manage billing",
+    "couldNotOpenPortal": "Could not open the billing portal.",
+    "cancelSubscription": "Cancel subscription",
+    "cancelSubscriptionConfirm": "Cancel your subscription? You'll keep your current plan until the end of the billing period, then move to Free.",
+    "subscriptionCancelScheduled": "Your subscription will end at the close of the current billing period.",
+    "couldNotCancelSubscription": "Could not cancel the subscription.",
+    "couldNotStartCheckout": "Could not start checkout.",
+    "checkoutSuccess": "Subscription active - thanks for upgrading!",
+    "checkoutCancelled": "Checkout was cancelled - your plan hasn't changed."
   },
   "branding": {
     "brandColor": "Brand color",
@@ -771,7 +794,13 @@
       "review_submitted": "{{actor}} left a review on {{target}}",
       "review_responded": "{{actor}} responded to a review on {{target}}",
       "booking_payment_received": "Payment received for {{target}}",
-      "message_sent": "{{actor}} sent a new message"
+      "message_sent": "{{actor}} sent a new message",
+      "plan_changed": "{{actor}} switched to the {{plan}} plan",
+      "subscription_started": "Subscribed to the {{plan}} plan",
+      "subscription_updated": "Subscription status changed to {{status}}",
+      "subscription_cancel_requested": "{{actor}} scheduled the subscription to cancel",
+      "subscription_canceled": "Subscription ended - workspace moved to the Free plan",
+      "subscription_payment_failed": "A subscription payment failed"
     },
     "statuses": {
       "active": "active",

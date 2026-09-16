@@ -565,7 +565,30 @@
     "switchTo": "Passer \u00e0",
     "planChanged": "Forfait mis \u00e0 jour.",
     "couldNotChangePlan": "Impossible de changer de forfait.",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "upgradeTo": "Passer \u00e0",
+    "notConnectedToStripe": "Pas encore disponible",
+    "billingStatusTitle": "Facturation",
+    "billingStatus": {
+      "active": "Actif",
+      "trialing": "Essai",
+      "past_due": "Paiement en retard",
+      "canceled": "Annul\u00e9",
+      "incomplete": "Incomplet",
+      "incomplete_expired": "Expir\u00e9",
+      "unpaid": "Impay\u00e9"
+    },
+    "renewsOn": "Renouvellement le {{date}}",
+    "endsOn": "Se termine le {{date}}",
+    "manageBilling": "G\u00e9rer la facturation",
+    "couldNotOpenPortal": "Impossible d'ouvrir le portail de facturation.",
+    "cancelSubscription": "Annuler l'abonnement",
+    "cancelSubscriptionConfirm": "Annuler votre abonnement\u00a0? Vous garderez votre forfait actuel jusqu'\u00e0 la fin de la p\u00e9riode de facturation, puis vous passerez au forfait Gratuit.",
+    "subscriptionCancelScheduled": "Votre abonnement se terminera \u00e0 la fin de la p\u00e9riode de facturation en cours.",
+    "couldNotCancelSubscription": "Impossible d'annuler l'abonnement.",
+    "couldNotStartCheckout": "Impossible de d\u00e9marrer le paiement.",
+    "checkoutSuccess": "Abonnement actif\u00a0: merci pour votre mise \u00e0 niveau\u00a0!",
+    "checkoutCancelled": "Le paiement a \u00e9t\u00e9 annul\u00e9 - votre forfait n'a pas chang\u00e9."
   },
   "branding": {
     "brandColor": "Couleur de marque",
@@ -771,7 +794,13 @@
       "review_submitted": "{{actor}} a laiss\u00e9 un avis sur {{target}}",
       "review_responded": "{{actor}} a r\u00e9pondu \u00e0 un avis sur {{target}}",
       "booking_payment_received": "Paiement re\u00e7u pour {{target}}",
-      "message_sent": "{{actor}} a envoy\u00e9 un nouveau message"
+      "message_sent": "{{actor}} a envoy\u00e9 un nouveau message",
+      "plan_changed": "{{actor}} est pass\u00e9 au forfait {{plan}}",
+      "subscription_started": "Abonn\u00e9 au forfait {{plan}}",
+      "subscription_updated": "Statut de l'abonnement chang\u00e9\u00a0: {{status}}",
+      "subscription_cancel_requested": "{{actor}} a programm\u00e9 l'annulation de l'abonnement",
+      "subscription_canceled": "Abonnement termin\u00e9 - l'espace de travail est pass\u00e9 au forfait Gratuit",
+      "subscription_payment_failed": "Un paiement d'abonnement a \u00e9chou\u00e9"
     },
     "statuses": {
       "active": "actif",

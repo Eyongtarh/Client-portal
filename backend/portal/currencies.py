@@ -223,3 +223,16 @@ def to_stripe_amount(amount, currency):
     if code in THREE_DECIMAL_CURRENCIES:
         return int(round(amount * 1000))
     return int(round(amount * 100))
+
+
+def from_stripe_amount(amount, currency):
+    """Inverse of to_stripe_amount: turns the integer smallest-unit
+    `amount`/`total` Stripe returns back into the major-unit number
+    the rest of the app stores and displays.
+    """
+    code = currency.upper()
+    if code in ZERO_DECIMAL_CURRENCIES:
+        return amount
+    if code in THREE_DECIMAL_CURRENCIES:
+        return amount / 1000
+    return amount / 100

@@ -206,3 +206,14 @@ STRIPE_CONNECT_CLIENT_ID = config("STRIPE_CONNECT_CLIENT_ID", default="")
 STRIPE_CONNECT_WEBHOOK_SECRET = config(
     "STRIPE_CONNECT_WEBHOOK_SECRET", default=""
 )
+
+# Platform subscription billing (SUB-01..15) - the workspace owner
+# paying US for Pro/Business, entirely separate from the Connect
+# settings above. These are read once, at migrate time, by
+# 0052_seed_platform_billing.py to populate SubscriptionPlan.
+# stripe_price_id for a fresh deploy; changing them afterwards does
+# nothing by itself; update the plan's price in /admin/ instead.
+# Use Stripe TEST MODE price ids (price_... from a product created
+# with a test-mode secret key) until this goes live.
+STRIPE_PRICE_ID_PRO = config("STRIPE_PRICE_ID_PRO", default="")
+STRIPE_PRICE_ID_BUSINESS = config("STRIPE_PRICE_ID_BUSINESS", default="")

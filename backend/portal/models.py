@@ -128,6 +128,17 @@ class Workspace(models.Model):
         "book without an account (BOOK-21). Off by default - an "
         "owner opts in once they're ready to share it.",
     )
+    stripe_customer_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="This workspace's Stripe customer on the PLATFORM's "
+        "own account (cus_...) - used only for SUB-01..15 platform "
+        "subscription billing (Pro/Business checkout, the billing "
+        "portal, invoice history). Distinct from stripe_account_id "
+        "above, which is the owner's OWN connected account for "
+        "receiving payments from their clients.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -199,12 +210,88 @@ class SubscriptionPlan(models.Model):
         help_text="Blank = unlimited. Documents + message attachments "
         "combined, across every project in the workspace.",
     )
+    stripe_price_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="The Stripe recurring Price (price_...) billed for "
+        "this plan on the platform's own Stripe account (SUB-02). "
+        "Blank for Free (no Stripe subscription needed) and for any "
+        "plan not yet connected to Stripe - checkout is blocked with "
+        "a clear error until this is set, see "
+        "views.PlatformSubscriptionCheckoutView.",
+    )
 
     class Meta:
         ordering = ["price_per_month"]
 
     def __str__(self):
         return self.name
+
+
+class Subscription(models.Model):
+    """SUB-06/09: the local mirror of a workspace's Stripe
+    subscription state on the platform's own account - written only
+    by webhooks.py once Stripe confirms something happened, never
+    directly by a view. workspace.plan remains the single source of
+    truth every usage-limit check already reads from; this row
+    exists purely to surface the Stripe-side billing state (has a
+    subscription actually started, is a payment overdue, when does
+    it renew, is it ending) so the frontend can show it and the
+    system can react to it (see webhooks._revert_to_free).
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        TRIALING = "trialing", "Trialing"
+        PAST_DUE = "past_due", "Past due"
+        CANCELED = "canceled", "Canceled"
+        INCOMPLETE = "incomplete", "Incomplete"
+        INCOMPLETE_EXPIRED = "incomplete_expired", "Incomplete expired"
+        UNPAID = "unpaid", "Unpaid"
+
+    workspace = models.OneToOneField(
+        Workspace, on_delete=models.CASCADE, related_name="subscription"
+    )
+    plan = models.ForeignKey(
+        SubscriptionPlan,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="subscriptions",
+    )
+    stripe_subscription_id = models.CharField(
+        max_length=255, blank=True, default="", db_index=True,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.INCOMPLETE,
+    )
+    current_period_end = models.DateTimeField(null=True, blank=True)
+    cancel_at_period_end = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.workspace.name} – {self.status}"
+
+
+class ProcessedStripeEvent(models.Model):
+    """SUB-10: every Stripe webhook event id this app has already
+    handled (platform or Connect - Stripe event ids are globally
+    unique, so one table safely covers both StripeWebhookView and
+    StripeConnectWebhookView). A redelivered event - Stripe retries
+    on timeout, or the same event arriving twice during testing -
+    becomes a no-op the second time instead of double-logging
+    activity or re-sending a confirmation email.
+    """
+
+    event_id = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.event_id
 
 
 class Client(models.Model):

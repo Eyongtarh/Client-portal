@@ -354,6 +354,7 @@ class StripeWebhookTests(PaymentTestCase):
             invoice=invoice, description="Work", amount=Decimal("75.00")
         )
         event = {
+            "id": "evt_test_invoice_paid",
             "type": "checkout.session.completed",
             "data": {
                 "object": FakeStripeObject(
@@ -392,6 +393,7 @@ class StripeWebhookTests(PaymentTestCase):
             payment_amount=Decimal("100.00"),
         )
         event = {
+            "id": "evt_test_booking_paid",
             "type": "checkout.session.completed",
             "data": {
                 "object": FakeStripeObject(
@@ -413,6 +415,7 @@ class StripeWebhookTests(PaymentTestCase):
 
     def test_unknown_invoice_id_does_not_error(self):
         event = {
+            "id": "evt_test_unknown_invoice",
             "type": "checkout.session.completed",
             "data": {
                 "object": FakeStripeObject(
@@ -441,6 +444,7 @@ class StripeWebhookTests(PaymentTestCase):
         )
         original_paid_at = invoice.paid_at
         event = {
+            "id": "evt_test_already_paid",
             "type": "checkout.session.completed",
             "data": {
                 "object": FakeStripeObject(

@@ -7,7 +7,7 @@ from .models import (
     Milestone, PaymentMethod, Project, RecurringSeries, Resource,
     ResourceAvailability, ResourceRental, ResourceRentalPolicy,
     ResourceReservation, Review, Service, ServiceQuestion,
-    ServiceResourceRequirement, SubscriptionPlan,
+    ServiceResourceRequirement, Subscription, SubscriptionPlan,
     Task, TeamInvite, User, WaitlistEntry, WorkingHours, Booking, Workspace,
 )
 from .resource_availability import (
@@ -104,12 +104,41 @@ class ClientSelfSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
+    """stripe_price_id itself is never exposed - it's an internal
+    Stripe identifier the frontend has no use for. is_paid and
+    stripe_configured are what the "upgrade" UI actually needs: a
+    paid plan with stripe_configured=False means the plan exists in
+    the app but hasn't been wired up in Stripe yet (see
+    SubscriptionPlan.stripe_price_id), so checkout should be
+    disabled with an explanatory message rather than a raw 400.
+    """
+    is_paid = serializers.SerializerMethodField()
+    stripe_configured = serializers.SerializerMethodField()
+
     class Meta:
         model = SubscriptionPlan
         fields = [
             "id", "name", "price_per_month", "max_clients",
             "max_team_members", "max_projects", "max_bookings_per_month",
-            "max_storage_mb",
+            "max_storage_mb", "is_paid", "stripe_configured",
+        ]
+
+    def get_is_paid(self, obj):
+        return obj.price_per_month > 0
+
+    def get_stripe_configured(self, obj):
+        return bool(obj.stripe_price_id)
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    """SUB-06: the owner-facing view of the workspace's platform
+    billing state - read-only, since every field here is only ever
+    written by webhooks.py once Stripe confirms it.
+    """
+    class Meta:
+        model = Subscription
+        fields = [
+            "status", "current_period_end", "cancel_at_period_end",
         ]
 
 
@@ -120,6 +149,7 @@ class WorkspaceSerializer(serializers.ModelSerializer):
     can be validated against current usage first.
     """
     plan = SubscriptionPlanSerializer(read_only=True)
+    subscription = serializers.SerializerMethodField()
     client_count = serializers.SerializerMethodField()
     team_member_count = serializers.SerializerMethodField()
     project_count = serializers.SerializerMethodField()
@@ -132,12 +162,19 @@ class WorkspaceSerializer(serializers.ModelSerializer):
         model = Workspace
         fields = [
             "id", "name", "slug", "logo", "currency", "country", "timezone",
-            "brand_color", "reminder_hours_before", "plan", "client_count",
+            "brand_color", "reminder_hours_before", "plan", "subscription",
+            "client_count",
             "team_member_count", "project_count", "bookings_this_month_count",
             "storage_used_mb", "usage_warnings", "stripe_connected",
             "public_booking_enabled",
         ]
         read_only_fields = ["id", "slug"]
+
+    def get_subscription(self, obj):
+        subscription = getattr(obj, "subscription", None)
+        if not subscription:
+            return None
+        return SubscriptionSerializer(subscription).data
 
     def get_client_count(self, obj):
         return obj.clients.count()
