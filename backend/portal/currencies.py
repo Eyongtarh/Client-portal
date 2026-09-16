@@ -186,3 +186,40 @@ COUNTRIES = [
 ]
 
 VALID_CURRENCIES = frozenset(currency for _, _, currency in COUNTRIES)
+
+# Stripe's `amount`/`unit_amount` API fields are always an integer in
+# the currency's smallest unit - for most currencies that's cents,
+# i.e. major-unit * 100, but not universally. Several currencies in
+# COUNTRIES above (e.g. Cameroon/Chad/Gabon's XAF) have no minor
+# unit at all, so sending amount*100 to Stripe would charge a real
+# customer 100x the intended amount. Verified directly against
+# https://docs.stripe.com/currencies as of 2026-09 rather than
+# assumed - notably UGX and ISK are colloquially "zero-decimal" but
+# Stripe explicitly keeps them on the *100 (2-decimal) path for
+# backward compatibility, so they're deliberately NOT in this set
+# despite showing up in most third-party "zero-decimal currency"
+# lists floating around online.
+ZERO_DECIMAL_CURRENCIES = frozenset({
+    "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG",
+    "RWF", "VND", "VUV", "XAF", "XOF", "XPF",
+})
+
+# Currencies whose minor unit is a thousandth rather than a
+# hundredth (Bahrain/Jordan/Kuwait/Oman/Tunisia use 3-decimal
+# dinars/rials) - Stripe's `amount` is still "the smallest unit", so
+# these need *1000, not *100.
+THREE_DECIMAL_CURRENCIES = frozenset({"BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"})
+
+
+def to_stripe_amount(amount, currency):
+    """Converts a Decimal/float major-unit amount (e.g. Decimal("45.00")
+    for 45 XAF or 45.00 EUR - however the rest of the app already
+    stores and displays money) into the integer Stripe's API expects
+    for that specific currency's `amount`/`unit_amount` fields.
+    """
+    code = currency.upper()
+    if code in ZERO_DECIMAL_CURRENCIES:
+        return int(round(amount))
+    if code in THREE_DECIMAL_CURRENCIES:
+        return int(round(amount * 1000))
+    return int(round(amount * 100))

@@ -8,6 +8,8 @@ itself confirms the charge succeeded.
 import stripe
 from django.conf import settings
 
+from .currencies import to_stripe_amount
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
@@ -16,9 +18,13 @@ def create_checkout_session(
     customer_email=None, stripe_account=None,
 ):
     """Creates a one-off Stripe Checkout Session for `amount` (a
-    Decimal in the workspace's major currency unit, e.g. euros not
-    cents - this assumes a 2-decimal currency, matching how the
-    rest of the app already formats and stores money). Raises
+    Decimal in the workspace's major currency unit, e.g. euros, or
+    XAF for a zero-decimal currency - however the rest of the app
+    already formats and stores money for that workspace).
+    to_stripe_amount() converts that into whatever integer Stripe's
+    API actually wants for this specific currency - NOT always
+    major-unit*100 (see currencies.py; a zero-decimal currency like
+    XAF would otherwise get charged 100x too much). Raises
     stripe.error.StripeError on failure; the caller turns that into
     a clean 400 rather than a 500.
 
@@ -37,7 +43,7 @@ def create_checkout_session(
                 "price_data": {
                     "currency": currency.lower(),
                     "product_data": {"name": description},
-                    "unit_amount": int(round(amount * 100)),
+                    "unit_amount": to_stripe_amount(amount, currency),
                 },
                 "quantity": 1,
             }

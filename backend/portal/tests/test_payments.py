@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
+from portal.currencies import to_stripe_amount
 from portal.models import (
     Booking, Client, Invoice, InvoiceItem, Service, User, Workspace,
 )
@@ -457,3 +458,86 @@ class StripeWebhookTests(PaymentTestCase):
         invoice.refresh_from_db()
         self.assertEqual(invoice.paid_at, original_paid_at)
         self.assertEqual(invoice.stripe_payment_intent_id, "")
+
+
+class ToStripeAmountTests(TestCase):
+    """A real bug: create_checkout_session used to always send
+    int(amount * 100) to Stripe regardless of currency. Stripe's own
+    docs (docs.stripe.com/currencies) are explicit that zero-decimal
+    currencies like XAF must NOT be multiplied - doing so overcharges
+    a real customer 100x. These currencies are common in this app's
+    supported COUNTRIES list (several Central/West African
+    countries), not a theoretical edge case.
+    """
+
+    def test_standard_two_decimal_currency_multiplies_by_100(self):
+        self.assertEqual(to_stripe_amount(Decimal("45.00"), "EUR"), 4500)
+        self.assertEqual(to_stripe_amount(Decimal("45.00"), "eur"), 4500)
+        self.assertEqual(to_stripe_amount(Decimal("19.99"), "USD"), 1999)
+
+    def test_zero_decimal_currency_is_not_multiplied(self):
+        self.assertEqual(to_stripe_amount(Decimal("4500"), "XAF"), 4500)
+        self.assertEqual(to_stripe_amount(Decimal("4500"), "JPY"), 4500)
+        self.assertEqual(to_stripe_amount(Decimal("4500"), "KRW"), 4500)
+
+    def test_three_decimal_currency_multiplies_by_1000(self):
+        self.assertEqual(to_stripe_amount(Decimal("45.500"), "BHD"), 45500)
+        self.assertEqual(to_stripe_amount(Decimal("45.500"), "KWD"), 45500)
+
+    def test_ugx_and_isk_stay_on_the_standard_100_path(self):
+        # Colloquially "zero-decimal" and listed as such by most
+        # third-party references, but Stripe's own current docs
+        # special-case both back to *100 for backward compatibility -
+        # verified directly against docs.stripe.com/currencies, not
+        # assumed from those third-party lists.
+        self.assertEqual(to_stripe_amount(Decimal("45.00"), "UGX"), 4500)
+        self.assertEqual(to_stripe_amount(Decimal("45.00"), "ISK"), 4500)
+
+
+class CheckoutSessionCurrencyTests(PaymentTestCase):
+    """Same bug, exercised through the real create_checkout_session
+    (only the actual Stripe SDK call is mocked, unlike the view-level
+    tests above) so the fix is verified end-to-end rather than just
+    at the currencies.py unit level.
+    """
+
+    def _invoice(self, amount, currency):
+        self.workspace.currency = currency
+        self.workspace.save(update_fields=["currency"])
+        invoice = Invoice.objects.create(
+            workspace=self.workspace,
+            client=self.client_profile,
+            number="INV-CUR",
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice, description="Work", amount=Decimal(amount)
+        )
+        return invoice
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_fake")
+    @patch("stripe.checkout.Session.create")
+    def test_xaf_invoice_checkout_does_not_multiply_by_100(self, mock_create):
+        mock_create.return_value = fake_session()
+        invoice = self._invoice("4500", "XAF")
+        res = auth_client(self.client_user).post(
+            f"/api/invoices/{invoice.id}/checkout/"
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        sent_amount = mock_create.call_args.kwargs["line_items"][0][
+            "price_data"
+        ]["unit_amount"]
+        self.assertEqual(sent_amount, 4500)
+
+    @override_settings(STRIPE_SECRET_KEY="sk_test_fake")
+    @patch("stripe.checkout.Session.create")
+    def test_eur_invoice_checkout_multiplies_by_100(self, mock_create):
+        mock_create.return_value = fake_session()
+        invoice = self._invoice("45.00", "EUR")
+        res = auth_client(self.client_user).post(
+            f"/api/invoices/{invoice.id}/checkout/"
+        )
+        self.assertEqual(res.status_code, 200, res.data)
+        sent_amount = mock_create.call_args.kwargs["line_items"][0][
+            "price_data"
+        ]["unit_amount"]
+        self.assertEqual(sent_amount, 4500)
