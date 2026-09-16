@@ -76,6 +76,7 @@ export default function ClientPortal() {
   const [invoiceError, setInvoiceError] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [docUploading, setDocUploading] = useState(false);
+  const [workspace, setWorkspace] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -91,6 +92,8 @@ export default function ClientPortal() {
   }, []);
 
   async function loadAll() {
+    const workspaceRes = await api.get("/workspace/");
+    setWorkspace(workspaceRes.data);
     const projectsRes = await api.get(`/projects/?client=${user.client_id}`);
     const currentProject = projectsRes.data[0] || null;
     setProject(currentProject);
@@ -315,7 +318,7 @@ export default function ClientPortal() {
                   className="py-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm"
                 >
                   <span>
-                    {`#${invoice.number} - ${invoice.total} - ${invoice.status}`}
+                    {`#${invoice.number} - ${invoice.total} ${workspace?.currency ?? ""} - ${invoice.status}`}
                   </span>
                   <span className="flex gap-3 items-center">
                     {invoice.status !== "paid" && (

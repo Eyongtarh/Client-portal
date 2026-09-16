@@ -498,7 +498,7 @@ export default function OwnerDashboard() {
           onPlanChanged={loadWorkspace}
         />
 
-        <PaymentHistorySection />
+        <PaymentHistorySection currency={workspace?.currency} />
 
         <ActivityFeed />
       </main>
@@ -925,7 +925,7 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
 // read-only and downloadable only; editing an invoice stays a
 // per-client action on ClientDetail's own Invoices tab, where the
 // project/line-item context it needs already lives.
-function PaymentHistorySection() {
+function PaymentHistorySection({ currency }) {
   const { t } = useTranslation();
   const [invoices, setInvoices] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
@@ -972,8 +972,7 @@ function PaymentHistorySection() {
         </select>
       </div>
       <p className="text-sm text-ink-soft mb-3">
-        {t("dashboard.totalPaid")}: {"€"}
-        {totalPaid.toFixed(2)}
+        {t("dashboard.totalPaid")}: {totalPaid.toFixed(2)} {currency}
       </p>
       <ul className="divide-y divide-line">
         {invoices.map((invoice) => (
@@ -985,8 +984,7 @@ function PaymentHistorySection() {
               {t("dashboard.invoiceNumber")} #{invoice.number} {"·"}{" "}
               {invoice.client_name}
               {" · "}
-              {"€"}
-              {invoice.total} {"· "}
+              {invoice.total} {currency} {"· "}
               {invoice.status}
             </span>
             <button

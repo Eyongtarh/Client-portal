@@ -32,6 +32,7 @@ export default function ClientDetail() {
   const { clientId } = useParams();
   const [client, setClient] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [workspace, setWorkspace] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
 
   const tabs = [
@@ -48,6 +49,8 @@ export default function ClientDetail() {
     setClient(clientRes.data);
     const projectRes = await api.get(`/projects/?client=${clientId}`);
     setProjects(projectRes.data);
+    const workspaceRes = await api.get("/workspace/");
+    setWorkspace(workspaceRes.data);
   }
   useEffect(() => {
     load();
@@ -106,7 +109,11 @@ export default function ClientDetail() {
         <div className="bg-surface border border-line rounded-b-2xl rounded-tr-2xl p-6">
           {activeTab === "overview" &&
             (project ? (
-              <ProjectOverview project={project} onChange={load} />
+              <ProjectOverview
+                project={project}
+                onChange={load}
+                currency={workspace?.currency}
+              />
             ) : (
               <NewProjectForm clientId={clientId} onCreated={load} />
             ))}
@@ -120,7 +127,11 @@ export default function ClientDetail() {
             <MessagesTab project={project} />
           )}
           {activeTab === "invoices" && (
-            <InvoicesTab client={client} project={project} />
+            <InvoicesTab
+              client={client}
+              project={project}
+              currency={workspace?.currency}
+            />
           )}
           {activeTab === "approvals" && project && (
             <ApprovalsTab project={project} />
@@ -261,7 +272,7 @@ function ClientNotesTab({ client, onChange }) {
   );
 }
 
-function ProjectOverview({ project, onChange }) {
+function ProjectOverview({ project, onChange, currency }) {
   const { t } = useTranslation();
   const [newMilestone, setNewMilestone] = useState("");
   const [tasks, setTasks] = useState([]);
@@ -392,7 +403,7 @@ function ProjectOverview({ project, onChange }) {
     <div>
       <h2 className="text-xl font-semibold text-ink">{project.name}</h2>
       <p className="text-sm text-ink-soft mb-3">
-        {project.budget && `\u20ac${project.budget} \u00b7 `}
+        {project.budget && `${project.budget} ${currency ?? ""} \u00b7 `}
         {project.deadline && `Due ${project.deadline}`}
       </p>
       <div className="w-full bg-brand-100 rounded-full h-2 mb-1">
@@ -1162,7 +1173,7 @@ function MessagesTab({ project }) {
   );
 }
 
-function InvoicesTab({ client, project }) {
+function InvoicesTab({ client, project, currency }) {
   const { t } = useTranslation();
   const [invoices, setInvoices] = useState([]);
   const [number, setNumber] = useState("");
@@ -1440,7 +1451,7 @@ function InvoicesTab({ client, project }) {
                 <div>
                   <p className="font-medium text-ink">Invoice #{invoice.number}</p>
                   <p className="text-ink-soft">
-                    {`\u20ac${invoice.total} \u00b7 ${invoice.status}`}
+                    {`${invoice.total} ${currency ?? ""} \u00b7 ${invoice.status}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

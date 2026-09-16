@@ -1215,7 +1215,8 @@ class InvoicePDFView(APIView):
         for item in invoice.items.all():
             pdf.drawString(20 * mm, y, item.description[:60])
             pdf.drawRightString(
-                190 * mm, y, f"\u20ac{item.amount:,.2f}"
+                190 * mm, y,
+                f"{item.amount:,.2f} {invoice.workspace.currency}",
             )
             y -= 7 * mm
 
@@ -1227,7 +1228,8 @@ class InvoicePDFView(APIView):
         pdf.setFillColor(brand)
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawRightString(
-            190 * mm, y, f"Total: \u20ac{invoice.total:,.2f}"
+            190 * mm, y,
+            f"Total: {invoice.total:,.2f} {invoice.workspace.currency}",
         )
         pdf.setFillColor(black)
 
