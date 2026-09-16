@@ -870,7 +870,7 @@ function DocumentsTab({ project }) {
                   <button
                     onClick={() => openFile(doc.file_url)}
                     aria-label={`Open ${doc.original_name} in a new tab`}
-                    className="text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded truncate block"
+                    className="w-full text-left text-brand-700 transition-colors hover:text-brand-900 hover:underline focus:outline-none focus:ring-2 focus:ring-brand-400 rounded truncate block"
                   >
                     {doc.original_name}
                   </button>
