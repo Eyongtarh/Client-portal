@@ -23,8 +23,24 @@
      required so rgb(var(--brand-rgb) / <alpha>) is valid CSS
      anywhere this token is used with transparency (glow/aurora
      effects). applyBrandColor.js writes this same space-separated
-     format at runtime. */
+     format for both vars below, at runtime from the workspace's
+     brand_color.
+
+     Two separate variables because brand-600 has two contrast-
+     incompatible jobs that no single flat color can satisfy at
+     once: --brand-rgb (raw, unclamped) backs text-brand-600/
+     border-brand-600, which sit on whatever the CURRENT THEME's
+     canvas is - fine as-is, since dark mode's near-black canvas
+     needs a LIGHTER color for 4.5:1 text contrast, which the raw
+     #3b7fc4-equivalent already clears (4.7:1). --brand-solid-rgb
+     backs bg-brand-600-solid, used for solid button backgrounds
+     under WHITE text regardless of theme - that needs a DARKER
+     color for 4.5:1 (the raw value only reached 4.18:1), so
+     applyBrandColor.js clamps this one's lightness down;
+     unrelated to theme, which is why the default below is fixed
+     rather than something dark-mode would need to override. */
   --brand-rgb: 59 127 196;
+  --brand-solid-rgb: 50 107 165;
 
   --canvas: 250 250 252;
   --surface: 255 255 255;
@@ -92,6 +108,10 @@
     rgb(var(--surface))
   );
   --color-brand-600: rgb(var(--brand-rgb));
+  /* Solid button backgrounds under white text only - see the
+     --brand-solid-rgb comment above for why this needs its own
+     token instead of reusing brand-600. */
+  --color-brand-600-solid: rgb(var(--brand-solid-rgb));
   --color-brand-700: color-mix(
     in srgb,
     rgb(var(--brand-rgb)) 85%,

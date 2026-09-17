@@ -55,7 +55,7 @@ export default function ForgotPassword() {
             <button
               disabled={busy}
               aria-label="Send password reset link"
-              className="glow-brand w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="glow-brand w-full bg-brand-600-solid text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600-solid focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               {busy ? "Sending..." : "Send reset link"}
             </button>
@@ -65,7 +65,7 @@ export default function ForgotPassword() {
           <Link
             to="/login"
             aria-label="Back to sign in"
-            className="text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             Back to sign in
           </Link>

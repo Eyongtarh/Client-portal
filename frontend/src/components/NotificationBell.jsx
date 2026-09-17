@@ -103,7 +103,7 @@ export default function NotificationBell() {
               {count > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="text-xs text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                  className="text-xs text-brand-700 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
                 >
                   {t("notifications.markAllRead")}
                 </button>

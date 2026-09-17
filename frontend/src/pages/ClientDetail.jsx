@@ -70,7 +70,7 @@ export default function ClientDetail() {
           <Link
             to="/"
             aria-label={t("clientDetail.allClients")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             &larr; {t("clientDetail.allClients")}
           </Link>
@@ -224,7 +224,7 @@ function ClientNotesTab({ client, onChange }) {
           />
           <button
             type="submit"
-            className="mt-3 bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="mt-3 bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("clientDetail.save")}
@@ -451,7 +451,7 @@ function ProjectOverview({ project, onChange, currency }) {
                 <button
                   onClick={() => saveEditMilestone(milestone.id)}
                   aria-label={t("clientDetail.save")}
-                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.save")}
@@ -543,7 +543,7 @@ function ProjectOverview({ project, onChange, currency }) {
                 <button
                   onClick={() => saveEditTask(task.id)}
                   aria-label={t("clientDetail.save")}
-                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.save")}
@@ -680,7 +680,7 @@ function NewProjectForm({ clientId, onCreated }) {
       />
       <button
         aria-label={t("clientDetail.createProject")}
-        className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+        className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
       >
         <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
         {t("clientDetail.createProject")}
@@ -815,7 +815,7 @@ function DocumentsTab({ project }) {
           </label>
         )}
         <label
-          className="inline-block bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-brand-700 focus-within:ring-2 focus-within:ring-brand-400"
+          className="inline-block bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors hover:bg-brand-700 focus-within:ring-2 focus-within:ring-brand-400"
           title={t("clientDetail.uploadDocument")}
         >
           {uploading
@@ -861,7 +861,7 @@ function DocumentsTab({ project }) {
                 <button
                   onClick={() => saveEdit(doc.id)}
                   aria-label={t("clientDetail.save")}
-                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.save")}
@@ -1064,7 +1064,7 @@ function MessagesTab({ project }) {
                   <button
                     onClick={() => saveEdit(message.id)}
                     aria-label={t("clientDetail.save")}
-                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.save")}
@@ -1163,7 +1163,7 @@ function MessagesTab({ project }) {
         </label>
         <button
           aria-label={t("clientDetail.send")}
-          className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           <FiSend className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("clientDetail.send")}
@@ -1334,7 +1334,7 @@ function InvoicesTab({ client, project, currency }) {
           type="button"
           onClick={() => setItems([...items, { description: "", amount: "" }])}
           aria-label={t("clientDetail.addLineItem")}
-          className="text-sm text-brand-600 mb-3 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          className="text-sm text-brand-700 mb-3 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
           <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("clientDetail.addLineItem")}
@@ -1342,7 +1342,7 @@ function InvoicesTab({ client, project, currency }) {
         <div>
           <button
             aria-label={t("clientDetail.createInvoice")}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("clientDetail.createInvoice")}
@@ -1422,7 +1422,7 @@ function InvoicesTab({ client, project, currency }) {
                     ])
                   }
                   aria-label={t("clientDetail.addLineItem")}
-                  className="text-sm text-brand-600 mb-2 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+                  className="text-sm text-brand-700 mb-2 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
                 >
                   <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("clientDetail.addLineItem")}
@@ -1431,7 +1431,7 @@ function InvoicesTab({ client, project, currency }) {
                   <button
                     onClick={() => saveEdit(invoice.id)}
                     aria-label={t("clientDetail.save")}
-                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("clientDetail.save")}
@@ -1579,7 +1579,7 @@ function ApprovalsTab({ project }) {
         />
         <button
           aria-label={t("clientDetail.createApproval")}
-          className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("clientDetail.createApproval")}

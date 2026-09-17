@@ -217,7 +217,7 @@ export default function OwnerDashboard() {
               <button
                 onClick={saveName}
                 aria-label={t("clientDetail.save")}
-                className="bg-brand-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="bg-brand-600-solid text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
                 {t("clientDetail.save")}
               </button>
@@ -262,7 +262,7 @@ export default function OwnerDashboard() {
           <Link
             to="/projects"
             aria-label={t("dashboard.projects")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             <FiFolder className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("dashboard.projects")}
@@ -270,7 +270,7 @@ export default function OwnerDashboard() {
           <Link
             to="/resources"
             aria-label={t("resourceDashboard.title")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             <FiBox className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("resourceDashboard.title")}
@@ -278,7 +278,7 @@ export default function OwnerDashboard() {
           <Link
             to="/booking"
             aria-label="Manage bookings"
-            className="text-sm text-white bg-brand-600 px-3 py-1.5 rounded-lg font-medium text-center transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="text-sm text-white bg-brand-600-solid px-3 py-1.5 rounded-lg font-medium text-center transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <FiCalendar className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             Booking
@@ -289,7 +289,7 @@ export default function OwnerDashboard() {
           <Link
             to="/account"
             aria-label={t("account.title")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             <FiUser className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("account.title")}
@@ -297,7 +297,7 @@ export default function OwnerDashboard() {
           <button
             onClick={logout}
             aria-label={t("dashboard.signOut")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             <FiLogOut className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("dashboard.signOut")}
@@ -343,7 +343,7 @@ export default function OwnerDashboard() {
               }}
               aria-expanded={showInviteForm}
               aria-label={t("dashboard.inviteClient")}
-              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               {t("dashboard.inviteClient")}
             </button>
@@ -399,7 +399,7 @@ export default function OwnerDashboard() {
               <button
                 disabled={inviteBusy}
                 aria-label={t("dashboard.sendInvite")}
-                className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600-solid focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
                 {inviteBusy
                   ? t("dashboard.sending")
@@ -581,7 +581,7 @@ function TeamSection({ isOwner }) {
             }}
             aria-expanded={showInviteForm}
             aria-label={t("team.inviteTeamMember")}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             {t("team.inviteTeamMember")}
           </button>
@@ -623,7 +623,7 @@ function TeamSection({ isOwner }) {
           <button
             disabled={busy}
             aria-label={t("team.sendInvite")}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600-solid focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             {t("team.sendInvite")}
           </button>
@@ -766,7 +766,7 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
             }}
             aria-expanded={showPlans}
             aria-label={t("subscription.changePlan")}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             {t("subscription.changePlan")}
           </button>
@@ -907,7 +907,7 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
                 onClick={() => switchPlan(p.id)}
                 disabled={busy || p.id === plan?.id}
                 aria-label={`${t("subscription.switchTo")} ${p.name}`}
-                className="w-full bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="w-full bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600-solid focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
                 {p.id === plan?.id
                   ? t("subscription.currentPlan")

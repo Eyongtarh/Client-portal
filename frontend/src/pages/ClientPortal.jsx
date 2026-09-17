@@ -190,7 +190,7 @@ export default function ClientPortal() {
           <Link
             to="/account"
             aria-label={t("account.title")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             <FiUser className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("account.title")}
@@ -198,7 +198,7 @@ export default function ClientPortal() {
           <button
             onClick={logout}
             aria-label={t("dashboard.signOut")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             <FiLogOut className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("dashboard.signOut")}
@@ -259,7 +259,7 @@ export default function ClientPortal() {
                 {t("clientPortal.documents")}
               </h3>
               <label
-                className="inline-flex items-center gap-1.5 text-sm text-brand-600 underline cursor-pointer transition-colors hover:text-brand-800 focus-within:ring-2 focus-within:ring-brand-400 rounded"
+                className="inline-flex items-center gap-1.5 text-sm text-brand-700 underline cursor-pointer transition-colors hover:text-brand-800 focus-within:ring-2 focus-within:ring-brand-400 rounded"
                 title={t("clientPortal.uploadDocument")}
               >
                 <FiUpload aria-hidden="true" size={14} />
@@ -325,7 +325,7 @@ export default function ClientPortal() {
                       <button
                         onClick={() => payInvoice(invoice.id)}
                         aria-label={`Pay invoice ${invoice.number} online`}
-                        className="bg-brand-600 text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                        className="bg-brand-600-solid text-white text-xs px-2.5 py-1 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                       >
                         <FiCreditCard className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                         {t("clientPortal.payNow")}
@@ -515,7 +515,7 @@ export default function ClientPortal() {
               </label>
               <button
                 aria-label={t("clientPortal.send")}
-                className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
               >
                 <FiSend className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                 {t("clientPortal.send")}
@@ -911,7 +911,7 @@ function BookingSection() {
           aria-label={t("booking.aService")}
           className={
             bookingType === "service"
-              ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+              ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600-solid text-white border border-brand-600-solid transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
               : "px-3 py-1.5 rounded-lg text-sm border border-line transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
           }
         >
@@ -929,7 +929,7 @@ function BookingSection() {
           aria-label={t("booking.aResource")}
           className={
             bookingType === "resource"
-              ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+              ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600-solid text-white border border-brand-600-solid transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
               : "px-3 py-1.5 rounded-lg text-sm border border-line transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
           }
         >
@@ -1176,7 +1176,7 @@ function BookingSection() {
                       aria-label={`Select ${slot}`}
                       className={
                         selectedSlot === slot
-                          ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                          ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600-solid text-white border border-brand-600-solid transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
                           : "px-3 py-1.5 rounded-lg text-sm border border-brand-200 transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
                       }
                     >
@@ -1252,7 +1252,7 @@ function BookingSection() {
                   <button
                     onClick={confirmBooking}
                     aria-label={t("booking.confirmBooking")}
-                    className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />{t("booking.confirmBooking")} ({selectedSlot})
                   </button>
@@ -1388,7 +1388,7 @@ function BookingSection() {
                   <button
                     onClick={() => saveEditWaitlist(entry.id)}
                     aria-label={t("booking.save")}
-                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.save")}
@@ -1507,7 +1507,7 @@ function BookingSection() {
                 <button
                   onClick={() => saveEditMine(booking.id)}
                   aria-label={t("booking.save")}
-                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.save")}
@@ -1536,7 +1536,7 @@ function BookingSection() {
                       <button
                         onClick={() => payForBooking(booking.id)}
                         aria-label={`${t("booking.payNow")} - ${booking.service_name}`}
-                        className="bg-brand-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                        className="bg-brand-600-solid text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                       >
                         <FiCreditCard className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                         {t("booking.payNow")}
@@ -1802,7 +1802,7 @@ function ReviewsSection() {
                   <button
                     onClick={() => submitReview(booking.id)}
                     aria-label={t("booking.leaveReview")}
-                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     {t("booking.leaveReview")}
                   </button>
@@ -1870,7 +1870,7 @@ function ReviewsSection() {
                     <button
                       onClick={() => saveEdit(review.id)}
                       aria-label={t("booking.save")}
-                      className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                     >
                       <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                       {t("booking.save")}

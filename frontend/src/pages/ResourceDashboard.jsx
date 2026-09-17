@@ -315,7 +315,7 @@ export default function ResourceDashboard() {
           <Link
             to="/"
             aria-label="Back to dashboard"
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             &larr; {user.workspace_name}
           </Link>
@@ -330,7 +330,7 @@ export default function ResourceDashboard() {
           <Link
             to="/account"
             aria-label={t("account.title")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             <FiUser className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("account.title")}
@@ -338,7 +338,7 @@ export default function ResourceDashboard() {
           <button
             onClick={logout}
             aria-label={t("dashboard.signOut")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             <FiLogOut className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("dashboard.signOut")}

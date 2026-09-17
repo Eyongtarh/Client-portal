@@ -21,7 +21,7 @@ export default function LanguageToggle() {
         title="English"
         className={
           isEnglish
-            ? "px-3 py-1 bg-brand-600 text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            ? "px-3 py-1 bg-brand-600-solid text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
             : "px-3 py-1 bg-surface text-ink-soft transition-colors hover:bg-surface-2 focus:outline-none focus:ring-2 focus:ring-brand-400"
         }
       >
@@ -34,7 +34,7 @@ export default function LanguageToggle() {
         title="Français"
         className={
           !isEnglish
-            ? "px-3 py-1 bg-brand-600 text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            ? "px-3 py-1 bg-brand-600-solid text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
             : "px-3 py-1 bg-surface text-ink-soft transition-colors hover:bg-surface-2 focus:outline-none focus:ring-2 focus:ring-brand-400"
         }
       >

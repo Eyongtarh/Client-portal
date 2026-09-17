@@ -116,7 +116,7 @@ export default function Account() {
         <Link
           to="/"
           aria-label={t("account.backToDashboard")}
-          className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded inline-flex items-center gap-1"
+          className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded inline-flex items-center gap-1"
         >
           <FiArrowLeft aria-hidden="true" size={16} />
           {t("account.backToDashboard")}
@@ -179,7 +179,7 @@ export default function Account() {
             </div>
             <button
               type="submit"
-              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               <FiCheck
                 className="inline -mt-0.5 mr-1.5 shrink-0"
@@ -259,7 +259,7 @@ export default function Account() {
             </div>
             <button
               type="submit"
-              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               <FiCheck
                 className="inline -mt-0.5 mr-1.5 shrink-0"

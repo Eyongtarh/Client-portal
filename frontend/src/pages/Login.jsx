@@ -78,7 +78,7 @@ export default function Login() {
           <Link
             to="/forgot-password"
             aria-label="Forgot your password? Reset it here"
-            className="text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             {t("login.forgotPassword") || "Forgot your password?"}
           </Link>
@@ -86,7 +86,7 @@ export default function Login() {
         <button
           disabled={busy}
           aria-label={t("login.submit")}
-          className="glow-brand w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="glow-brand w-full bg-brand-600-solid text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600-solid focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           {busy ? t("login.submitting") : t("login.submit")}
         </button>
@@ -95,7 +95,7 @@ export default function Login() {
           <Link
             to="/register"
             aria-label="Create a new workspace account"
-            className="text-brand-600 font-medium underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-brand-700 font-medium underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             {t("login.createWorkspace")}
           </Link>

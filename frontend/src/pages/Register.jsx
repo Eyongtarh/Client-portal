@@ -92,7 +92,7 @@ export default function Register() {
         <button
           disabled={busy}
           aria-label={t("register.submit")}
-          className="glow-brand w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="glow-brand w-full bg-brand-600-solid text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600-solid focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           {busy ? t("register.submitting") : t("register.submit")}
         </button>
@@ -101,7 +101,7 @@ export default function Register() {
           <Link
             to="/login"
             aria-label="Sign in to your existing account"
-            className="text-brand-600 font-medium underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-brand-700 font-medium underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             {t("register.signIn")}
           </Link>

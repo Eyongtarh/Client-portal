@@ -73,7 +73,7 @@ export default function Booking() {
           <Link
             to="/"
             aria-label="Back to dashboard"
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             &larr; {user.workspace_name}
           </Link>
@@ -88,7 +88,7 @@ export default function Booking() {
           <Link
             to="/account"
             aria-label={t("account.title")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             <FiUser className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("account.title")}
@@ -96,7 +96,7 @@ export default function Booking() {
           <button
             onClick={logout}
             aria-label={t("dashboard.signOut")}
-            className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+            className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
           >
             <FiLogOut className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("dashboard.signOut")}
@@ -412,7 +412,7 @@ function LocationsSection() {
           }}
           aria-expanded={showForm}
           aria-label={t("locations.addLocation")}
-          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          className="text-sm text-brand-700 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
           <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("locations.addLocation")}
@@ -471,7 +471,7 @@ function LocationsSection() {
           />
           <button
             aria-label={t("locations.createLocation")}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("locations.createLocation")}
@@ -534,7 +534,7 @@ function LocationsSection() {
                   <button
                     onClick={() => saveEdit(location.id)}
                     aria-label={t("locations.save")}
-                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("locations.save")}
@@ -915,7 +915,7 @@ function ServicesSection() {
           }}
           aria-expanded={showForm}
           aria-label={t("booking.addService")}
-          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          className="text-sm text-brand-700 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
           <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("booking.addService")}
@@ -1046,7 +1046,7 @@ function ServicesSection() {
             </p>
             <button
               onClick={connectStripe}
-              className="bg-brand-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="bg-brand-600-solid text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               <SiStripe className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
               {t("booking.connectStripe")}
@@ -1305,7 +1305,7 @@ function ServicesSection() {
           )}
           <button
             aria-label={t("booking.createService")}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("booking.createService")}
@@ -1505,7 +1505,7 @@ function ServicesSection() {
                   <button
                     onClick={() => saveEdit(service.id)}
                     aria-label={t("booking.save")}
-                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.save")}
@@ -1699,7 +1699,7 @@ function PaymentMethodsSection() {
             setStatusMsg(null);
           }}
           aria-expanded={showForm}
-          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          className="text-sm text-brand-700 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
           <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("booking.addPaymentMethod")}
@@ -1752,7 +1752,7 @@ function PaymentMethodsSection() {
           />
           <button
             type="submit"
-            className="bg-brand-600 text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white text-sm px-3 py-1.5 rounded-lg font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("booking.save")}
@@ -1789,7 +1789,7 @@ function PaymentMethodsSection() {
               <div className="flex gap-2">
                 <button
                   onClick={() => saveEdit(method.id)}
-                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.save")}
@@ -2125,7 +2125,7 @@ function ResourcesSection() {
           }}
           aria-expanded={showForm}
           aria-label={t("resources.addResource")}
-          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          className="text-sm text-brand-700 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
           <FiPlus className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />{t("resources.addResource")}
         </button>
@@ -2525,7 +2525,7 @@ function ResourcesSection() {
           </div>
           <button
             aria-label={t("resources.createResource")}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("resources.createResource")}
@@ -2911,7 +2911,7 @@ function ResourcesSection() {
                   <button
                     onClick={() => saveEdit(resource.id)}
                     aria-label={t("resources.save")}
-                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("resources.save")}
@@ -3129,7 +3129,7 @@ function WorkingHoursSection() {
           }}
           aria-expanded={showForm}
           aria-label={t("booking.addWorkingHours")}
-          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          className="text-sm text-brand-700 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
           <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("booking.addWorkingHours")}
@@ -3258,7 +3258,7 @@ function WorkingHoursSection() {
           )}
           <button
             aria-label={t("booking.saveHours")}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("booking.saveHours")}
@@ -3380,7 +3380,7 @@ function WorkingHoursSection() {
                 <button
                   onClick={() => saveEdit(window.id)}
                   aria-label={t("booking.save")}
-                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.save")}
@@ -3539,7 +3539,7 @@ function ResourceRulesSection() {
           }}
           aria-expanded={showForm}
           aria-label={t("resources.addHours")}
-          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          className="text-sm text-brand-700 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
           <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("resources.addHours")}
@@ -3636,7 +3636,7 @@ function ResourceRulesSection() {
           </div>
           <button
             aria-label={t("booking.saveHours")}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("booking.saveHours")}
@@ -3702,7 +3702,7 @@ function ResourceRulesSection() {
                 <button
                   onClick={() => saveEdit(window.id)}
                   aria-label={t("booking.save")}
-                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.save")}
@@ -3907,7 +3907,7 @@ function BlockedTimeSection() {
           }}
           aria-expanded={showForm}
           aria-label={t("booking.addBlockedTime")}
-          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          className="text-sm text-brand-700 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
           <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("booking.addBlockedTime")}
@@ -4084,7 +4084,7 @@ function BlockedTimeSection() {
           </div>
           <button
             aria-label={t("booking.saveBlockedTime")}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
             {t("booking.saveBlockedTime")}
@@ -4221,7 +4221,7 @@ function BlockedTimeSection() {
                 <button
                   onClick={() => saveEdit(entry.id)}
                   aria-label={t("booking.save")}
-                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.save")}
@@ -4387,7 +4387,7 @@ function IntakeQuestionsSection() {
           }}
           aria-expanded={showForm}
           aria-label={t("booking.addIntakeQuestion")}
-          className="text-sm text-brand-600 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+          className="text-sm text-brand-700 transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
         >
           <FiPlus className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
           {t("booking.addIntakeQuestion")}
@@ -4485,7 +4485,7 @@ function IntakeQuestionsSection() {
           </label>
           <button
             type="submit"
-            className="bg-brand-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="bg-brand-600-solid text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             {t("booking.saveIntakeQuestion")}
           </button>
@@ -4545,7 +4545,7 @@ function IntakeQuestionsSection() {
                 <button
                   onClick={() => saveEdit(question.id)}
                   aria-label={t("booking.save")}
-                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.save")}
@@ -4948,7 +4948,7 @@ function BookingsSection() {
                   <button
                     onClick={() => saveEdit(booking.id)}
                     aria-label={t("booking.save")}
-                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.save")}
@@ -5241,7 +5241,7 @@ function WaitlistSection() {
                 <button
                   onClick={() => saveEdit(entry.id)}
                   aria-label={t("booking.save")}
-                  className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                  className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                 >
                   <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                   {t("booking.save")}
@@ -5409,7 +5409,7 @@ function ReviewsSection() {
                   <button
                     onClick={() => submitResponse(review.id)}
                     aria-label={t("booking.save")}
-                    className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    className="bg-brand-600-solid text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <FiCheck className="inline -mt-0.5 mr-1.5 shrink-0" aria-hidden="true" />
                     {t("booking.save")}

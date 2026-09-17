@@ -185,7 +185,7 @@ export default function PublicBooking() {
             </p>
             <button
               onClick={bookAnother}
-              className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm hover:bg-brand-700 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="px-4 py-2 rounded-lg bg-brand-600-solid text-white text-sm hover:bg-brand-700 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               {t("publicBooking.bookAnother")}
             </button>
@@ -358,7 +358,7 @@ export default function PublicBooking() {
                               aria-label={`Select ${slot}`}
                               className={
                                 selectedSlot === slot
-                                  ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600 text-white border border-brand-600 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
+                                  ? "px-3 py-1.5 rounded-lg text-sm bg-brand-600-solid text-white border border-brand-600-solid transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400"
                                   : "px-3 py-1.5 rounded-lg text-sm border border-line transition-colors hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-400"
                               }
                             >
@@ -460,7 +460,7 @@ export default function PublicBooking() {
                       <button
                         type="submit"
                         disabled={submitting}
-                        className="w-full px-4 py-2 rounded-lg bg-brand-600 text-white text-sm hover:bg-brand-700 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:opacity-60"
+                        className="w-full px-4 py-2 rounded-lg bg-brand-600-solid text-white text-sm hover:bg-brand-700 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:opacity-60"
                       >
                         {t("publicBooking.confirmBookingGuest")}
                       </button>

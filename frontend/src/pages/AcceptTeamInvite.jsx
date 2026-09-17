@@ -105,7 +105,7 @@ export default function AcceptTeamInvite() {
         <button
           disabled={busy}
           aria-label={t("team.submit")}
-          className="glow-brand w-full bg-brand-600 text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="glow-brand w-full bg-brand-600-solid text-white rounded-lg py-2.5 font-medium transition-colors hover:bg-brand-700 disabled:opacity-50 disabled:hover:bg-brand-600-solid focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           {busy ? t("team.submitting") : t("team.submit")}
         </button>

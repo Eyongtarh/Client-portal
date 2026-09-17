@@ -65,14 +65,14 @@ export default function Landing() {
             <Link
               to="/login"
               aria-label={t("landing.signIn")}
-              className="text-sm text-brand-600 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
+              className="text-sm text-brand-700 underline transition-colors hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400 rounded"
             >
               {t("landing.signIn")}
             </Link>
             <Link
               to="/register"
               aria-label={t("landing.getStarted")}
-              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="bg-brand-600-solid text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               {t("landing.getStarted")}
             </Link>
@@ -99,7 +99,7 @@ export default function Landing() {
             to="/register"
             aria-label={t("landing.heroCta")}
             style={{ animationDelay: "0.16s" }}
-            className="animate-rise glow-brand inline-block mt-9 bg-brand-600 text-white px-7 py-3.5 rounded-xl font-medium transition-transform hover:-translate-y-0.5 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            className="animate-rise glow-brand inline-block mt-9 bg-brand-600-solid text-white px-7 py-3.5 rounded-xl font-medium transition-transform hover:-translate-y-0.5 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             {t("landing.heroCta")}
           </Link>
@@ -112,7 +112,7 @@ export default function Landing() {
           <div className="grid sm:grid-cols-3 gap-8">
             {STEPS.map((step, i) => (
               <div key={step} className="animate-rise text-center">
-                <div className="w-9 h-9 mx-auto mb-4 rounded-full bg-brand-600 text-white flex items-center justify-center font-semibold">
+                <div className="w-9 h-9 mx-auto mb-4 rounded-full bg-brand-600-solid text-white flex items-center justify-center font-semibold">
                   {i + 1}
                 </div>
                 <h3 className="font-semibold text-ink mb-1.5">
@@ -170,7 +170,7 @@ export default function Landing() {
             <Link
               to="/register"
               aria-label={t("landing.footerCtaButton")}
-              className="glow-brand inline-block bg-brand-600 text-white px-6 py-3 rounded-lg font-medium transition-transform hover:-translate-y-0.5 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="glow-brand inline-block bg-brand-600-solid text-white px-6 py-3 rounded-lg font-medium transition-transform hover:-translate-y-0.5 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               {t("landing.footerCtaButton")}
             </Link>
