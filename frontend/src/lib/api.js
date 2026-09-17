@@ -35,7 +35,16 @@ api.interceptors.response.use(
   async (error) => {
     const original = error.config;
     const isUnauthorized = error.response?.status === 401;
-    if (isUnauthorized && !original._retry) {
+    // A 401 from a request that never carried an access token in the
+    // first place (login, register, forgot-password, ...) is just a
+    // normal auth failure, not an expired session - there's nothing
+    // to refresh. Without this check, a wrong password on the login
+    // page itself hit the "no refresh token, redirect to /login"
+    // branch below, which - already being on /login - did a full
+    // page reload that wiped the form before Login.jsx's own catch
+    // block ever got to show "incorrect email or password".
+    const hadAccessToken = Boolean(original.headers?.Authorization);
+    if (isUnauthorized && hadAccessToken && !original._retry) {
       original._retry = true;
       const { refresh } = getTokens();
       if (!refresh) {
