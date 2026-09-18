@@ -283,7 +283,7 @@ A **GitHub Actions** workflow (`.github/workflows/ci.yml`) runs on every push an
 
 ### Lighthouse Report
 
-Audited with the real **Lighthouse CLI** against a production build (not the development server), covering Performance, Accessibility, Best Practices, and SEO.
+Covering Performance, Accessibility, Best Practices, and SEO.
 
 ![Lighthouse report](docs/images/lighthouse.jpg)
 
