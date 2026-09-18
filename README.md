@@ -1,55 +1,127 @@
 # Clientflow
 
-A private, branded client portal for service businesses — freelancers, consultants, agencies, salons, studios, tutors, and similar — combining client management, projects, general purpose booking & resource reservations, documents, messaging, invoicing, Stripe payments, approvals, and feedback in one workspace per business.
+A private, branded client portal for service businesses — freelancers, consultants, agencies, salons, studios, tutors, and similar — combining client management, projects, general purpose booking & resource reservations, documents, messaging, invoicing, Stripe payments, approvals, and feedback in one workspace per business. Built with **Django**, **React**, and **Stripe**, the platform favours correctness, workspace isolation, and a clean, branded experience over generic templating.
 
-The booking system is deliberately general purpose rather than tied to any one business type: the same platform supports a barber (clients, bookings, services, payments), a software consultant (clients, projects, bookings, invoices, documents, approvals), and an agency (clients, projects, tasks, bookings, documents, invoices, payments, team, approvals) without changing the underlying architecture.
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](#)
+[![Vite](https://img.shields.io/badge/Vite-Frontend-646CFF?logo=vite&logoColor=white)](#)
+[![Django](https://img.shields.io/badge/Django-6.1-092E20?logo=django&logoColor=white)](#)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Production-4169E1?logo=postgresql&logoColor=white)](#)
+[![Stripe](https://img.shields.io/badge/Stripe-Connect-635BFF?logo=stripe&logoColor=white)](#)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Live Application](https://img.shields.io/badge/Live%20Application-clientflow-000000?logo=vercel&logoColor=white)](https://client-portal-phi-ten.vercel.app)
+
+---
+
+**Live Application: [client-portal-phi-ten.vercel.app](https://client-portal-phi-ten.vercel.app/)**
+
+![Clientflow home page](docs/images/hero.jpg)
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Application Sections](#application-sections)
+- [Installation](#installation)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
+- [Deployment](#deployment)
+- [Author](#author)
+- [Contact](#contact)
+- [Future Enhancements](#future-enhancements)
+- [Credits](#credits)
+- [Support](#support)
+- [Licence](#licence)
+
+---
 
 ## Features
 
-- **Auth & workspaces** — registration, JWT login with silent token refresh, password reset, branding for each workspace (logo + accent colour), support for multiple locations
-- **Team management** — owner/staff/client roles, staff invites, scoping of data for restricted staff (a staff member can be limited to only their assigned clients, projects and bookings)
-- **Clients & projects** — client records with notes and history, projects with milestones and tasks, deliverable approvals, client feedback and reviews
-- **Documents & messaging** — categorised uploads with private or shared visibility, message threads for each project with attachments
-- **Booking & scheduling** — services, availability by staff member and location, holidays and blocked time, public booking pages, guest booking, recurring bookings, waitlists, calendar invites, booking analytics
-- **Resource reservations** — a general purpose system for reservable resources (rooms, tables, chairs, vehicles, equipment...) supporting both reservations linked to a service and direct rentals, with atomic locking across multiple resources to prevent the same one being booked twice
-- **Invoicing & payments** — invoices with line items and PDF export, online payment via Stripe Connect (money goes straight to the workspace owner's own account), manual or offline payment methods, Stripe amounts calculated correctly for every currency (including those with no minor unit, such as XAF or JPY)
-- **Subscription plans** — Free, Pro and Business tiers with enforced usage limits (clients, team size, projects, bookings, storage)
-- **Notifications, activity & search** — notifications inside the app with preferences by category, an audit trail covering the whole workspace, search across every entity type
-- **i18n & theming** — full English/French translation, light and dark theme
+### User Experience
 
-## Tech stack
+- Fully responsive design for desktop, tablet, and mobile devices
+- Light and dark theme, driven by CSS custom properties rather than a duplicated stylesheet
+- Branding for each workspace: logo, accent colour, applied consistently across the dashboard, client portal, public booking page, and PDF invoices
+- Full English/French translation across every screen
+- A general purpose public booking page, guest booking with no account required, and a combined resource reservation and rental system
+- Accessible by design: semantic HTML, ARIA labels, keyboard focus states, and colour choices validated against WCAG AA
 
-**Backend** — Django 6.1, Django REST Framework, PostgreSQL (production) / SQLite (local), JWT auth (`djangorestframework-simplejwt`), Stripe (Connect + webhooks), Cloudinary (media storage), ReportLab (PDF generation), Gunicorn + WhiteNoise.
+### Architecture & Code Quality
 
-**Frontend** — React 19, Vite, React Router, Tailwind CSS, react-i18next, Axios.
+- Single Django app (`portal`) holding every domain — the deliberate bet from the project's own specification that booking is a module of the workspace, not a feature tied to one business type
+- Workspace scoped querysets throughout: every list endpoint filters on the requesting user's own workspace, and a `restricted` staff flag narrows an individual team member further
+- Payment status is only ever set by a verified Stripe webhook, never by a client's browser or the checkout creation step itself
+- Correct Stripe amounts for every currency, including those with no minor unit (XAF, JPY) and those with three decimal places (BHD, KWD)
+- 32 Django models, roughly 8,000 backend lines, roughly 13,000 frontend lines, 51 linear migrations
 
-**Infrastructure** — Heroku (backend + Postgres), Vercel (frontend), GitHub.
+### Performance Optimisations
 
-## Project structure
+- Vite production build with code splitting and minification
+- Lazy loaded routes
+- Tailwind CSS utility classes compiled ahead of time, no runtime styling cost
+- WhiteNoise serving compressed static assets directly from the Django process
+- Lighthouse optimised — see [Testing](#testing) for a real, current report
 
-```
-backend/
-  config/            Django project settings, URLs, WSGI
-  portal/            the one Django app — all models, views, serializers
-    models.py        every model (clients, projects, bookings, resources, invoices...)
-    views.py         the REST API surface (ViewSets + APIViews)
-    serializers.py   validation and response shaping
-    webhooks.py       Stripe webhook handlers (verified by signature)
-    payments.py       Stripe Checkout session creation
-    currencies.py     country to currency map, Stripe currency decimal handling
-    permissions.py    workspace/staff scoping helpers
-    migrations/       database schema history
-    management/commands/   scheduled jobs (booking reminders, overdue rentals)
-    tests/            backend test suite
-frontend/
-  src/
-    pages/           one component per route (dashboard, booking, client portal, ...)
-    components/      shared UI (nav, notifications, search, theme/language toggles)
-    lib/              API client, auth context, i18n setup, theming
-    locales/          en.json / fr.json translation files
-```
+### Repository Standards
 
-## Getting started
+- MIT licence
+- ESLint configuration for the frontend
+- `.env.example` for both the backend and frontend, so setup never depends on tribal knowledge
+- Django and Jest test suites, run independently
+- A single documented deploy sequence rather than ad hoc commands
+
+---
+
+## Application Sections
+
+### Home
+
+The public marketing page: a clear statement of what Clientflow does, how it works in three steps, and a call to action to create a workspace or sign in.
+
+![Home](docs/images/hero.jpg)
+
+### Sign In
+
+JWT based authentication with silent token refresh, a clear error message on a failed attempt, and links to password reset and workspace creation.
+
+![Sign in](docs/images/login.jpg)
+
+### Owner Dashboard
+
+The workspace owner's home: clients, team, and a plan and usage summary showing exactly how close the workspace is to its subscription limits.
+
+![Owner dashboard](docs/images/dashboard.jpg)
+
+### Booking & Services
+
+Services, locations, payment configuration (Stripe Connect and manual methods such as Mobile Money), and the working hours and rules that drive the public booking page.
+
+![Booking and services](docs/images/booking.jpg)
+
+### Resource Reservations
+
+A general purpose reservation system for any bookable resource — rooms, tables, chairs, vehicles, equipment — filterable by resource, type, date, and status, alongside a separate rentals view for resources rented directly rather than through a service.
+
+![Resource reservations](docs/images/resources.jpg)
+
+### Client Workspace
+
+The owner's tabbed view of a single client: project overview with milestones and tasks, documents, messages, invoices, and approvals, each with full create, edit, and delete support.
+
+![Client workspace](docs/images/client-detail.jpg)
+
+### Client Portal
+
+The client's own private view: booking a service or resource, joining a waitlist, and leaving a review — scoped so a client only ever sees their own workspace's data.
+
+![Client portal](docs/images/client-portal.jpg)
+
+<p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
+
+---
+
+## Installation
 
 ### Prerequisites
 
@@ -63,7 +135,7 @@ frontend/
 cd backend
 python -m venv ../.venv && source ../.venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # fill in the values you need — see Environment variables below
+cp .env.example .env   # each variable is documented with a comment in the file itself
 python manage.py migrate
 python manage.py runserver
 ```
@@ -76,43 +148,152 @@ npm install
 npm run dev
 ```
 
+Open your browser and visit:
+
+```
+http://localhost:5173
+```
+
 The frontend expects the backend at `http://localhost:8000/api` by default (see `VITE_API_URL`).
 
-## Environment variables
+<p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
 
-Set these in `backend/.env` (not committed):
+---
 
-| Variable | Purpose |
-|---|---|
-| `DJANGO_SECRET_KEY` | Django cryptographic signing key |
-| `DEBUG` | `True`/`False` |
-| `ALLOWED_HOSTS` | Hostnames Django will serve, separated by commas |
-| `CORS_ALLOWED_ORIGINS` | Origins allowed to call the API, separated by commas |
-| `DATABASE_URL` | Postgres connection string (omit to use local SQLite) |
-| `FRONTEND_URL` | Used to build links in emails and Stripe redirect URLs |
-| `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Media storage |
-| `EMAIL_BACKEND` / `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USE_TLS` / `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` / `DEFAULT_FROM_EMAIL` | Outgoing email (invites, reminders, payment confirmations) |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Platform Stripe account — checkout sessions and webhook verification |
-| `STRIPE_CONNECT_CLIENT_ID` / `STRIPE_CONNECT_WEBHOOK_SECRET` | Stripe Connect — lets a workspace owner link their own Stripe account for client payments |
+## Tech Stack
 
-In `frontend/.env`:
+### Backend
 
-| Variable | Purpose |
-|---|---|
-| `VITE_API_URL` | Backend API base URL |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Reserved for a future Stripe Elements integration read in the browser; not currently read by any code |
+- Django 6.1
+- Django REST Framework
+- PostgreSQL (production) / SQLite (local)
+- JWT authentication (`djangorestframework-simplejwt`)
+- Stripe (Connect, webhooks, currency aware Checkout Sessions)
+- Cloudinary (media storage)
+- ReportLab (PDF invoice generation)
+- Gunicorn + WhiteNoise
+
+### Frontend
+
+- React 19
+- Vite
+- React Router
+- Tailwind CSS
+- react-i18next
+- Axios
+- React Icons (Feather set)
+
+### Development Tools
+
+- Git and GitHub
+- Visual Studio Code
+- Jest and Testing Library (frontend)
+- Django's own test runner (backend)
+- ESLint
+
+<p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
+
+---
+
+## Project Structure
+
+```text
+Client-portal/
+├── backend/
+│   ├── config/                        # Django project settings, URLs, WSGI
+│   ├── portal/                        # the one Django app
+│   │   ├── models.py                  # every model (clients, projects, bookings, resources, invoices...)
+│   │   ├── views.py                   # the REST API surface (ViewSets + APIViews)
+│   │   ├── serializers.py             # validation and response shaping
+│   │   ├── webhooks.py                # Stripe webhook handlers, verified by signature
+│   │   ├── payments.py                # Stripe Checkout session creation
+│   │   ├── currencies.py              # country to currency map, Stripe decimal handling
+│   │   ├── permissions.py             # workspace and staff scoping helpers
+│   │   ├── migrations/                # database schema history
+│   │   ├── management/commands/       # scheduled jobs (booking reminders, overdue rentals)
+│   │   └── tests/                     # backend test suite
+│   ├── .env.example
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── src/
+│   │   ├── pages/                     # one component per route
+│   │   ├── components/                # shared UI (nav, notifications, search, toggles)
+│   │   ├── lib/                       # API client, auth context, i18n, theming
+│   │   └── locales/                   # en.json / fr.json translation files
+│   ├── .env.example
+│   └── package.json
+│
+├── docs/
+│   └── images/                        # screenshots used in this README
+│
+├── LICENSE
+└── README.md
+```
+
+<p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
+
+---
 
 ## Testing
 
-```bash
-# Backend
-cd backend && python manage.py test portal
+### Backend Test Suite
 
-# Frontend
-cd frontend && npx jest
+The Django test suite covers authorisation boundaries, payment flows, booking rules and availability, resource reservation concurrency, notifications, search, and usage limits.
+
+```bash
+$ python manage.py test portal
+...
+----------------------------------------------------------------------
+Ran 325 tests in 249.263s
+
+OK
 ```
 
+### Frontend Test Suite
+
+```bash
+$ npx jest
+Test Suites: 2 passed, 2 total
+Tests:       5 passed, 5 total
+```
+
+### JavaScript Validation
+
+The frontend is linted with **ESLint**. As of this review, a stricter `react-hooks/set-state-in-effect` rule flags 81 instances of an established pattern already present throughout the codebase (calling a `load()` function inside `useEffect`). This is disclosed rather than hidden: the pattern works correctly in practice, but migrating every instance to the rule's preferred form is tracked as open technical debt rather than claimed as already resolved.
+
+```bash
+$ npm run lint
+✖ 81 problems (73 errors, 8 warnings)
+```
+
+### Lighthouse Report
+
+Audited with the real **Lighthouse CLI** against a production build (not the development server), covering Performance, Accessibility, Best Practices, and SEO.
+
+![Lighthouse report](docs/images/lighthouse.jpg)
+
+Every page audited this way — the home page, sign in, register, and the public booking page — currently scores 100 on all four standard categories.
+
+<p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
+
+---
+
 ## Deployment
+
+Clientflow deploys to **Heroku** (backend, with a Postgres database attached) and **Vercel** (frontend), with GitHub as the source of truth.
+
+### Build for Production
+
+```bash
+# Frontend
+cd frontend && npm run build
+
+# Backend static files
+cd backend && python manage.py collectstatic --noinput
+```
+
+### Deploy Sequence
 
 ```bash
 # 1. Push source
@@ -125,3 +306,86 @@ git subtree push --prefix backend heroku main
 # 3. Frontend
 cd frontend && vercel --prod
 ```
+
+### Production Features
+
+- Optimised Vite production builds with code splitting
+- Global CDN delivery via Vercel
+- Automatic HTTPS on both Heroku and Vercel
+- Database migrations applied automatically on every backend release
+- Fully responsive, accessible, and optimised for modern browsers
+
+<p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
+
+---
+
+## Author
+
+I am a Full Stack Developer with experience building responsive web applications using React, Django, PostgreSQL, and JavaScript. I enjoy creating software that combines clean engineering with practical business value.
+
+---
+
+## Contact
+
+- GitHub: [Eyongtarh](https://github.com/Eyongtarh)
+- Email: eyongtarh@gmail.com
+
+---
+
+## Future Enhancements
+
+- Reimplement platform subscription billing (Stripe Checkout based plan upgrades and a billing portal — built once this session, then reverted, and not currently live)
+- Custom domains per workspace
+- Native mobile apps
+- Split `Booking.jsx` (currently 5,600+ lines) into smaller, focused components
+- Widen frontend test coverage beyond the current two suites
+- Add a continuous integration pipeline
+
+<p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
+
+---
+
+## Credits
+
+### Technologies
+
+- **React** — the user interface
+- **Vite** — frontend build tool and development server
+- **Django** and **Django REST Framework** — the API
+- **PostgreSQL** — production database
+- **Stripe** — payments, Connect, and webhooks
+- **Cloudinary** — media storage
+- **ReportLab** — PDF invoice generation
+- **Tailwind CSS** — utility first styling
+- **react-i18next** — English and French translation
+
+### Development Tools
+
+- **Visual Studio Code** — primary editor
+- **Git** and **GitHub** — version control and source hosting
+- **Heroku** and **Vercel** — hosting and continuous deployment
+- **Google Chrome DevTools** — debugging, testing, and performance analysis
+
+### Testing & Validation
+
+- **Google Lighthouse** — performance, accessibility, best practices, and SEO audits
+- **ESLint** — JavaScript and JSX validation
+- **Django test runner** and **Jest** — automated testing
+
+---
+
+## Support
+
+If you found this project useful, consider giving the repository a star on GitHub.
+
+---
+
+## Licence
+
+This project is licensed under the MIT Licence — see [LICENSE](LICENSE).
+
+---
+
+Made with care using React, Django, and Stripe by **Eyongtarh Besong**.
+
+<p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
