@@ -1,6 +1,6 @@
 # Clientflow
 
-A private, branded client portal for service businesses — freelancers, consultants, agencies, salons, studios, tutors, and similar — combining client management, projects, general purpose booking & resource reservations, documents, messaging, invoicing, Stripe payments, approvals, and feedback in one workspace per business. Built with **Django**, **React**, and **Stripe**, the platform favours correctness, workspace isolation, and a clean, branded experience over generic templating.
+A private, branded client portal for service businesses such as freelancers, consultants, agencies, salons, studios, and tutors, combining client management, projects, general purpose booking & resource reservations, documents, messaging, invoicing, Stripe payments, approvals, and feedback in one workspace per business. Built with **Django**, **React**, and **Stripe**, the platform favours correctness, workspace isolation, and a clean, branded experience over generic templating.
 
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](#)
 [![Vite](https://img.shields.io/badge/Vite-Frontend-646CFF?logo=vite&logoColor=white)](#)
@@ -49,7 +49,7 @@ A private, branded client portal for service businesses — freelancers, consult
 
 ### Architecture & Code Quality
 
-- Single Django app (`portal`) holding every domain — the deliberate bet from the project's own specification that booking is a module of the workspace, not a feature tied to one business type
+- Single Django app (`portal`) holding every domain, reflecting the project's own specification that booking is a module of the workspace, not a feature tied to one business type
 - Workspace scoped querysets throughout: every list endpoint filters on the requesting user's own workspace, and a `restricted` staff flag narrows an individual team member further
 - Payment status is only ever set by a verified Stripe webhook, never by a client's browser or the checkout creation step itself
 - Correct Stripe amounts for every currency, including those with no minor unit (XAF, JPY) and those with three decimal places (BHD, KWD)
@@ -61,7 +61,7 @@ A private, branded client portal for service businesses — freelancers, consult
 - Lazy loaded routes
 - Tailwind CSS utility classes compiled ahead of time, no runtime styling cost
 - WhiteNoise serving compressed static assets directly from the Django process
-- Lighthouse optimised — see [Testing](#testing) for a real, current report
+- Lighthouse optimised (see [Testing](#testing) for a real, current report)
 
 ### Repository Standards
 
@@ -101,7 +101,7 @@ Services, locations, payment configuration (Stripe Connect and manual methods su
 
 ### Resource Reservations
 
-A general purpose reservation system for any bookable resource — rooms, tables, chairs, vehicles, equipment — filterable by resource, type, date, and status, alongside a separate rentals view for resources rented directly rather than through a service.
+A general purpose reservation system for any bookable resource (rooms, tables, chairs, vehicles, equipment) filterable by resource, type, date, and status, alongside a separate rentals view for resources rented directly rather than through a service.
 
 ![Resource reservations](docs/images/resources.jpg)
 
@@ -113,7 +113,7 @@ The owner's tabbed view of a single client: project overview with milestones and
 
 ### Client Portal
 
-The client's own private view: booking a service or resource, joining a waitlist, and leaving a review — scoped so a client only ever sees their own workspace's data.
+The client's own private view: booking a service or resource, joining a waitlist, and leaving a review, all scoped so a client only ever sees their own workspace's data.
 
 ![Client portal](docs/images/client-portal.jpg)
 
@@ -127,7 +127,7 @@ The client's own private view: booking a service or resource, joining a waitlist
 
 - Python 3.12+
 - Node.js 18+
-- (Optional) Docker, for a local Postgres instance — otherwise the backend defaults to SQLite
+- (Optional) Docker, for a local Postgres instance; otherwise the backend defaults to SQLite
 
 ### Backend
 
@@ -273,7 +273,7 @@ Audited with the real **Lighthouse CLI** against a production build (not the dev
 
 ![Lighthouse report](docs/images/lighthouse.jpg)
 
-Every page audited this way — the home page, sign in, register, and the public booking page — currently scores 100 on all four standard categories.
+Every page audited this way (the home page, sign in, register, and the public booking page) currently scores 100 on all four standard categories.
 
 <p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
 
@@ -299,7 +299,7 @@ cd backend && python manage.py collectstatic --noinput
 # 1. Push source
 git push
 
-# 2. Backend — deploys the backend/ subtree to Heroku; the release
+# 2. Backend: deploys the backend/ subtree to Heroku; the release
 #    phase runs `python manage.py migrate` automatically
 git subtree push --prefix backend heroku main
 
@@ -334,7 +334,7 @@ I am a Full Stack Developer with experience building responsive web applications
 
 ## Future Enhancements
 
-- Reimplement platform subscription billing (Stripe Checkout based plan upgrades and a billing portal — built once this session, then reverted, and not currently live)
+- Reimplement platform subscription billing (Stripe Checkout based plan upgrades and a billing portal, built once this session, then reverted, and not currently live)
 - Custom domains per workspace
 - Native mobile apps
 - Split `Booking.jsx` (currently 5,600+ lines) into smaller, focused components
@@ -349,28 +349,28 @@ I am a Full Stack Developer with experience building responsive web applications
 
 ### Technologies
 
-- **React** — the user interface
-- **Vite** — frontend build tool and development server
-- **Django** and **Django REST Framework** — the API
-- **PostgreSQL** — production database
-- **Stripe** — payments, Connect, and webhooks
-- **Cloudinary** — media storage
-- **ReportLab** — PDF invoice generation
-- **Tailwind CSS** — utility first styling
-- **react-i18next** — English and French translation
+- **React**: the user interface
+- **Vite**: frontend build tool and development server
+- **Django** and **Django REST Framework**: the API
+- **PostgreSQL**: production database
+- **Stripe**: payments, Connect, and webhooks
+- **Cloudinary**: media storage
+- **ReportLab**: PDF invoice generation
+- **Tailwind CSS**: utility first styling
+- **react-i18next**: English and French translation
 
 ### Development Tools
 
-- **Visual Studio Code** — primary editor
-- **Git** and **GitHub** — version control and source hosting
-- **Heroku** and **Vercel** — hosting and continuous deployment
-- **Google Chrome DevTools** — debugging, testing, and performance analysis
+- **Visual Studio Code**: primary editor
+- **Git** and **GitHub**: version control and source hosting
+- **Heroku** and **Vercel**: hosting and continuous deployment
+- **Google Chrome DevTools**: debugging, testing, and performance analysis
 
 ### Testing & Validation
 
-- **Google Lighthouse** — performance, accessibility, best practices, and SEO audits
-- **ESLint** — JavaScript and JSX validation
-- **Django test runner** and **Jest** — automated testing
+- **Google Lighthouse**: performance, accessibility, best practices, and SEO audits
+- **ESLint**: JavaScript and JSX validation
+- **Django test runner** and **Jest**: automated testing
 
 ---
 
@@ -382,7 +382,7 @@ If you found this project useful, consider giving the repository a star on GitHu
 
 ## Licence
 
-This project is licensed under the MIT Licence — see [LICENSE](LICENSE).
+This project is licensed under the MIT Licence; see [LICENSE](LICENSE).
 
 ---
 
