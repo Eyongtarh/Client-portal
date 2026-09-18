@@ -247,14 +247,20 @@ The Django test suite covers authorisation boundaries, payment flows, booking ru
 $ python manage.py test portal
 ...
 ----------------------------------------------------------------------
-Ran 325 tests in 249.263s
+Ran 330 tests in 249.263s
 
 OK
 ```
 
+### Security
+
+A full codebase review found that booking creation, including recurring bookings, validated the record being created but not every record it referenced: an authenticated request could point a booking at a service, resource, or client belonging to a different workspace. This has been closed, every such reference is now checked against the requester's own workspace, and the fix is covered by dedicated regression tests so it cannot silently regress.
+
 ### Frontend Test Suite
 
 Covers the accessibility maths behind an owner's chosen brand colour (WCAG AA contrast), theme and language persistence, the activity feed's translated event text, and the full authentication lifecycle (bootstrapping a session from a stored token, login, logout, and a stored token that turns out to be invalid), alongside the axios interceptor that transparently refreshes an expired token.
+
+A separate review pass found several places where a slower, earlier network response could resolve after a faster, later one, for search, booking availability, filtered lists, and the client detail tabs, and overwrite what the user was actually looking at with stale data. Each now discards a response that is no longer the latest one requested.
 
 ```bash
 $ npx jest
@@ -264,11 +270,11 @@ Tests:       30 passed, 30 total
 
 ### JavaScript Validation
 
-The frontend is linted with **ESLint**. A stricter `react-hooks/set-state-in-effect` rule flags 65 instances of an established pattern already present throughout the codebase (calling a `load()` function inside `useEffect`). This is disclosed rather than hidden: the pattern works correctly in practice, but migrating every instance to the rule's preferred form is tracked as open technical debt rather than claimed as already resolved.
+The frontend is linted with **ESLint**. A stricter `react-hooks/set-state-in-effect` rule flags 58 instances of an established pattern already present throughout the codebase (calling a `load()` function inside `useEffect`). This is disclosed rather than hidden: the pattern works correctly in practice, but migrating every instance to the rule's preferred form is tracked as open technical debt rather than claimed as already resolved.
 
 ```bash
 $ npm run lint
-✖ 65 problems (57 errors, 8 warnings)
+✖ 58 problems (49 errors, 9 warnings)
 ```
 
 ### Continuous Integration
