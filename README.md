@@ -2,6 +2,7 @@
 
 A private, branded client portal for service businesses such as freelancers, consultants, agencies, salons, studios, and tutors, combining client management, projects, general purpose booking & resource reservations, documents, messaging, invoicing, Stripe payments, approvals, and feedback in one workspace per business. Built with **Django**, **React**, and **Stripe**, the platform favours correctness, workspace isolation, and a clean, branded experience over generic templating.
 
+[![CI](https://github.com/Eyongtarh/Client-portal/actions/workflows/ci.yml/badge.svg)](https://github.com/Eyongtarh/Client-portal/actions/workflows/ci.yml)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](#)
 [![Vite](https://img.shields.io/badge/Vite-Frontend-646CFF?logo=vite&logoColor=white)](#)
 [![Django](https://img.shields.io/badge/Django-6.1-092E20?logo=django&logoColor=white)](#)
@@ -253,20 +254,26 @@ OK
 
 ### Frontend Test Suite
 
+Covers the accessibility maths behind an owner's chosen brand colour (WCAG AA contrast), theme and language persistence, the activity feed's translated event text, and the full authentication lifecycle (bootstrapping a session from a stored token, login, logout, and a stored token that turns out to be invalid), alongside the axios interceptor that transparently refreshes an expired token.
+
 ```bash
 $ npx jest
-Test Suites: 2 passed, 2 total
-Tests:       5 passed, 5 total
+Test Suites: 7 passed, 7 total
+Tests:       30 passed, 30 total
 ```
 
 ### JavaScript Validation
 
-The frontend is linted with **ESLint**. As of this review, a stricter `react-hooks/set-state-in-effect` rule flags 81 instances of an established pattern already present throughout the codebase (calling a `load()` function inside `useEffect`). This is disclosed rather than hidden: the pattern works correctly in practice, but migrating every instance to the rule's preferred form is tracked as open technical debt rather than claimed as already resolved.
+The frontend is linted with **ESLint**. A stricter `react-hooks/set-state-in-effect` rule flags 65 instances of an established pattern already present throughout the codebase (calling a `load()` function inside `useEffect`). This is disclosed rather than hidden: the pattern works correctly in practice, but migrating every instance to the rule's preferred form is tracked as open technical debt rather than claimed as already resolved.
 
 ```bash
 $ npm run lint
-✖ 81 problems (73 errors, 8 warnings)
+✖ 65 problems (57 errors, 8 warnings)
 ```
+
+### Continuous Integration
+
+A **GitHub Actions** workflow (`.github/workflows/ci.yml`) runs on every push and pull request against `main`: the backend job runs the full Django test suite against a throwaway SQLite database, and the frontend job installs from the lockfile, runs the Jest suite, and produces a production build. Lint runs in the same job and is reported, but is not a blocking gate while the `react-hooks/set-state-in-effect` debt above stays open, so it can't mask an actual test or build failure behind warnings that were already there and already disclosed.
 
 ### Lighthouse Report
 
@@ -338,8 +345,6 @@ I am a Full Stack Developer with experience building responsive web applications
 - Reimplement platform subscription billing (Stripe Checkout based plan upgrades and a billing portal, built once this session, then reverted, and not currently live)
 - Custom domains per workspace
 - Native mobile apps
-- Widen frontend test coverage beyond the current two suites
-- Add a continuous integration pipeline
 
 <p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
 
