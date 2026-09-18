@@ -1408,6 +1408,62 @@ class BookingSerializer(serializers.ModelSerializer):
                 )
         return value
 
+    def _request_workspace(self):
+        """None for an unauthenticated request (the public booking
+        flow, which has no request.user to scope by and instead
+        checks service/resource against self.context["workspace"]
+        directly in PublicBookingSerializer.validate())."""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return None
+        user = request.user
+        return (
+            user.get_workspace()
+            if user.role in ("owner", "staff")
+            else user.client_profile.workspace
+        )
+
+    def validate_service(self, value):
+        # Unscoped like `client`/`resource` below: nothing else
+        # checks this for the authenticated flow, so an owner/staff
+        # of one workspace could otherwise book (and, worse,
+        # RecurringSeriesCreateSerializer could *create data inside*)
+        # a different workspace entirely by id-guessing a `service`
+        # that isn't theirs.
+        if value is None:
+            return value
+        workspace = self._request_workspace()
+        if workspace and value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only book a service from your own workspace."
+            )
+        return value
+
+    def validate_resource(self, value):
+        if value is None:
+            return value
+        workspace = self._request_workspace()
+        if workspace and value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only book a resource from your own workspace."
+            )
+        return value
+
+    def validate_client(self, value):
+        # Only owner/staff can reach this unscoped: a client-role
+        # request always has its own client_profile forced onto the
+        # booking server-side in BookingViewSet.perform_create,
+        # regardless of what (if anything) was submitted here.
+        if value is None:
+            return value
+        workspace = self._request_workspace()
+        if workspace and value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only create a booking for a client in your own "
+                "workspace."
+            )
+        return value
+
     def get_staff_name(self, obj):
         return obj.staff.first_name if obj.staff else None
 
@@ -2104,6 +2160,40 @@ class RecurringSeriesCreateSerializer(serializers.Serializer):
     )
     start_time = serializers.DateTimeField()
     occurrences = serializers.IntegerField(min_value=2, max_value=52)
+
+    def _request_workspace(self):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return None
+        user = request.user
+        return (
+            user.get_workspace()
+            if user.role in ("owner", "staff")
+            else user.client_profile.workspace
+        )
+
+    def validate_service(self, value):
+        # create() below trusts `service.workspace` as the workspace
+        # to create the whole series (and every Booking in it) in -
+        # without this, an owner/staff of one workspace could id-
+        # guess a `service` belonging to a different workspace and
+        # have this write the series into that workspace instead of
+        # their own.
+        workspace = self._request_workspace()
+        if workspace and value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only book a service from your own workspace."
+            )
+        return value
+
+    def validate_client(self, value):
+        workspace = self._request_workspace()
+        if workspace and value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Can only create a booking for a client in your own "
+                "workspace."
+            )
+        return value
 
     def create(self, validated_data):
         from datetime import timedelta

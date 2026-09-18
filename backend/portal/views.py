@@ -2170,7 +2170,9 @@ class RecurringSeriesCreateView(APIView):
         else:
             data["client"] = user.client_profile.id
 
-        serializer = RecurringSeriesCreateSerializer(data=data)
+        serializer = RecurringSeriesCreateSerializer(
+            data=data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         series, bookings = serializer.save()
 
