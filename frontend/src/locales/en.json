@@ -30,6 +30,7 @@
     "couldNotDeleteAccount": "Could not delete your account.",
     "notificationsSection": "Notifications",
     "notificationsDescription": "Choose which activity notifies you in the bell at the top of the page. This never affects the full activity history, only what pings you.",
+    "couldNotUpdateNotifications": "Could not update your notification preferences.",
     "notificationCategories": {
       "messages": "Messages",
       "documents": "Documents",

@@ -4,7 +4,7 @@
 // services only - a service with payment_requirement set tells the
 // guest to contact the business directly rather than attempting a
 // checkout flow no account exists to receive a receipt through.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FiCheckCircle, FiMapPin, FiVideo, FiInfo } from "react-icons/fi";
@@ -54,6 +54,7 @@ export default function PublicBooking() {
   const [customAnswers, setCustomAnswers] = useState({});
 
   const today = new Date().toISOString().slice(0, 10);
+  const slotsRequestRef = useRef(0);
 
   useEffect(() => {
     api
@@ -73,6 +74,7 @@ export default function PublicBooking() {
       setSlots([]);
       return;
     }
+    const requestId = ++slotsRequestRef.current;
     setLoadingSlots(true);
     setSelectedSlot("");
     const staffParam = selectedStaff ? `&staff=${selectedStaff}` : "";
@@ -80,8 +82,20 @@ export default function PublicBooking() {
       .get(
         `/public/${workspaceSlug}/availability/?service=${selectedService}&date=${date}${staffParam}`,
       )
-      .then((res) => setSlots(res.data.slots))
-      .finally(() => setLoadingSlots(false));
+      .then((res) => {
+        // A slower-loading earlier request (e.g. for a date the
+        // guest has since clicked past) can resolve after a later
+        // one - without this guard its stale slots would overwrite
+        // the ones for what's actually selected now.
+        if (requestId === slotsRequestRef.current) {
+          setSlots(res.data.slots);
+        }
+      })
+      .finally(() => {
+        if (requestId === slotsRequestRef.current) {
+          setLoadingSlots(false);
+        }
+      });
   }, [workspaceSlug, selectedService, selectedStaff, date]);
 
   const visibleServices = locationFilter

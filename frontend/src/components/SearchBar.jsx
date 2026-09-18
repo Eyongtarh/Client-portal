@@ -22,13 +22,22 @@ export default function SearchBar() {
       setResults(null);
       return;
     }
+    let cancelled = false;
     const handle = setTimeout(() => {
       api.get("/search/", { params: { q: query.trim() } }).then((res) => {
-        setResults(res.data);
-        setOpen(true);
+        // A slower-typed earlier query can resolve after a later one
+        // (out-of-order network responses) - without this guard its
+        // stale results would overwrite what's currently on screen.
+        if (!cancelled) {
+          setResults(res.data);
+          setOpen(true);
+        }
       });
     }, 300);
-    return () => clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
   }, [query]);
 
   useEffect(() => {

@@ -2,7 +2,7 @@
 // project overview, documents, messages, invoices, and
 // approvals. Documents, messages, and invoices each support
 // full CRUD (create already existed; edit/delete added here).
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -44,13 +44,21 @@ export default function ClientDetail() {
     ["approvals", t("clientDetail.tabApprovals")],
     ["activity", t("activity.title")],
   ];
+  const loadRequestRef = useRef(0);
+
+  // Navigating straight from one client to another (e.g. via
+  // SearchBar) reuses this component rather than remounting it -
+  // without this guard, a slower-loading earlier client's data
+  // could resolve after a later one and overwrite it on screen.
   async function load() {
+    const requestId = ++loadRequestRef.current;
+    const isCurrent = () => requestId === loadRequestRef.current;
     const clientRes = await api.get(`/clients/${clientId}/`);
-    setClient(clientRes.data);
+    if (isCurrent()) setClient(clientRes.data);
     const projectRes = await api.get(`/projects/?client=${clientId}`);
-    setProjects(projectRes.data);
+    if (isCurrent()) setProjects(projectRes.data);
     const workspaceRes = await api.get("/workspace/");
-    setWorkspace(workspaceRes.data);
+    if (isCurrent()) setWorkspace(workspaceRes.data);
   }
   useEffect(() => {
     load();
@@ -158,6 +166,15 @@ function ClientNotesTab({ client, onChange }) {
   useEffect(() => {
     api.get("/team/").then((res) => setTeamMembers(res.data));
   }, []);
+
+  // Switching clients while the Notes tab is already open reuses
+  // this component with a new `client` prop rather than remounting
+  // it - without resyncing, the textarea would keep showing the
+  // previous client's notes, and saving would overwrite the new
+  // client's notes with the stale text.
+  useEffect(() => {
+    setNotes(client.notes || "");
+  }, [client.id]);
 
   async function save(e) {
     e.preventDefault();
@@ -282,6 +299,7 @@ function ProjectOverview({ project, onChange, currency }) {
   const [editMilestoneTitle, setEditMilestoneTitle] = useState("");
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editTaskTitle, setEditTaskTitle] = useState("");
+  const loadTasksRequestRef = useRef(0);
 
   async function toggleMilestone(milestone) {
     await api.patch(`/milestones/${milestone.id}/`, {
@@ -341,8 +359,15 @@ function ProjectOverview({ project, onChange, currency }) {
   }
 
   async function loadTasks() {
+    const requestId = ++loadTasksRequestRef.current;
     const res = await api.get(`/tasks/?project=${project.id}`);
-    setTasks(res.data);
+    // Switching clients reuses this component with a new project
+    // prop rather than remounting it - without this guard, a
+    // slower-loading earlier project's tasks could resolve after a
+    // later one and overwrite it on screen.
+    if (requestId === loadTasksRequestRef.current) {
+      setTasks(res.data);
+    }
   }
   useEffect(() => {
     loadTasks();
@@ -704,10 +729,14 @@ function DocumentsTab({ project }) {
   const [statusMsg, setStatusMsg] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+  const loadRequestRef = useRef(0);
 
   async function load() {
+    const requestId = ++loadRequestRef.current;
     const res = await api.get(`/documents/?project=${project.id}`);
-    setDocuments(res.data);
+    if (requestId === loadRequestRef.current) {
+      setDocuments(res.data);
+    }
   }
   useEffect(() => {
     load();
@@ -961,10 +990,14 @@ function MessagesTab({ project }) {
   const [statusMsg, setStatusMsg] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editBody, setEditBody] = useState("");
+  const loadRequestRef = useRef(0);
 
   async function load() {
+    const requestId = ++loadRequestRef.current;
     const res = await api.get(`/messages/?project=${project.id}`);
-    setMessages(res.data);
+    if (requestId === loadRequestRef.current) {
+      setMessages(res.data);
+    }
   }
   useEffect(() => {
     load();
@@ -1182,10 +1215,14 @@ function InvoicesTab({ client, project, currency }) {
   const [editingId, setEditingId] = useState(null);
   const [editNumber, setEditNumber] = useState("");
   const [editItems, setEditItems] = useState([]);
+  const loadRequestRef = useRef(0);
 
   async function load() {
+    const requestId = ++loadRequestRef.current;
     const res = await api.get(`/invoices/?client=${client.id}`);
-    setInvoices(res.data);
+    if (requestId === loadRequestRef.current) {
+      setInvoices(res.data);
+    }
   }
   useEffect(() => {
     load();
@@ -1509,10 +1546,14 @@ function ApprovalsTab({ project }) {
   const [approvals, setApprovals] = useState([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const loadRequestRef = useRef(0);
 
   async function load() {
+    const requestId = ++loadRequestRef.current;
     const res = await api.get(`/approvals/?project=${project.id}`);
-    setApprovals(res.data);
+    if (requestId === loadRequestRef.current) {
+      setApprovals(res.data);
+    }
   }
   useEffect(() => {
     load();

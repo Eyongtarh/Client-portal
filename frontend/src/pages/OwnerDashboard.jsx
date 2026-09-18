@@ -2,7 +2,7 @@
 // workspace and lets the owner invite new ones, upload a
 // workspace logo, pick a brand color, manage the team, and
 // view/change the subscription plan.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -929,11 +929,15 @@ function PaymentHistorySection({ currency }) {
   const { t } = useTranslation();
   const [invoices, setInvoices] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
+  const loadRequestRef = useRef(0);
 
   async function load(status = statusFilter) {
+    const requestId = ++loadRequestRef.current;
     const query = status ? `?status=${status}` : "";
     const res = await api.get(`/invoices/${query}`);
-    setInvoices(res.data);
+    if (requestId === loadRequestRef.current) {
+      setInvoices(res.data);
+    }
   }
   useEffect(() => {
     load();

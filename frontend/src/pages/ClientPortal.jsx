@@ -2,7 +2,7 @@
 // progress, documents, messages, invoices, approvals, and
 // appointment booking (including weekly-repeating bookings and
 // a waitlist for full slots).
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -647,6 +647,8 @@ function BookingSection() {
     api.get("/payment-methods/").then((res) => setPaymentMethods(res.data));
   }, []);
 
+  const slotsRequestRef = useRef(0);
+
   async function loadSlots() {
     const itemId =
       bookingType === "service" ? selectedService : selectedResource;
@@ -654,6 +656,7 @@ function BookingSection() {
       setSlots([]);
       return;
     }
+    const requestId = ++slotsRequestRef.current;
     setLoadingSlots(true);
     setSelectedSlot("");
     try {
@@ -665,9 +668,17 @@ function BookingSection() {
       const res = await api.get(
         `/availability/?${param}=${itemId}&date=${date}${staffParam}`,
       );
-      setSlots(res.data.slots);
+      // A slower-loading earlier request (e.g. for a date the user
+      // has since clicked past) can resolve after a later one -
+      // without this guard its stale slots would overwrite the
+      // ones for what's actually selected now.
+      if (requestId === slotsRequestRef.current) {
+        setSlots(res.data.slots);
+      }
     } finally {
-      setLoadingSlots(false);
+      if (requestId === slotsRequestRef.current) {
+        setLoadingSlots(false);
+      }
     }
   }
   useEffect(() => {

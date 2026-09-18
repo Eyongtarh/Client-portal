@@ -5,7 +5,7 @@
 // setup section - this page is for what staff use constantly while
 // running the business, so it gets its own bookmarkable route
 // (App.jsx) rather than living inside the long settings page.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FiLogOut, FiUser } from "react-icons/fi";
@@ -42,7 +42,10 @@ function ReservationsSection() {
     setResources(res.data);
   }
 
+  const loadRequestRef = useRef(0);
+
   async function load() {
+    const requestId = ++loadRequestRef.current;
     const params = {};
     if (resourceFilter) params.resource = resourceFilter;
     if (typeFilter) params.type = typeFilter;
@@ -50,7 +53,12 @@ function ReservationsSection() {
     if (dateFrom) params.date_from = dateFrom;
     if (dateTo) params.date_to = dateTo;
     const res = await api.get("/resource-reservations/", { params });
-    setReservations(res.data);
+    // A slower-loading earlier filter combination can resolve after
+    // a later one - without this guard its stale results would
+    // overwrite what's actually selected now.
+    if (requestId === loadRequestRef.current) {
+      setReservations(res.data);
+    }
   }
 
   useEffect(() => {
@@ -172,12 +180,16 @@ function RentalsSection() {
   const [rentals, setRentals] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
+  const loadRequestRef = useRef(0);
 
   async function load() {
+    const requestId = ++loadRequestRef.current;
     const params = {};
     if (statusFilter) params.status = statusFilter;
     const res = await api.get("/resource-rentals/", { params });
-    setRentals(res.data);
+    if (requestId === loadRequestRef.current) {
+      setRentals(res.data);
+    }
   }
 
   useEffect(() => {

@@ -30,6 +30,7 @@
     "couldNotDeleteAccount": "Impossible de supprimer votre compte.",
     "notificationsSection": "Notifications",
     "notificationsDescription": "Choisissez quelles activités vous notifient dans la cloche en haut de la page. Cela n'affecte jamais l'historique complet des activités, seulement ce qui vous notifie.",
+    "couldNotUpdateNotifications": "Impossible de mettre à jour vos préférences de notification.",
     "notificationCategories": {
       "messages": "Messages",
       "documents": "Documents",

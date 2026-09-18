@@ -3,7 +3,7 @@
 // range. Elsewhere in the app, projects are only ever reached one
 // client at a time via ClientDetail - this is the one place to see
 // and prioritize the whole workload at once.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FiFolder, FiLogOut, FiUser } from "react-icons/fi";
@@ -26,19 +26,28 @@ export default function Projects() {
   const [deadlineBefore, setDeadlineBefore] = useState("");
   const [assignedToMe, setAssignedToMe] = useState(false);
   const isStaff = user.role === "staff";
+  const loadProjectsRequestRef = useRef(0);
 
   useEffect(() => {
     api.get("/clients/").then((res) => setClients(res.data));
   }, []);
 
   useEffect(() => {
+    const requestId = ++loadProjectsRequestRef.current;
     const params = {};
     if (clientFilter) params.client = clientFilter;
     if (statusFilter) params.status = statusFilter;
     if (deadlineAfter) params.deadline_after = deadlineAfter;
     if (deadlineBefore) params.deadline_before = deadlineBefore;
     if (isStaff && assignedToMe) params.assigned_to_me = "true";
-    api.get("/projects/", { params }).then((res) => setProjects(res.data));
+    api.get("/projects/", { params }).then((res) => {
+      // A slower-loading earlier filter combination can resolve
+      // after a later one - without this guard its stale results
+      // would overwrite what's actually selected now.
+      if (requestId === loadProjectsRequestRef.current) {
+        setProjects(res.data);
+      }
+    });
   }, [
     clientFilter,
     statusFilter,

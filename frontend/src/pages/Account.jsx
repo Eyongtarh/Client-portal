@@ -26,6 +26,7 @@ export default function Account() {
   const [deleting, setDeleting] = useState(false);
   const [availableCategories, setAvailableCategories] = useState([]);
   const [mutedCategories, setMutedCategories] = useState([]);
+  const [notificationsMsg, setNotificationsMsg] = useState(null);
 
   useEffect(() => {
     api.get("/notification-preferences/").then((res) => {
@@ -35,13 +36,25 @@ export default function Account() {
   }, []);
 
   async function toggleCategory(category) {
-    const next = mutedCategories.includes(category)
-      ? mutedCategories.filter((c) => c !== category)
-      : [...mutedCategories, category];
+    const previous = mutedCategories;
+    const next = previous.includes(category)
+      ? previous.filter((c) => c !== category)
+      : [...previous, category];
     setMutedCategories(next);
-    await api.patch("/notification-preferences/", {
-      muted_categories: next,
-    });
+    try {
+      await api.patch("/notification-preferences/", {
+        muted_categories: next,
+      });
+      setNotificationsMsg(null);
+    } catch {
+      // Roll back the optimistic toggle so the checkbox doesn't show
+      // a state the server never actually saved.
+      setMutedCategories(previous);
+      setNotificationsMsg({
+        text: t("account.couldNotUpdateNotifications"),
+        type: "error",
+      });
+    }
   }
 
   async function saveProfile(e) {
@@ -277,6 +290,14 @@ export default function Account() {
           <p className="text-sm text-ink-soft mb-4">
             {t("account.notificationsDescription")}
           </p>
+          {notificationsMsg && (
+            <div
+              role="status"
+              className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3"
+            >
+              {notificationsMsg.text}
+            </div>
+          )}
           <div className="space-y-2">
             {availableCategories.map((category) => (
               <label
