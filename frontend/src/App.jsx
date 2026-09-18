@@ -15,7 +15,7 @@ import AcceptTeamInvite from "./pages/AcceptTeamInvite.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
 import Landing from "./pages/Landing.jsx";
-import Booking from "./pages/Booking.jsx";
+import Booking from "./pages/Booking/index.jsx";
 import ResourceDashboard from "./pages/ResourceDashboard.jsx";
 import PublicBooking from "./pages/PublicBooking.jsx";
 import Projects from "./pages/Projects.jsx";
