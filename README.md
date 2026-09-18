@@ -218,6 +218,7 @@ Client-portal/
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/                     # one component per route
+│   │   │   └── Booking/                 # the booking page, split into one file per section
 │   │   ├── components/                # shared UI (nav, notifications, search, toggles)
 │   │   ├── lib/                       # API client, auth context, i18n, theming
 │   │   └── locales/                   # en.json / fr.json translation files
@@ -337,7 +338,6 @@ I am a Full Stack Developer with experience building responsive web applications
 - Reimplement platform subscription billing (Stripe Checkout based plan upgrades and a billing portal, built once this session, then reverted, and not currently live)
 - Custom domains per workspace
 - Native mobile apps
-- Split `Booking.jsx` (currently 5,600+ lines) into smaller, focused components
 - Widen frontend test coverage beyond the current two suites
 - Add a continuous integration pipeline
 
