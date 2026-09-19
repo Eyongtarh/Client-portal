@@ -256,6 +256,8 @@ OK
 
 A full codebase review found that booking creation, including recurring bookings, validated the record being created but not every record it referenced: an authenticated request could point a booking at a service, resource, or client belonging to a different workspace. This has been closed, every such reference is now checked against the requester's own workspace, and the fix is covered by dedicated regression tests so it cannot silently regress.
 
+Dependencies are checked with `npm audit` (frontend) and `pip-audit` (backend). The backend has no known vulnerabilities. The frontend's one flagged issue was a high severity advisory in a transitive dependency of Jest's coverage tooling (`js-yaml`, pulled in by `babel-plugin-istanbul`), never shipped in the production bundle and never fed untrusted input, resolved regardless via `npm audit fix`; the frontend now reports none either.
+
 ### Frontend Test Suite
 
 Covers the accessibility maths behind an owner's chosen brand colour (WCAG AA contrast), theme and language persistence, the activity feed's translated event text, and the full authentication lifecycle (bootstrapping a session from a stored token, login, logout, and a stored token that turns out to be invalid), alongside the axios interceptor that transparently refreshes an expired token.
