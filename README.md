@@ -54,7 +54,7 @@ A private, branded client portal for service businesses such as freelancers, con
 - Workspace scoped querysets throughout: every list endpoint filters on the requesting user's own workspace, and a `restricted` staff flag narrows an individual team member further
 - Payment status is only ever set by a verified Stripe webhook, never by a client's browser or the checkout creation step itself
 - Correct Stripe amounts for every currency, including those with no minor unit (XAF, JPY) and those with three decimal places (BHD, KWD)
-- 32 Django models, roughly 8,000 backend lines, roughly 13,000 frontend lines, 51 linear migrations
+- 32 Django models, roughly 8,400 backend lines, roughly 15,000 frontend lines, 51 linear migrations
 
 ### Performance Optimisations
 
@@ -129,6 +129,21 @@ The client's own private view: booking a service or resource, joining a waitlist
 - Python 3.12+
 - Node.js 18+
 - (Optional) Docker, for a local Postgres instance; otherwise the backend defaults to SQLite
+- (Optional) The [Stripe CLI](https://docs.stripe.com/stripe-cli), to receive webhooks locally
+
+### Optional: Local Postgres with Docker
+
+`docker-compose.yml` starts a Postgres 16 container. Leave `DATABASE_URL` empty in `backend/.env` to use SQLite instead.
+
+```bash
+docker compose up -d
+```
+
+Then set this in `backend/.env`:
+
+```
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/client_portal
+```
 
 ### Backend
 
@@ -156,6 +171,44 @@ http://localhost:5173
 ```
 
 The frontend expects the backend at `http://localhost:8000/api` by default (see `VITE_API_URL`).
+
+### Environment Variables
+
+Every variable is documented in the `.env.example` file beside it. The ones that matter most:
+
+| Variable | Where | Purpose |
+| --- | --- | --- |
+| `DJANGO_SECRET_KEY` | backend | Django signing key. Required. |
+| `DEBUG`, `ALLOWED_HOSTS` | backend | Set `DEBUG=False` and your real hosts in production. |
+| `DATABASE_URL` | backend | Postgres connection string. Leave empty for local SQLite. |
+| `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL` | backend | The frontend's origin, used for CORS and links in emails. |
+| `STRIPE_SECRET_KEY` | backend | Platform Stripe key, used to create Checkout sessions. |
+| `STRIPE_WEBHOOK_SECRET` | backend | Verifies signatures on `/api/stripe/webhook/`. |
+| `STRIPE_CONNECT_CLIENT_ID` | backend | Lets a workspace owner link their own Stripe account. |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | backend | Verifies signatures on `/api/stripe/connect-webhook/`. |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | backend | Media storage for logos and documents. |
+| `EMAIL_*`, `DEFAULT_FROM_EMAIL` | backend | SMTP settings. Defaults to printing emails to the console. |
+| `VITE_API_URL` | frontend | Base URL of the backend API. |
+
+### Testing Stripe Webhooks Locally
+
+Payment status is only ever set by a verified webhook, so a payment cannot complete locally until Stripe can reach your machine. With the backend running, forward events using the Stripe CLI:
+
+```bash
+stripe listen --forward-to localhost:8000/api/stripe/webhook/
+```
+
+Copy the `whsec_...` signing secret it prints into `STRIPE_WEBHOOK_SECRET` and restart the backend. To exercise Connect payments, run a second listener with `--forward-connect-to localhost:8000/api/stripe/connect-webhook/` and put its secret in `STRIPE_CONNECT_WEBHOOK_SECRET`.
+
+### Scheduled Jobs
+
+Three management commands live in `backend/portal/management/commands/`. Two need to run on a schedule in production, for example with the Heroku Scheduler add on:
+
+| Command | Purpose | Schedule |
+| --- | --- | --- |
+| `python manage.py send_booking_reminders` | Emails a reminder for each confirmed booking that has entered its workspace's reminder window and has not been reminded yet. | Hourly |
+| `python manage.py mark_overdue_rentals` | Marks an active resource rental as overdue once its booking has ended with no check in recorded. | Hourly |
+| `python manage.py backfill_resource_reservations` | One off data repair that creates missing reservation rows for existing bookings. Safe to run more than once. | On demand |
 
 <p align="right">(<a href="#clientflow">Back to Top ↑</a>)</p>
 
