@@ -376,16 +376,17 @@ cd backend && python manage.py collectstatic --noinput
 ### Deploy Sequence
 
 ```bash
-# 1. Push source
+# 1. Push source. The Vercel project is connected to this repository
+#    with its Root Directory set to `frontend`, so this push also builds
+#    and deploys the frontend automatically.
 git push
 
 # 2. Backend: deploys the backend/ subtree to Heroku; the release
 #    phase runs `python manage.py migrate` automatically
 git subtree push --prefix backend heroku main
-
-# 3. Frontend
-cd frontend && vercel --prod
 ```
+
+The frontend needs no separate step. If a build ever has to be started by hand, trigger it from the Vercel dashboard (or run `vercel --prod` from the repository root); running it from inside `frontend/` no longer works because the project's Root Directory is already `frontend`.
 
 ### Production Features
 
