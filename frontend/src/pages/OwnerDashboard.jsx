@@ -24,6 +24,7 @@ import ActivityFeed from "../components/ActivityFeed.jsx";
 import SearchBar from "../components/SearchBar.jsx";
 import MobileNav from "../components/MobileNav.jsx";
 import SkipLink from "../components/SkipLink.jsx";
+import { openFileBlob } from "../lib/openFile";
 import api from "../lib/api";
 import applyBrandColor from "../lib/applyBrandColor";
 
@@ -1099,8 +1100,7 @@ function PaymentHistorySection({ currency }) {
     const res = await api.get(`/invoices/${invoiceId}/pdf/`, {
       responseType: "blob",
     });
-    const url = URL.createObjectURL(res.data);
-    window.open(url, "_blank");
+    openFileBlob(res.data);
   }
 
   const totalPaid = invoices

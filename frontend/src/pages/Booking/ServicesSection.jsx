@@ -304,7 +304,7 @@ export default function ServicesSection() {
   async function connectStripe() {
     try {
       const res = await api.get("/workspace/stripe/connect/");
-      window.location.href = res.data.url;
+      window.location.assign(res.data.url);
     } catch (err) {
       setStatusMsg({
         raw:

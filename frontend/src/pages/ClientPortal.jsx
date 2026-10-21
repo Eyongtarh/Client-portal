@@ -149,8 +149,7 @@ export default function ClientPortal() {
     const res = await api.get(`/invoices/${invoiceId}/pdf/`, {
       responseType: "blob",
     });
-    const url = URL.createObjectURL(res.data);
-    window.open(url, "_blank");
+    openFileBlob(res.data);
   }
   async function openFile(url) {
     const res = await api.get(url, { responseType: "blob" });
@@ -758,8 +757,7 @@ function BookingSection() {
     const res = await api.get(`/bookings/${bookingId}/ics/`, {
       responseType: "blob",
     });
-    const url = URL.createObjectURL(res.data);
-    window.open(url, "_blank");
+    openFileBlob(res.data);
   }
 
   async function payForBooking(bookingId) {
@@ -1594,7 +1592,7 @@ function BookingSection() {
                       <a
                         href={booking.service_meeting_link}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="text-brand-700 underline hover:text-brand-900"
                       >
                         <FiVideo className="inline -mt-0.5 mr-1 shrink-0" aria-hidden="true" />

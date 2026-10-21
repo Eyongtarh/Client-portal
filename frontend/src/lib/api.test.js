@@ -69,7 +69,9 @@ describe("api response interceptor", () => {
 
   it("refreshes the access token and retries the original request on a 401 from an expired session", async () => {
     setTokens({ access: "expired-access", refresh: "valid-refresh" });
-    axios.post.mockResolvedValueOnce({ data: { access: "fresh-access" } });
+    axios.post.mockResolvedValueOnce({
+      data: { access: "fresh-access", refresh: "rotated-refresh" },
+    });
     api.defaults.adapter = jest.fn().mockResolvedValue({
       status: 200,
       data: { ok: true },
@@ -88,6 +90,9 @@ describe("api response interceptor", () => {
       { refresh: "valid-refresh" },
     );
     expect(getTokens().access).toBe("fresh-access");
+    // The server rotates and blacklists the old refresh token, so the
+    // new one has to be stored or the second refresh signs the user out.
+    expect(getTokens().refresh).toBe("rotated-refresh");
     // The retried request must carry the newly issued token, not the
     // expired one that triggered the refresh in the first place.
     expect(error.config.headers.Authorization).toBe("Bearer fresh-access");

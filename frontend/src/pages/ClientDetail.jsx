@@ -1249,8 +1249,7 @@ function InvoicesTab({ client, project, currency }) {
     const res = await api.get(`/invoices/${invoiceId}/pdf/`, {
       responseType: "blob",
     });
-    const url = URL.createObjectURL(res.data);
-    window.open(url, "_blank");
+    openFileBlob(res.data);
   }
 
   function startEdit(invoice) {

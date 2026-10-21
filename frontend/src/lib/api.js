@@ -57,7 +57,10 @@ api.interceptors.response.use(
           refreshPromise || axios.post(`${API_URL}/auth/refresh/`, { refresh });
         const { data } = await refreshPromise;
         refreshPromise = null;
-        setTokens({ access: data.access });
+        // The server rotates refresh tokens and blacklists the old one,
+        // so the new one must be kept or the next refresh would fail
+        // and sign the user out after one access token lifetime.
+        setTokens({ access: data.access, refresh: data.refresh });
         original.headers.Authorization = `Bearer ${data.access}`;
         return api(original);
       } catch (refreshError) {

@@ -46,6 +46,10 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
+    // Tell the server to revoke the refresh token, but never make
+    // signing out depend on it.
+    const { refresh } = getTokens();
+    if (refresh) api.post("/auth/logout/", { refresh }).catch(() => {});
     clearTokens();
     setUser(null);
   }

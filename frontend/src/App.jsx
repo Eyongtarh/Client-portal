@@ -20,6 +20,7 @@ import ResourceDashboard from "./pages/ResourceDashboard.jsx";
 import PublicBooking from "./pages/PublicBooking.jsx";
 import Projects from "./pages/Projects.jsx";
 import Account from "./pages/Account.jsx";
+import GlobalErrorNotice from "./components/GlobalErrorNotice.jsx";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -48,6 +49,8 @@ export default function App() {
     user && (user.role === "owner" || user.role === "staff");
 
   return (
+    <>
+    <GlobalErrorNotice />
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -99,5 +102,6 @@ export default function App() {
         }
       />
     </Routes>
+    </>
   );
 }
