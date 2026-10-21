@@ -42,3 +42,26 @@ class IsOwnerOrStaffForWrite(BasePermission):
             and request.user.is_authenticated
             and request.user.role in ("owner", "staff")
         )
+
+
+class IsOwnerStaffOrAuthorForWrite(BasePermission):
+    """For records a client may legitimately create (a document upload,
+    a message): anyone authenticated may create and read (the view's
+    own get_queryset() decides what they can see), but changing or
+    deleting an existing record is limited to the workspace owner and
+    staff, or the client who authored that very record. Set
+    `author_field` on the view to the name of the user FK ("uploaded_by"
+    or "sender"). Without this a client could delete the owner's
+    deliverables or rewrite the owner's messages.
+    """
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+        if request.user.role in ("owner", "staff"):
+            return True
+        author_id = getattr(obj, f"{view.author_field}_id", None)
+        return author_id is not None and author_id == request.user.id

@@ -650,3 +650,56 @@ class PlanCurrencyTests(PlatformSubscriptionTestCase):
         plans = res.json()["results"] if isinstance(res.json(), dict) else res.json()
         self.assertTrue(plans)
         self.assertEqual({p["currency"] for p in plans}, {"USD"})
+
+
+class AccountLifecycleBillingTests(PlatformSubscriptionTestCase):
+    def _delete(self):
+        return auth_client(self.owner).post(
+            "/api/auth/delete-account/", {"password": "pw12345678"},
+            format="json",
+        )
+
+    @patch("portal.views.cancel_subscription")
+    def test_deleting_an_owner_cancels_their_live_subscription(self, mock_cancel):
+        Subscription.objects.create(
+            workspace=self.workspace, plan=self.pro,
+            stripe_subscription_id="sub_live",
+            status=Subscription.Status.ACTIVE,
+        )
+        res = self._delete()
+        self.assertEqual(res.status_code, 204)
+        mock_cancel.assert_called_once()
+        self.assertFalse(User.objects.filter(pk=self.owner.pk).exists())
+
+    @patch("portal.views.cancel_subscription")
+    def test_deletion_is_refused_if_stripe_cancel_fails(self, mock_cancel):
+        import stripe
+
+        mock_cancel.side_effect = stripe.error.APIConnectionError("down")
+        Subscription.objects.create(
+            workspace=self.workspace, plan=self.pro,
+            stripe_subscription_id="sub_live",
+            status=Subscription.Status.ACTIVE,
+        )
+        res = self._delete()
+        self.assertEqual(res.status_code, 400)
+        self.assertTrue(User.objects.filter(pk=self.owner.pk).exists())
+
+    def test_changing_password_revokes_refresh_tokens(self):
+        from rest_framework_simplejwt.token_blacklist.models import (
+            BlacklistedToken,
+        )
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        refresh = RefreshToken.for_user(self.owner)
+        res = auth_client(self.owner).post(
+            "/api/auth/change-password/",
+            {"current_password": "pw12345678", "new_password": "N3w-pass-9876"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 204, res.content)
+        self.assertTrue(
+            BlacklistedToken.objects.filter(
+                token__jti=refresh["jti"]
+            ).exists()
+        )

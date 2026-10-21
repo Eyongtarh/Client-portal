@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
 from django.core import signing
+
+from portal.views import STRIPE_CONNECT_STATE_SALT
 from django.test import TestCase, override_settings
 
 from portal.models import Client, User, Workspace
@@ -50,7 +52,7 @@ class ConnectStartTests(StripeConnectTestCase):
         self.assertIn("state", params)
         # state must resolve back to this exact workspace - the
         # callback trusts it in place of an auth header.
-        payload = signing.loads(params["state"][0])
+        payload = signing.loads(params["state"][0], salt=STRIPE_CONNECT_STATE_SALT)
         self.assertEqual(payload["workspace_id"], self.workspace.id)
 
     def test_client_cannot_start_connect(self):
@@ -68,7 +70,8 @@ class ConnectStartTests(StripeConnectTestCase):
 class ConnectCallbackTests(StripeConnectTestCase):
     def _state(self, workspace_id=None):
         return signing.dumps(
-            {"workspace_id": workspace_id or self.workspace.id}
+            {"workspace_id": workspace_id or self.workspace.id},
+            salt=STRIPE_CONNECT_STATE_SALT,
         )
 
     @patch("portal.views.stripe.OAuth.token")
@@ -146,3 +149,13 @@ class ConnectDisconnectTests(StripeConnectTestCase):
         self.assertEqual(
             self.workspace.stripe_account_id, "acct_linked_123"
         )
+
+
+class ConnectStateSaltTests(StripeConnectTestCase):
+    def test_a_state_signed_without_the_connect_salt_is_rejected(self):
+        res = self.client.get(
+            "/api/workspace/stripe/connect/callback/",
+            {"code": "ac_x",
+             "state": signing.dumps({"workspace_id": self.workspace.id})},
+        )
+        self.assertIn("stripe_connect=error", res["Location"])

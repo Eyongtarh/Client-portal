@@ -114,6 +114,8 @@ class PrivateDocumentTests(DocumentTestCase):
         # public_doc is visible to the client, so they can reach it -
         # but a client marking their own upload private would just
         # hide it from the owner reviewing it, so it's ignored.
+        self.public_doc.uploaded_by = self.client_user
+        self.public_doc.save(update_fields=["uploaded_by"])
         res = auth_client(self.client_user).patch(
             f"/api/documents/{self.public_doc.id}/", {"is_private": True}
         )

@@ -10,13 +10,13 @@ import stripe
 from django.conf import settings
 from django.core import signing
 from django.core.mail import EmailMessage, send_mail
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, ProtectedError, Q, Sum
 from django.db.models.functions import TruncDate
 from django.http import (
     FileResponse, Http404, HttpResponse, HttpResponseRedirect,
 )
 from django.utils import timezone
-from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_date, parse_datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
@@ -25,16 +25,21 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from .auth_tokens import revoke_refresh_tokens
 from .activity import (
     NOTIFICATION_CATEGORIES, VERB_TO_CATEGORY, log as log_activity,
 )
 from .calendar_invite import build_ics
 from .currencies import COUNTRIES, from_stripe_amount
 from .payments import create_checkout_session
-from .permissions import IsOwnerOrStaffForWrite, staff_scope
+from .permissions import (
+    IsOwnerOrStaffForWrite, IsOwnerStaffOrAuthorForWrite, staff_scope,
+)
 from .resource_availability import (
     FULL_DAY_WINDOWS, resource_availability_windows,
     resource_blocked_windows, resource_has_capacity, resource_is_bookable,
@@ -80,6 +85,7 @@ from .serializers import (
     PasswordResetRequestSerializer,
     ProjectSerializer,
     PublicBookingSerializer,
+    PublicServiceSerializer,
     PublicWorkspaceSerializer,
     RecurringSeriesCreateSerializer,
     RegisterSerializer,
@@ -104,6 +110,40 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Separate salt so a state token can never be confused with any other
+# value this app signs.
+STRIPE_CONNECT_STATE_SALT = "portal.stripe-connect-state"
+
+
+def _parse_datetime_param(value):
+    """An optional ISO date or datetime query param, or None when it
+    is absent or malformed (ignored, never a 500).
+    """
+    if not value:
+        return None
+    parsed = parse_datetime(value)
+    if parsed is None:
+        day = parse_date(value)
+        parsed = datetime.combine(day, datetime.min.time()) if day else None
+    if parsed is not None and timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed)
+    return parsed
+
+
+def _require_int_id(value, name):
+    """A malformed id in a query string is a 400, never a 500."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValidationError({name: "A valid id is required."})
+
+
+def _parse_required_date(value):
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        raise ValidationError({"date": "Use the format YYYY-MM-DD."})
 
 
 def _check_storage_limit(workspace, incoming_bytes):
@@ -156,6 +196,27 @@ class ThrottledTokenObtainPairView(TokenObtainPairView):
     """
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "auth"
+
+
+class LogoutView(APIView):
+    """POST /api/auth/logout/ - blacklists the given refresh token so
+    a stolen copy stops working once the user signs out. Best effort
+    by design: an already invalid or missing token is not an error,
+    since the caller is leaving either way.
+    """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token = request.data.get("refresh")
+        if token:
+            try:
+                RefreshToken(token).blacklist()
+            except TokenError:
+                pass
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -221,7 +282,42 @@ class ChangePasswordView(APIView):
             serializer.validated_data["new_password"]
         )
         request.user.save(update_fields=["password"])
+        # Sessions on other devices stay signed in until their access
+        # token expires (15 minutes) but can no longer be refreshed.
+        revoke_refresh_tokens(request.user)
         return Response(status=204)
+
+
+def _cancel_platform_subscription_for_deletion(owner):
+    """Deleting an owner deletes their workspace, so any live platform
+    subscription must be cancelled first or Stripe keeps charging a
+    customer whose account no longer exists. If Stripe can't be
+    reached the deletion is refused, so no one is ever left billed
+    for nothing.
+    """
+    workspace = owner.workspace
+    subscription = getattr(workspace, "subscription", None)
+    if not (
+        subscription
+        and subscription.stripe_subscription_id
+        and subscription.status in (
+            Subscription.Status.ACTIVE,
+            Subscription.Status.TRIALING,
+            Subscription.Status.PAST_DUE,
+        )
+    ):
+        return
+    try:
+        cancel_subscription(subscription, at_period_end=False)
+    except stripe.error.StripeError:
+        logger.exception(
+            "Stripe cancel failed while deleting workspace %s",
+            workspace.id,
+        )
+        raise ValidationError(
+            "We couldn't cancel your subscription, so your account was "
+            "not deleted. Please try again."
+        )
 
 
 class DeleteAccountView(APIView):
@@ -251,6 +347,8 @@ class DeleteAccountView(APIView):
             data=request.data, context={"user": request.user}
         )
         serializer.is_valid(raise_exception=True)
+        if request.user.role == "owner":
+            _cancel_platform_subscription_for_deletion(request.user)
         request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -507,7 +605,9 @@ class WorkspaceStripeConnectStartView(APIView):
                 "Stripe Connect isn't configured for this deployment yet."
             )
         workspace = request.user.get_workspace()
-        state = signing.dumps({"workspace_id": workspace.id})
+        state = signing.dumps(
+            {"workspace_id": workspace.id}, salt=STRIPE_CONNECT_STATE_SALT
+        )
         params = {
             "response_type": "code",
             "client_id": settings.STRIPE_CONNECT_CLIENT_ID,
@@ -544,7 +644,9 @@ class WorkspaceStripeConnectCallbackView(APIView):
                 f"{frontend}?stripe_connect=error"
             )
         try:
-            payload = signing.loads(state, max_age=600)
+            payload = signing.loads(
+                state, salt=STRIPE_CONNECT_STATE_SALT, max_age=600
+            )
             workspace = Workspace.objects.get(pk=payload["workspace_id"])
         except (signing.BadSignature, Workspace.DoesNotExist, KeyError):
             return HttpResponseRedirect(
@@ -981,7 +1083,7 @@ class ProjectViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     project has no assignment of its own, it inherits its client's.
     """
     serializer_class = ProjectSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
     filter_param = "client"
     filter_field = "client_id"
 
@@ -1054,7 +1156,7 @@ class MilestoneViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     the parent project. ?project=<id> narrows to one project.
     """
     serializer_class = MilestoneSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
     filter_param = "project"
     filter_field = "project_id"
 
@@ -1089,7 +1191,7 @@ class TaskViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     narrows to one project.
     """
     serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
     filter_param = "project"
     filter_field = "project_id"
 
@@ -1226,7 +1328,8 @@ class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     owner reviewing it would defeat the point.
     """
     serializer_class = DocumentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerStaffOrAuthorForWrite]
+    author_field = "uploaded_by"
     filter_param = "project"
     filter_field = "project_id"
 
@@ -1308,7 +1411,8 @@ class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
     client-supplied. ?project=<id> narrows to one project.
     """
     serializer_class = MessageSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerStaffOrAuthorForWrite]
+    author_field = "sender"
     filter_param = "project"
     filter_field = "project_id"
 
@@ -1406,7 +1510,10 @@ class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             qs = Invoice.objects.filter(workspace=user.get_workspace())
             qs = staff_scope(qs, user, path="client")
         else:
-            qs = Invoice.objects.filter(client=user.client_profile)
+            # A draft is the owner's unsent work in progress.
+            qs = Invoice.objects.filter(
+                client=user.client_profile
+            ).exclude(status="draft")
         qs = self.filter_by_query_param(qs)
         status_param = self.request.query_params.get("status")
         if status_param:
@@ -1505,7 +1612,9 @@ class InvoicePDFView(APIView):
             qs = Invoice.objects.filter(workspace=user.get_workspace())
             qs = staff_scope(qs, user, path="client")
         else:
-            qs = Invoice.objects.filter(client=user.client_profile)
+            qs = Invoice.objects.filter(
+                client=user.client_profile
+            ).exclude(status="draft")
         invoice = generics.get_object_or_404(qs, pk=pk)
 
         if user.role == "client":
@@ -1599,7 +1708,10 @@ class InvoiceCheckoutView(APIView):
                 "Online payments aren't configured for this workspace yet."
             )
         invoice = generics.get_object_or_404(
-            Invoice.objects.filter(client=user.client_profile), pk=pk
+            Invoice.objects.filter(
+                client=user.client_profile
+            ).exclude(status="draft"),
+            pk=pk,
         )
         if invoice.status == "paid":
             raise ValidationError("This invoice is already paid.")
@@ -1738,7 +1850,7 @@ class LocationViewSet(viewsets.ModelViewSet):
     show which location a service is at.
     """
     serializer_class = LocationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
 
     def get_queryset(self):
         user = self.request.user
@@ -1757,7 +1869,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
     access so they can see what's bookable.
     """
     serializer_class = ServiceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
 
     def get_queryset(self):
         user = self.request.user
@@ -1780,7 +1892,7 @@ class ResourceViewSet(viewsets.ModelViewSet):
     availability endpoint.
     """
     serializer_class = ResourceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
 
     def get_queryset(self):
         user = self.request.user
@@ -1793,6 +1905,17 @@ class ResourceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(workspace=self.request.user.get_workspace())
 
+    def destroy(self, request, *args, **kwargs):
+        # A resource with reservation history is PROTECTed so past
+        # bookings keep their record; say so instead of a 500.
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            raise ValidationError(
+                "This resource has booking history and can't be deleted. "
+                "Set its status to Retired instead."
+            )
+
     @action(detail=True, methods=["get"])
     def calendar(self, request, pk=None):
         """GET /api/resources/<id>/calendar/?from=&to= - BOOK-82: the
@@ -1804,12 +1927,18 @@ class ResourceViewSet(viewsets.ModelViewSet):
         qs = ResourceReservation.objects.filter(
             resource=resource
         ).select_related("booking", "booking__client")
-        from_str = request.query_params.get("from")
-        to_str = request.query_params.get("to")
-        if from_str:
-            qs = qs.filter(booking__end_time__gte=from_str)
-        if to_str:
-            qs = qs.filter(booking__start_time__lte=to_str)
+        # A client only ever sees their own reservations here; the
+        # whole workspace's calendar carries other clients' names.
+        if request.user.role == "client":
+            qs = qs.filter(booking__client=request.user.client_profile)
+        else:
+            qs = staff_scope(qs, request.user, path="booking__client")
+        from_dt = _parse_datetime_param(request.query_params.get("from"))
+        to_dt = _parse_datetime_param(request.query_params.get("to"))
+        if from_dt:
+            qs = qs.filter(booking__end_time__gte=from_dt)
+        if to_dt:
+            qs = qs.filter(booking__start_time__lte=to_dt)
         return Response(
             ResourceReservationSerializer(qs, many=True).data
         )
@@ -1821,7 +1950,7 @@ class ResourceAvailabilityViewSet(viewsets.ModelViewSet):
     WorkingHoursViewSet.
     """
     serializer_class = ResourceAvailabilitySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
 
     def get_queryset(self):
         user = self.request.user
@@ -1832,8 +1961,8 @@ class ResourceAvailabilityViewSet(viewsets.ModelViewSet):
             else user.client_profile.workspace
         )
         qs = qs.filter(workspace=workspace)
-        resource_id = self.request.query_params.get("resource")
-        if resource_id:
+        resource_id = self.request.query_params.get("resource", "")
+        if resource_id.isdigit():
             qs = qs.filter(resource_id=resource_id)
         return qs
 
@@ -1859,8 +1988,8 @@ class ServiceResourceRequirementViewSet(viewsets.ModelViewSet):
         qs = ServiceResourceRequirement.objects.filter(
             service__workspace=workspace
         ).select_related("resource", "service")
-        service_id = self.request.query_params.get("service")
-        if service_id:
+        service_id = self.request.query_params.get("service", "")
+        if service_id.isdigit():
             qs = qs.filter(service_id=service_id)
         return qs
 
@@ -1887,20 +2016,23 @@ class ResourceReservationViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(booking__client=user.client_profile)
 
         params = self.request.query_params
-        if params.get("resource"):
-            qs = qs.filter(resource_id=params["resource"])
-        if params.get("booking"):
-            qs = qs.filter(booking_id=params["booking"])
-        if params.get("client"):
-            qs = qs.filter(booking__client_id=params["client"])
+        for param, field in (
+            ("resource", "resource_id"),
+            ("booking", "booking_id"),
+            ("client", "booking__client_id"),
+        ):
+            if params.get(param, "").isdigit():
+                qs = qs.filter(**{field: params[param]})
         if params.get("status"):
             qs = qs.filter(booking__status=params["status"])
         if params.get("type"):
             qs = qs.filter(resource__type=params["type"])
-        if params.get("date_from"):
-            qs = qs.filter(booking__end_time__gte=params["date_from"])
-        if params.get("date_to"):
-            qs = qs.filter(booking__start_time__lte=params["date_to"])
+        date_from = _parse_datetime_param(params.get("date_from"))
+        date_to = _parse_datetime_param(params.get("date_to"))
+        if date_from:
+            qs = qs.filter(booking__end_time__gte=date_from)
+        if date_to:
+            qs = qs.filter(booking__start_time__lte=date_to)
         return qs.order_by("-booking__start_time")
 
 
@@ -2038,7 +2170,7 @@ class WorkingHoursViewSet(viewsets.ModelViewSet):
     picking a slot).
     """
     serializer_class = WorkingHoursSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
 
     def get_queryset(self):
         user = self.request.user
@@ -2061,7 +2193,7 @@ class ServiceQuestionViewSet(viewsets.ModelViewSet):
     while booking rather than calling this endpoint directly.
     """
     serializer_class = ServiceQuestionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
 
     def get_queryset(self):
         user = self.request.user
@@ -2083,7 +2215,7 @@ class BlockedTimeViewSet(viewsets.ModelViewSet):
     read-only access, same reasoning as WorkingHoursViewSet.
     """
     serializer_class = BlockedTimeSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrStaffForWrite]
 
     def get_queryset(self):
         user = self.request.user
@@ -2097,6 +2229,17 @@ class BlockedTimeViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(workspace=self.request.user.get_workspace())
+
+
+def _staff_visible_bookings(user):
+    """Bookings an owner or staff member may act on: the whole
+    workspace, narrowed for a restricted staff member (TEAM-02) to
+    their own assigned clients and anything they directly handle.
+    """
+    qs = Booking.objects.filter(workspace=user.get_workspace())
+    if user.role == "staff" and user.restricted:
+        qs = qs.filter(Q(client__assigned_staff=user) | Q(staff=user))
+    return qs
 
 
 def _send_booking_email(subject, message, booking, cancelled=False):
@@ -2305,10 +2448,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 "Only the owner or team can mark a no-show."
             )
         booking = generics.get_object_or_404(
-            Booking.objects.filter(
-                workspace=request.user.get_workspace()
-            ),
-            pk=pk,
+            _staff_visible_bookings(request.user), pk=pk
         )
         if booking.status not in ("confirmed", "completed"):
             raise ValidationError(
@@ -2341,10 +2481,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 "Only the owner or team can mark a booking as paid."
             )
         booking = generics.get_object_or_404(
-            Booking.objects.filter(
-                workspace=request.user.get_workspace()
-            ),
-            pk=pk,
+            _staff_visible_bookings(request.user), pk=pk
         )
         if booking.payment_status != "pending":
             raise ValidationError(
@@ -2760,8 +2897,8 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
                 qs = qs.filter(
                     Q(client__isnull=True) | Q(client__assigned_staff=user)
                 )
-            client_id = self.request.query_params.get("client")
-            if client_id:
+            client_id = self.request.query_params.get("client", "")
+            if client_id.isdigit():
                 qs = qs.filter(client_id=client_id)
         else:
             qs = Activity.objects.filter(
@@ -2808,8 +2945,16 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
         qs = self._scoped_queryset().exclude(
             verb__in=self._muted_verbs(request.user)
         )
-        for activity in qs:
-            activity.read_by.add(request.user)
+        through = Activity.read_by.through
+        through.objects.bulk_create(
+            [
+                through(activity_id=activity_id, user_id=request.user.id)
+                for activity_id in qs.exclude(
+                    read_by=request.user
+                ).values_list("id", flat=True)
+            ],
+            ignore_conflicts=True,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -2961,11 +3106,12 @@ def compute_service_availability(workspace, service_id, date_str, staff_id):
     driftable copy of ~100 lines of slot math.
     """
     tz = ZoneInfo(workspace.timezone)
-    target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    target_date = _parse_required_date(date_str)
     now_local = timezone.now().astimezone(tz).replace(tzinfo=None)
 
     service = generics.get_object_or_404(
-        Service, pk=service_id, workspace=workspace
+        Service, pk=_require_int_id(service_id, "service"),
+        workspace=workspace,
     )
 
     if service.max_advance_days is not None:
@@ -2998,7 +3144,8 @@ def compute_service_availability(workspace, service_id, date_str, staff_id):
     staff_member = None
     if staff_id:
         staff_member = generics.get_object_or_404(
-            User, pk=staff_id, role="staff", staff_workspace=workspace
+            User, pk=_require_int_id(staff_id, "staff"), role="staff",
+            staff_workspace=workspace,
         )
         if (
             service.staff.exists()
@@ -3236,14 +3383,13 @@ class AvailabilityView(APIView):
             else user.client_profile.workspace
         )
         tz = ZoneInfo(workspace.timezone)
-        target_date = datetime.strptime(
-            date_str, "%Y-%m-%d"
-        ).date()
+        target_date = _parse_required_date(date_str)
         now_local = timezone.now().astimezone(tz).replace(tzinfo=None)
 
         if resource_id:
             resource = generics.get_object_or_404(
-                Resource, pk=resource_id, workspace=workspace
+                Resource, pk=_require_int_id(resource_id, "resource"),
+                workspace=workspace,
             )
             if (
                 not resource_is_bookable(resource)
@@ -3358,17 +3504,19 @@ class PublicWorkspaceView(APIView):
     Optional ?location=<id> narrows to services at just that
     Location, for a workspace with more than one (BOOK-06).
     """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "public"
     permission_classes = [AllowAny]
 
     def get(self, request, workspace_slug):
         workspace = _get_public_workspace(workspace_slug)
         services = Service.objects.filter(workspace=workspace, is_active=True)
-        location_id = request.query_params.get("location")
-        if location_id:
+        location_id = request.query_params.get("location", "")
+        if location_id.isdigit():
             services = services.filter(location_ref_id=location_id)
         return Response({
             "workspace": PublicWorkspaceSerializer(workspace).data,
-            "services": ServiceSerializer(services, many=True).data,
+            "services": PublicServiceSerializer(services, many=True).data,
             "locations": LocationSerializer(
                 Location.objects.filter(workspace=workspace, is_active=True),
                 many=True,
@@ -3382,6 +3530,8 @@ class PublicAvailabilityView(APIView):
     authenticated client sees (see compute_service_availability),
     just reached without an account.
     """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "public"
     permission_classes = [AllowAny]
 
     def get(self, request, workspace_slug):

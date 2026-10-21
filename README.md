@@ -300,7 +300,7 @@ The Django test suite covers authorisation boundaries, payment flows, booking ru
 $ python manage.py test portal
 ...
 ----------------------------------------------------------------------
-Ran 330 tests in 249.263s
+Ran 415 tests in 321.431s
 
 OK
 ```
@@ -309,7 +309,18 @@ OK
 
 A full codebase review found that booking creation, including recurring bookings, validated the record being created but not every record it referenced: an authenticated request could point a booking at a service, resource, or client belonging to a different workspace. This has been closed, every such reference is now checked against the requester's own workspace, and the fix is covered by dedicated regression tests so it cannot silently regress.
 
-Dependencies are checked with `npm audit` (frontend) and `pip-audit` (backend). The backend has no known vulnerabilities. The frontend's one flagged issue was a high severity advisory in a transitive dependency of Jest's coverage tooling (`js-yaml`, pulled in by `babel-plugin-istanbul`), never shipped in the production bundle and never fed untrusted input, resolved regardless via `npm audit fix`; the frontend now reports none either.
+A second, line by line review found and closed further gaps, each now covered by regression tests:
+
+- Clients could edit or delete projects, tasks, services, resources, working hours and blocked time, which the interface never offers them. Those endpoints are now read only for clients, and a client can change or remove only a document or message they created themselves.
+- Writable references on projects, milestones, tasks, approvals, documents, messages, invoices and waitlist entries were not checked against the requester's workspace, so a message or file could be injected into another business's project. Every reference is now verified, including for restricted team members.
+- A client could rewrite who, or what, their own booking was for. A new booking now always starts confirmed, and its client, service, resource and staff cannot be changed by the client.
+- An uploaded HTML or SVG file opened in a new tab could read the login tokens. Files are now served inline only when they cannot run script, and everything else is a download.
+- Login, registration, password reset, invites and public booking are rate limited, passwords are checked against Django's validators, a password change or reset signs out other sessions, and sign out revokes the refresh token.
+- The refresh token is now stored after rotation, which previously signed users out after the first refresh.
+- Deleting an owner account now cancels their Stripe subscription first, so nobody keeps being billed for a deleted workspace.
+- Service capacity is re-checked under a lock, so two simultaneous bookings of the last place cannot both succeed.
+
+Dependencies are checked with `npm audit` (frontend) and `pip-audit` (backend). The backend has no known vulnerabilities. The frontend has no high severity advisories; its remaining moderate ones sit in development tooling only. An earlier flagged issue was a high severity advisory in a transitive dependency of Jest's coverage tooling (`js-yaml`, pulled in by `babel-plugin-istanbul`), never shipped in the production bundle and never fed untrusted input, resolved regardless via `npm audit fix`.
 
 ### Frontend Test Suite
 

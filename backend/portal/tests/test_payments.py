@@ -80,6 +80,7 @@ def fake_session(session_id="cs_test_123", url="https://stripe.test/checkout"):
 class InvoiceCheckoutTests(PaymentTestCase):
     def _invoice(self, amount="100.00"):
         invoice = Invoice.objects.create(
+            status="sent",
             workspace=self.workspace,
             client=self.client_profile,
             number="INV-1",
@@ -100,7 +101,7 @@ class InvoiceCheckoutTests(PaymentTestCase):
         self.assertEqual(res.data["url"], "https://stripe.test/checkout")
         invoice.refresh_from_db()
         self.assertEqual(invoice.stripe_checkout_session_id, "cs_test_123")
-        self.assertEqual(invoice.status, "draft")  # not paid by this call
+        self.assertEqual(invoice.status, "sent")  # not paid by this call
 
     def test_owner_cannot_pay_a_client_invoice(self):
         invoice = self._invoice()
@@ -139,6 +140,7 @@ class InvoiceCheckoutTests(PaymentTestCase):
 
     def test_zero_amount_invoice_is_rejected(self):
         invoice = Invoice.objects.create(
+            status="sent",
             workspace=self.workspace,
             client=self.client_profile,
             number="INV-2",
@@ -153,6 +155,7 @@ class InvoiceCheckoutTests(PaymentTestCase):
 class InvoiceCheckoutNotConfiguredTests(PaymentTestCase):
     def test_checkout_blocked_when_stripe_not_configured(self):
         invoice = Invoice.objects.create(
+            status="sent",
             workspace=self.workspace,
             client=self.client_profile,
             number="INV-1",
@@ -180,6 +183,7 @@ class CheckoutBlockedWithoutConnectedAccountTests(PaymentTestCase):
 
     def test_invoice_checkout_blocked_without_connected_account(self):
         invoice = Invoice.objects.create(
+            status="sent",
             workspace=self.workspace,
             client=self.client_profile,
             number="INV-1",
@@ -225,6 +229,7 @@ class InvoiceManualMarkPaidTests(PaymentTestCase):
     """
     def _invoice(self, amount="30.00"):
         invoice = Invoice.objects.create(
+            status="sent",
             workspace=self.workspace,
             client=self.client_profile,
             number="INV-MANUAL-1",
@@ -252,7 +257,7 @@ class InvoiceManualMarkPaidTests(PaymentTestCase):
         )
         self.assertEqual(res.status_code, 403)
         invoice.refresh_from_db()
-        self.assertEqual(invoice.status, "draft")
+        self.assertEqual(invoice.status, "sent")
 
 
 @override_settings(STRIPE_SECRET_KEY="sk_test_fake")
@@ -346,6 +351,7 @@ class StripeWebhookTests(PaymentTestCase):
 
     def test_completed_checkout_marks_invoice_paid(self):
         invoice = Invoice.objects.create(
+            status="sent",
             workspace=self.workspace,
             client=self.client_profile,
             number="INV-1",
@@ -509,6 +515,7 @@ class CheckoutSessionCurrencyTests(PaymentTestCase):
         self.workspace.currency = currency
         self.workspace.save(update_fields=["currency"])
         invoice = Invoice.objects.create(
+            status="sent",
             workspace=self.workspace,
             client=self.client_profile,
             number="INV-CUR",

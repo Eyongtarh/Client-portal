@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from .auth_tokens import revoke_refresh_tokens
 from .currencies import VALID_CURRENCIES
 from .models import (
     Activity, Approval, BlockedTime, BookingResourceCharge, Client,
@@ -22,7 +23,68 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.conf import settings
+from django.contrib.auth.password_validation import validate_password
 from django.core.mail import send_mail
+
+
+def _acting_workspace(serializer):
+    """The workspace the requesting user acts within, or None for an
+    unauthenticated request (the guest booking flow scopes by the URL
+    slug instead).
+    """
+    request = serializer.context.get("request")
+    if not request or not request.user.is_authenticated:
+        return None
+    user = request.user
+    if user.role in ("owner", "staff"):
+        return user.get_workspace()
+    return user.client_profile.workspace
+
+
+def _user_can_access_client(serializer, client):
+    """True when the requesting user may act on this Client: a client
+    only on themselves, the owner on any client in their workspace,
+    and staff on any client in it unless restricted (TEAM-02), in
+    which case only their assigned ones. Used by every writable
+    client/project foreign key so an id guessed from another
+    workspace, or another client, is rejected.
+    """
+    request = serializer.context["request"]
+    user = request.user
+    if user.role == "client":
+        return client.id == user.client_profile.id
+    workspace = user.get_workspace()
+    if client.workspace_id != workspace.id:
+        return False
+    if user.role == "staff" and user.restricted:
+        return client.assigned_staff.filter(pk=user.pk).exists()
+    return True
+
+
+def _check_client_access(serializer, client, message):
+    if client is not None and not _user_can_access_client(serializer, client):
+        raise serializers.ValidationError(message)
+    return client
+
+
+def _check_project_access(serializer, project):
+    if project is not None and not _user_can_access_client(
+        serializer, project.client
+    ):
+        raise serializers.ValidationError(
+            "Choose a project from your own workspace."
+        )
+    return project
+
+
+def _forbid_project_change(serializer, project):
+    """A record never moves to a different project after creation."""
+    instance = serializer.instance
+    if instance is not None and project.id != instance.project_id:
+        raise serializers.ValidationError(
+            "A record can't be moved to a different project."
+        )
+    return project
 
 
 class ActivitySerializer(serializers.ModelSerializer):
@@ -223,6 +285,36 @@ class WorkspaceSerializer(serializers.ModelSerializer):
         # needs to display or send back.
         return bool(obj.stripe_account_id)
 
+    def validate_timezone(self, value):
+        # An unknown zone would 500 every availability request, so it
+        # is rejected here instead of being saved.
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError, OSError):
+            raise serializers.ValidationError(
+                "Choose a valid time zone such as Europe/Stockholm."
+            )
+        return value
+
+    def validate_country(self, value):
+        from .currencies import COUNTRIES
+
+        if value and value.upper() not in {code for code, _, _ in COUNTRIES}:
+            raise serializers.ValidationError("Choose a supported country.")
+        return value.upper()
+
+    def validate_logo(self, value):
+        return _check_upload_size(value)
+
+    def validate_reminder_hours_before(self, value):
+        if value > 24 * 14:
+            raise serializers.ValidationError(
+                "Reminders can be sent at most 14 days ahead."
+            )
+        return value
+
     def validate_brand_color(self, value):
         import re
         if not re.match(r"^#[0-9A-Fa-f]{6}$", value):
@@ -319,6 +411,17 @@ class RegisterSerializer(serializers.Serializer):
             )
         return value
 
+    def validate_username(self, value):
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError(
+                "This username is already taken."
+            )
+        return value
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data["username"],
@@ -375,6 +478,10 @@ class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True, min_length=8)
 
+    def validate_new_password(self, value):
+        validate_password(value, self.context["user"])
+        return value
+
     def validate_current_password(self, value):
         user = self.context["user"]
         if not user.check_password(value):
@@ -429,7 +536,17 @@ class AcceptInviteSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "This invite has expired or was already used."
             )
+        if User.objects.filter(
+            Q(email__iexact=invite.email) | Q(username__iexact=invite.email)
+        ).exists():
+            raise serializers.ValidationError(
+                "An account with this email already exists."
+            )
         self.invite = invite
+        return value
+
+    def validate_password(self, value):
+        validate_password(value)
         return value
 
     def create(self, validated_data):
@@ -441,12 +558,25 @@ class AcceptInviteSerializer(serializers.Serializer):
             first_name=validated_data["full_name"],
             role=User.Role.CLIENT,
         )
-        client = Client.objects.create(
+        # A guest booking may already have created a login-less Client
+        # for this email (contact_email is unique per workspace), so
+        # adopt that record, history and all, rather than colliding.
+        client = Client.objects.filter(
             workspace=invite.workspace,
-            user=user,
-            company_name=invite.company_name,
-            contact_email=invite.email,
-        )
+            contact_email__iexact=invite.email,
+            user__isnull=True,
+        ).first()
+        if client:
+            client.user = user
+            client.company_name = invite.company_name or client.company_name
+            client.save(update_fields=["user", "company_name"])
+        else:
+            client = Client.objects.create(
+                workspace=invite.workspace,
+                user=user,
+                company_name=invite.company_name,
+                contact_email=invite.email,
+            )
         invite.accepted = True
         invite.save(update_fields=["accepted"])
         return client
@@ -488,7 +618,17 @@ class AcceptTeamInviteSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "This invite has expired or was already used."
             )
+        if User.objects.filter(
+            Q(email__iexact=invite.email) | Q(username__iexact=invite.email)
+        ).exists():
+            raise serializers.ValidationError(
+                "An account with this email already exists."
+            )
         self.invite = invite
+        return value
+
+    def validate_password(self, value):
+        validate_password(value)
         return value
 
     def create(self, validated_data):
@@ -531,6 +671,10 @@ class MilestoneSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["completed_at"]
 
+    def validate_project(self, value):
+        _check_project_access(self, value)
+        return _forbid_project_change(self, value)
+
     def update(self, instance, validated_data):
         turning_complete = (
             validated_data.get("is_complete") and not instance.is_complete
@@ -555,6 +699,23 @@ class TaskSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["completed_at", "created_at"]
+
+    def validate_project(self, value):
+        _check_project_access(self, value)
+        return _forbid_project_change(self, value)
+
+    def validate(self, attrs):
+        project = attrs.get(
+            "project", self.instance.project if self.instance else None
+        )
+        milestone = attrs.get(
+            "milestone", self.instance.milestone if self.instance else None
+        )
+        if milestone and project and milestone.project_id != project.id:
+            raise serializers.ValidationError(
+                {"milestone": "That milestone belongs to a different project."}
+            )
+        return attrs
 
     def update(self, instance, validated_data):
         turning_complete = (
@@ -584,6 +745,10 @@ class ApprovalSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "status", "client_comment", "created_at", "decided_at",
         ]
+
+    def validate_project(self, value):
+        _check_project_access(self, value)
+        return _forbid_project_change(self, value)
 
 
 class ApprovalDecisionSerializer(serializers.Serializer):
@@ -619,6 +784,11 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def get_client_name(self, obj):
         return obj.client.company_name
+
+    def validate_client(self, value):
+        return _check_client_access(
+            self, value, "Choose a client from your own workspace."
+        )
 
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
@@ -664,6 +834,10 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     def validate_file(self, value):
         return _check_upload_size(value)
+
+    def validate_project(self, value):
+        _check_project_access(self, value)
+        return _forbid_project_change(self, value)
 
     def get_uploaded_by_name(self, obj):
         if obj.uploaded_by:
@@ -719,6 +893,10 @@ class MessageSerializer(serializers.ModelSerializer):
     def validate_attachment(self, value):
         return _check_upload_size(value)
 
+    def validate_project(self, value):
+        _check_project_access(self, value)
+        return _forbid_project_change(self, value)
+
     def get_attachment_url(self, obj):
         if not obj.attachment:
             return None
@@ -769,6 +947,37 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     def get_client_name(self, obj):
         return obj.client.company_name
+
+    def validate_client(self, value):
+        return _check_client_access(
+            self, value, "Choose a client from your own workspace."
+        )
+
+    def validate_number(self, value):
+        # (workspace, number) is unique, but workspace is read only
+        # here so DRF can't check it itself - a duplicate would 500.
+        workspace = _acting_workspace(self)
+        duplicates = Invoice.objects.filter(workspace=workspace, number=value)
+        if self.instance:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise serializers.ValidationError(
+                "You already have an invoice with this number."
+            )
+        return value
+
+    def validate(self, attrs):
+        client = attrs.get(
+            "client", self.instance.client if self.instance else None
+        )
+        project = attrs.get(
+            "project", self.instance.project if self.instance else None
+        )
+        if project and client and project.client_id != client.id:
+            raise serializers.ValidationError(
+                {"project": "That project belongs to a different client."}
+            )
+        return attrs
 
     def create(self, validated_data):
         items_data = validated_data.pop("items")
@@ -891,6 +1100,9 @@ class ServiceSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_photo(self, value):
+        return _check_upload_size(value)
+
     def validate_staff(self, value):
         user = self.context["request"].user
         if not value:
@@ -939,6 +1151,19 @@ class ServiceSerializer(serializers.ModelSerializer):
                 "100."
             )
         return attrs
+
+
+class PublicServiceSerializer(ServiceSerializer):
+    """What an unauthenticated guest sees of a service. The meeting
+    link of an online service is deliberately left out: it is shared
+    with the person who books it (in their confirmation), not with
+    anyone who happens to open the public page.
+    """
+
+    class Meta(ServiceSerializer.Meta):
+        fields = [
+            f for f in ServiceSerializer.Meta.fields if f != "meeting_link"
+        ]
 
 
 class ResourceSerializer(serializers.ModelSerializer):
@@ -996,6 +1221,19 @@ class ResourceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Can only use a location from your own workspace."
             )
+        return value
+
+    def validate_photo(self, value):
+        return _check_upload_size(value)
+
+    def validate_services(self, value):
+        workspace = self.context["request"].user.get_workspace()
+        for service in value:
+            if service.workspace_id != workspace.id:
+                raise serializers.ValidationError(
+                    "Can only tie a resource to services in your own "
+                    "workspace."
+                )
         return value
 
     def validate_duration_minutes(self, value):
@@ -1435,8 +1673,15 @@ class BookingSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "workspace", "end_time", "payment_status", "payment_amount",
-            "is_late_cancellation",
+            "is_late_cancellation", "series",
         ]
+
+    # What a client may change on a booking that already exists:
+    # reschedule it, cancel it, add notes or intake answers. Who it is
+    # for, what it is for, and who serves it are the business's call.
+    CLIENT_LOCKED_FIELDS = (
+        "client", "service", "resource", "resource_ids", "staff",
+    )
 
     def validate_resource_ids(self, value):
         if not value:
@@ -1627,6 +1872,24 @@ class BookingSerializer(serializers.ModelSerializer):
 
         new_status = attrs.get("status")
         request = self.context.get("request")
+        if not self.instance:
+            # A new booking always starts confirmed; completed, no
+            # show and cancelled are outcomes the system or the
+            # business records later, never something to claim up front.
+            attrs.pop("status", None)
+        elif request and request.user.is_authenticated and (
+            request.user.role == "client"
+        ):
+            for field in self.CLIENT_LOCKED_FIELDS:
+                if field not in attrs:
+                    continue
+                current = getattr(self.instance, field, None)
+                new = attrs[field]
+                if field == "resource_ids" or new != current:
+                    raise serializers.ValidationError(
+                        {field: "You can't change this on an existing "
+                         "booking."}
+                    )
         if (
             self.instance
             and new_status
@@ -1807,23 +2070,10 @@ class BookingSerializer(serializers.ModelSerializer):
             # before it or end in after it - so a new booking that
             # starts too soon before, or would still be running too
             # close after, an existing one is rejected.
-            buffer_before = timedelta(
-                minutes=service.buffer_before_minutes
+            self._check_service_capacity(
+                service, start, attrs["end_time"],
+                self.instance.pk if self.instance else None,
             )
-            buffer_after = timedelta(minutes=service.buffer_after_minutes)
-            overlapping = Booking.objects.filter(
-                workspace=service.workspace,
-                service=service,
-                status="confirmed",
-                start_time__lt=attrs["end_time"] + buffer_before,
-                end_time__gt=start - buffer_after,
-            )
-            if self.instance:
-                overlapping = overlapping.exclude(pk=self.instance.pk)
-            if overlapping.count() >= service.capacity:
-                raise serializers.ValidationError(
-                    "This time slot is fully booked."
-                )
 
             # A booking for this service also reserves whatever
             # resources it requires (BOOK-72/73: required/optional/
@@ -1870,6 +2120,32 @@ class BookingSerializer(serializers.ModelSerializer):
                 exclude_pk=self.instance.pk if self.instance else None,
             )
         return attrs
+
+    def _check_service_capacity(self, service, start, end, exclude_pk):
+        """Raises if the service is already at capacity for this
+        window, counting every existing booking's own buffers. Called
+        from validate() as a fast, advisory check and again from
+        create()/update() while the Service row is locked, which is
+        what makes it race safe: two simultaneous bookings of the last
+        place can no longer both pass.
+        """
+        from datetime import timedelta
+
+        buffer_before = timedelta(minutes=service.buffer_before_minutes)
+        buffer_after = timedelta(minutes=service.buffer_after_minutes)
+        overlapping = Booking.objects.filter(
+            workspace=service.workspace,
+            service=service,
+            status="confirmed",
+            start_time__lt=end + buffer_before,
+            end_time__gt=start - buffer_after,
+        )
+        if exclude_pk:
+            overlapping = overlapping.exclude(pk=exclude_pk)
+        if overlapping.count() >= service.capacity:
+            raise serializers.ValidationError(
+                "This time slot is fully booked."
+            )
 
     def _plan_resource_reservations(
         self, *, service, resource, resource_ids, start, end, exclude_pk,
@@ -2047,6 +2323,7 @@ class BookingSerializer(serializers.ModelSerializer):
             if service:
                 service = Service.objects.select_for_update().get(pk=service.id)
                 validated_data["service"] = service
+                self._check_service_capacity(service, start, end, None)
 
             plan = self._plan_resource_reservations(
                 service=service, resource=resource, resource_ids=resource_ids,
@@ -2092,6 +2369,10 @@ class BookingSerializer(serializers.ModelSerializer):
                     service = Service.objects.select_for_update().get(
                         pk=service.id
                     )
+                    if time_changed:
+                        self._check_service_capacity(
+                            service, start, end, instance.pk
+                        )
                 plan = self._plan_resource_reservations(
                     service=service, resource=resource,
                     resource_ids=resource_ids if resource_set_changed else None,
@@ -2191,10 +2472,14 @@ class PublicBookingSerializer(BookingSerializer):
         client_name = validated_data.pop("client_name")
         client_email = validated_data.pop("client_email")
         workspace = self.context["workspace"]
-        client, _ = Client.objects.get_or_create(
-            workspace=workspace,
-            contact_email=client_email,
-            defaults={"company_name": client_name},
+        # filter().first() rather than get_or_create: contact_email is
+        # not unique, so an invited and a guest client can share one,
+        # and get_or_create would 500 on the second match.
+        client = Client.objects.filter(
+            workspace=workspace, contact_email__iexact=client_email
+        ).first() or Client.objects.create(
+            workspace=workspace, contact_email=client_email,
+            company_name=client_name,
         )
         validated_data["workspace"] = workspace
         validated_data["client"] = client
@@ -2251,6 +2536,13 @@ class RecurringSeriesCreateSerializer(serializers.Serializer):
                 "workspace."
             )
         return value
+
+    def validate(self, attrs):
+        if "client" not in attrs:
+            raise serializers.ValidationError(
+                {"client": "A client is required."}
+            )
+        return attrs
 
     def create(self, validated_data):
         from datetime import timedelta
@@ -2311,6 +2603,19 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
 
     def get_client_name(self, obj):
         return obj.client.company_name
+
+    def validate_service(self, value):
+        workspace = _acting_workspace(self)
+        if workspace and value.workspace_id != workspace.id:
+            raise serializers.ValidationError(
+                "Choose a service from your own workspace."
+            )
+        return value
+
+    def validate_client(self, value):
+        return _check_client_access(
+            self, value, "Choose a client from your own workspace."
+        )
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -2401,6 +2706,10 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     token = serializers.CharField()
     password = serializers.CharField(write_only=True, min_length=8)
 
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
     def validate(self, attrs):
         try:
             user_id = urlsafe_base64_decode(attrs["uid"]).decode()
@@ -2424,4 +2733,5 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user = self.validated_data["user"]
         user.set_password(self.validated_data["password"])
         user.save(update_fields=["password"])
+        revoke_refresh_tokens(user)
         return user

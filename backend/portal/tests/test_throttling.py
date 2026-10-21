@@ -44,3 +44,38 @@ class AuthThrottleTests(TestCase):
                 for _ in range(3)
             ]
         self.assertEqual(codes[-1], 429)
+
+
+class LogoutTests(TestCase):
+    def test_logout_blacklists_the_refresh_token(self):
+        from rest_framework_simplejwt.token_blacklist.models import (
+            BlacklistedToken,
+        )
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        from portal.models import User
+
+        user = User.objects.create_user(
+            username="u", email="u@example.com", password="pw12345678",
+            role="owner",
+        )
+        refresh = RefreshToken.for_user(user)
+        client = APIClient()
+        res = client.post(
+            "/api/auth/logout/", {"refresh": str(refresh)}, format="json"
+        )
+        self.assertEqual(res.status_code, 204)
+        self.assertTrue(
+            BlacklistedToken.objects.filter(token__jti=refresh["jti"]).exists()
+        )
+        # The revoked token can no longer mint access tokens.
+        again = client.post(
+            "/api/auth/refresh/", {"refresh": str(refresh)}, format="json"
+        )
+        self.assertEqual(again.status_code, 401)
+
+    def test_logout_with_a_bad_token_is_still_a_204(self):
+        res = APIClient().post(
+            "/api/auth/logout/", {"refresh": "garbage"}, format="json"
+        )
+        self.assertEqual(res.status_code, 204)

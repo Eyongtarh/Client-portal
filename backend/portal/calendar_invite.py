@@ -12,6 +12,8 @@ from django.utils import timezone
 def _escape(text):
     return (
         text.replace("\\", "\\\\")
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
         .replace("\n", "\\n")
         .replace(",", "\\,")
         .replace(";", "\\;")
@@ -51,7 +53,9 @@ def build_ics(booking, cancelled=False):
         f"DTEND:{_format_dt(booking.end_time)}",
         f"SUMMARY:{_escape(f'{name} - {booking.workspace.name}')}",
         f"STATUS:{status}",
-        "SEQUENCE:0",
+        # A cancellation must out-rank the invite it cancels, or a
+        # calendar app ignores it as stale.
+        f"SEQUENCE:{1 if cancelled else 0}",
     ]
     if location:
         lines.append(f"LOCATION:{_escape(location)}")

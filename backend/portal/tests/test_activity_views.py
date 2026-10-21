@@ -102,6 +102,7 @@ class InvoiceViewedTests(ActivityViewTestCase):
     def setUp(self):
         super().setUp()
         self.invoice = Invoice.objects.create(
+            status="sent",
             workspace=self.workspace, client=self.client_profile, number="A"
         )
         InvoiceItem.objects.create(
