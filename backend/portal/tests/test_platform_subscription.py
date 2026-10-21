@@ -638,3 +638,15 @@ class SubscriptionViewHardeningTests(PlatformSubscriptionTestCase):
         self.assertEqual(res.status_code, 400)
         self.workspace.subscription.refresh_from_db()
         self.assertFalse(self.workspace.subscription.cancel_at_period_end)
+
+
+class PlanCurrencyTests(PlatformSubscriptionTestCase):
+    def test_plans_report_the_currency_stripe_bills_in_not_the_workspace_one(self):
+        self.workspace.currency = "XAF"
+        self.workspace.save(update_fields=["currency"])
+        client = auth_client(self.owner)
+        res = client.get("/api/plans/")
+        self.assertEqual(res.status_code, 200)
+        plans = res.json()["results"] if isinstance(res.json(), dict) else res.json()
+        self.assertTrue(plans)
+        self.assertEqual({p["currency"] for p in plans}, {"USD"})

@@ -193,6 +193,15 @@ class SubscriptionPlan(models.Model):
     """
     name = models.CharField(max_length=100, unique=True)
     price_per_month = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(
+        max_length=3,
+        default="USD",
+        help_text="The currency Stripe actually bills this plan in (the "
+        "currency of its Stripe Price). Shown next to the price so an "
+        "owner is never quoted one currency and charged another; "
+        "deliberately independent of the workspace's own currency, "
+        "which is for the owner's clients.",
+    )
     max_clients = models.PositiveIntegerField(
         null=True, blank=True, help_text="Blank = unlimited"
     )

@@ -36,7 +36,8 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
     """
 
     list_display = (
-        "name", "price_per_month", "stripe_price_id", "max_clients",
+        "name", "price_per_month", "currency", "stripe_price_id",
+        "max_clients",
         "max_team_members",
     )
 

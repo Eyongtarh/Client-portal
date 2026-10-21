@@ -908,7 +908,7 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
           {plan && (
             <span className="text-sm font-normal text-ink-soft">
               {" "}
-              {"\u00b7"} {plan.price_per_month} {workspace.currency}{" "}
+              {"\u00b7"} {plan.price_per_month} {plan.currency}{" "}
               {t("subscription.perMonth")}
             </span>
           )}
@@ -1046,7 +1046,7 @@ function PlanSection({ isOwner, workspace, onPlanChanged }) {
               >
                 <p className="font-medium text-ink">{p.name}</p>
                 <p className="text-sm text-ink-soft mb-3">
-                  {p.price_per_month} {workspace.currency}{" "}
+                  {p.price_per_month} {p.currency}{" "}
                   {t("subscription.perMonth")}
                 </p>
                 <button
