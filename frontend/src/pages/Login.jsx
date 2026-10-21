@@ -22,7 +22,7 @@ export default function Login() {
     try {
       await login(email, password);
       navigate("/");
-    } catch (err) {
+    } catch {
       setError(t("login.error"));
     } finally {
       setBusy(false);

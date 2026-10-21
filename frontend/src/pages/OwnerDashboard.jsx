@@ -110,7 +110,7 @@ export default function OwnerDashboard() {
       const res = await api.patch("/workspace/", { brand_color: hex });
       setWorkspace(res.data);
       setColorMsg({ key: "branding.colorUpdated", type: "success" });
-    } catch (err) {
+    } catch {
       applyBrandColor(workspace?.brand_color);
       setColorMsg({ key: "branding.couldNotUpdateColor", type: "error" });
     }
@@ -132,7 +132,7 @@ export default function OwnerDashboard() {
       setWorkspace(res.data);
       setEditingName(false);
       setNameMsg({ key: "dashboard.workspaceNameUpdated", type: "success" });
-    } catch (err) {
+    } catch {
       setNameMsg({
         key: "dashboard.couldNotUpdateWorkspaceName",
         type: "error",
@@ -153,7 +153,7 @@ export default function OwnerDashboard() {
       setInviteCompany("");
       setShowInviteForm(false);
       setInviteSuccess(true);
-    } catch (err) {
+    } catch {
       setInviteError("Could not send invite.");
     } finally {
       setInviteBusy(false);
@@ -564,7 +564,7 @@ function TeamSection({ isOwner }) {
         restricted: !member.restricted,
       });
       load();
-    } catch (err) {
+    } catch {
       setStatusMsg({ key: "team.couldNotUpdateAccess", type: "error" });
     }
   }

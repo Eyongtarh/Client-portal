@@ -1,3 +1,4 @@
+import mimetypes
 import io
 import logging
 from datetime import datetime, timedelta
@@ -23,6 +24,8 @@ from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .activity import (
@@ -122,8 +125,43 @@ def _check_storage_limit(workspace, incoming_bytes):
         )
 
 
+# Types a browser can render inline without being able to run
+# script. Anything else (HTML, SVG, XML, ...) is always sent as a
+# download, so an uploaded file can never execute in this app's origin.
+INLINE_SAFE_TYPES = frozenset({
+    "application/pdf", "image/png", "image/jpeg", "image/gif",
+    "image/webp", "text/plain",
+})
+
+
+def _safe_file_response(handle, filename):
+    """FileResponse for user uploaded bytes. Inline only for the
+    script free types above; a download for everything else.
+    """
+    content_type, _ = mimetypes.guess_type(filename or "")
+    inline = content_type in INLINE_SAFE_TYPES
+    response = FileResponse(
+        handle,
+        filename=filename,
+        as_attachment=not inline,
+        content_type=content_type if inline else "application/octet-stream",
+    )
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+class ThrottledTokenObtainPairView(TokenObtainPairView):
+    """POST /api/auth/login/ - simplejwt's login view with the
+    "auth" throttle applied, so a password can't be guessed at speed.
+    """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+
 class RegisterView(generics.CreateAPIView):
     """POST /api/auth/register/ - owner sign-up."""
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     serializer_class = RegisterSerializer
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -264,6 +302,8 @@ class AcceptInviteView(generics.CreateAPIView):
     """POST /api/auth/accept-invite/ - client sets a password using
     their invite token and gets an account.
     """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     serializer_class = AcceptInviteSerializer
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -331,6 +371,8 @@ class AcceptTeamInviteView(generics.CreateAPIView):
     sets a password using their invite token and gets a staff
     account.
     """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     serializer_class = AcceptTeamInviteSerializer
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -870,6 +912,8 @@ class PasswordResetRequestView(generics.CreateAPIView):
     """POST /api/auth/password-reset/ - sends a reset link by
     email if the address matches an account.
     """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     serializer_class = PasswordResetRequestSerializer
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -885,6 +929,8 @@ class PasswordResetConfirmView(generics.CreateAPIView):
     """POST /api/auth/password-reset/confirm/ - sets a new
     password using the uid + token from the reset email.
     """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
     serializer_class = PasswordResetConfirmSerializer
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -1253,7 +1299,7 @@ class DocumentViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
                 document,
                 client=document.project.client,
             )
-        return FileResponse(handle, filename=document.original_name)
+        return _safe_file_response(handle, document.original_name)
 
 
 class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
@@ -1332,7 +1378,7 @@ class MessageViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
             handle = message.attachment.open("rb")
         except (OSError, IOError):
             raise Http404
-        return FileResponse(handle, filename=message.attachment_name)
+        return _safe_file_response(handle, message.attachment_name)
 
 
 class InvoiceViewSet(QueryParamFilterMixin, viewsets.ModelViewSet):
@@ -3359,6 +3405,8 @@ class PublicBookingCreateView(generics.CreateAPIView):
     logged-in client's booking would (capacity, buffers, notice,
     blocked time, caps) via PublicBookingSerializer.
     """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "public"
     serializer_class = PublicBookingSerializer
     permission_classes = [AllowAny]
 

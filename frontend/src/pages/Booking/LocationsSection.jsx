@@ -77,7 +77,7 @@ export default function LocationsSection() {
       setEditingId(null);
       setStatusMsg({ key: "locations.locationUpdated", type: "success" });
       load();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "locations.couldNotUpdateLocation",
         type: "error",
@@ -91,7 +91,7 @@ export default function LocationsSection() {
       await api.delete(`/locations/${locationId}/`);
       setStatusMsg({ key: "locations.locationDeleted", type: "error" });
       load();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "locations.couldNotDeleteLocation",
         type: "error",

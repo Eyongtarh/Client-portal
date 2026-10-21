@@ -621,6 +621,20 @@ class ProjectSerializer(serializers.ModelSerializer):
         return obj.client.company_name
 
 
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
+
+def _check_upload_size(upload):
+    """Per file cap, separate from the plan's total storage limit, so
+    one huge upload can't exhaust memory or disk on its own.
+    """
+    if upload is not None and upload.size > MAX_UPLOAD_BYTES:
+        raise serializers.ValidationError(
+            f"Files can be at most {MAX_UPLOAD_BYTES // (1024 * 1024)} MB."
+        )
+    return upload
+
+
 class DocumentSerializer(serializers.ModelSerializer):
     """Read/write for a project document. `uploaded_by_name` is
     derived so the frontend doesn't need a second lookup to show
@@ -647,6 +661,9 @@ class DocumentSerializer(serializers.ModelSerializer):
             "original_name", "size_bytes", "uploaded_at",
         ]
         extra_kwargs = {"file": {"write_only": True}}
+
+    def validate_file(self, value):
+        return _check_upload_size(value)
 
     def get_uploaded_by_name(self, obj):
         if obj.uploaded_by:
@@ -698,6 +715,9 @@ class MessageSerializer(serializers.ModelSerializer):
         if obj.sender:
             return obj.sender.role
         return None
+
+    def validate_attachment(self, value):
+        return _check_upload_size(value)
 
     def get_attachment_url(self, obj):
         if not obj.attachment:

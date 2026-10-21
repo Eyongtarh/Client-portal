@@ -179,7 +179,7 @@ Every variable is documented in the `.env.example` file beside it. The ones that
 | Variable | Where | Purpose |
 | --- | --- | --- |
 | `DJANGO_SECRET_KEY` | backend | Django signing key. Required. |
-| `DEBUG`, `ALLOWED_HOSTS` | backend | Set `DEBUG=False` and your real hosts in production. |
+| `DEBUG`, `ALLOWED_HOSTS` | backend | `DEBUG` defaults to off, so set `DEBUG=True` in your local `.env`. With it off, a real `DJANGO_SECRET_KEY` is required, HTTPS is enforced and login, register and password reset are rate limited. |
 | `DATABASE_URL` | backend | Postgres connection string. Leave empty for local SQLite. |
 | `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL` | backend | The frontend's origin, used for CORS and links in emails. |
 | `STRIPE_SECRET_KEY` | backend | Platform Stripe key, used to create Checkout sessions. |

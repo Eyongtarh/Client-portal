@@ -2,10 +2,12 @@
 # environment-specific values (database, allowed hosts, CORS)
 # are read from environment variables so the same code works
 # unchanged locally (SQLite) and in production (Heroku Postgres).
+import sys
 from pathlib import Path
 from datetime import timedelta
 from decouple import config, Csv
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,7 +16,15 @@ SECRET_KEY = config(
     default="django-insecure-local-dev-only-change-in-prod",
 )
 
-DEBUG = config("DEBUG", default=True, cast=bool)
+# Fails closed: an environment that forgets to set DEBUG gets the
+# production behaviour, not the debug page. Local development sets
+# DEBUG=True in backend/.env (see .env.example).
+DEBUG = config("DEBUG", default=False, cast=bool)
+
+if not DEBUG and SECRET_KEY.startswith("django-insecure"):
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be set to a real secret when DEBUG is off."
+    )
 
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv()
@@ -51,6 +61,17 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    # Scoped throttles on the unauthenticated endpoints that can be
+    # brute forced or used to send email (login, register, password
+    # reset, invites, public booking). Counted per client IP. The
+    # default cache is per process, so with several dynos the real
+    # ceiling is the rate times the dyno count; fine as abuse
+    # protection, not a precise quota. Tests run with a very high
+    # rate so they never trip over each other.
+    "DEFAULT_THROTTLE_RATES": {
+        "auth": "1000000/min" if "test" in sys.argv else "10/min",
+        "public": "1000000/min" if "test" in sys.argv else "30/min",
+    },
 }
 
 SIMPLE_JWT = {
@@ -190,6 +211,15 @@ FRONTEND_URL = config(
 # the request, e.g. the Stripe Connect OAuth redirect_uri) sees every
 # request as http:// even in production.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+if not DEBUG and "test" not in sys.argv:
+    # Heroku terminates TLS and forwards X-Forwarded-Proto, trusted
+    # above, so these are safe behind it.
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")

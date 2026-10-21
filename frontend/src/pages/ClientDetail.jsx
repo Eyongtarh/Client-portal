@@ -19,6 +19,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { useAuth } from "../lib/AuthContext.jsx";
+import { openFileBlob } from "../lib/openFile";
 import api from "../lib/api";
 import LanguageToggle from "../components/LanguageToggle.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
@@ -337,7 +338,7 @@ function ProjectOverview({ project, onChange, currency }) {
         type: "success",
       });
       onChange();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "clientDetail.couldNotUpdateMilestone",
         type: "error",
@@ -350,7 +351,7 @@ function ProjectOverview({ project, onChange, currency }) {
       await api.delete(`/milestones/${milestoneId}/`);
       setStatusMsg({ key: "clientDetail.milestoneDeleted", type: "error" });
       onChange();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "clientDetail.couldNotDeleteMilestone",
         type: "error",
@@ -403,7 +404,7 @@ function ProjectOverview({ project, onChange, currency }) {
       setEditingTaskId(null);
       setStatusMsg({ key: "clientDetail.taskUpdated", type: "success" });
       loadTasks();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "clientDetail.couldNotUpdateTask",
         type: "error",
@@ -416,7 +417,7 @@ function ProjectOverview({ project, onChange, currency }) {
       await api.delete(`/tasks/${taskId}/`);
       setStatusMsg({ key: "clientDetail.taskDeleted", type: "error" });
       loadTasks();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "clientDetail.couldNotDeleteTask",
         type: "error",
@@ -744,8 +745,7 @@ function DocumentsTab({ project }) {
 
   async function openFile(url) {
     const res = await api.get(url, { responseType: "blob" });
-    const blobUrl = URL.createObjectURL(res.data);
-    window.open(blobUrl, "_blank");
+    openFileBlob(res.data);
   }
 
   async function onUpload(e) {
@@ -792,7 +792,7 @@ function DocumentsTab({ project }) {
       setEditingId(null);
       setStatusMsg({ key: "clientDetail.documentRenamed", type: "success" });
       load();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "clientDetail.couldNotRenameDocument",
         type: "error",
@@ -806,7 +806,7 @@ function DocumentsTab({ project }) {
       await api.delete(`/documents/${docId}/`);
       setStatusMsg({ key: "clientDetail.documentDeleted", type: "error" });
       load();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "clientDetail.couldNotDeleteDocument",
         type: "error",
@@ -983,7 +983,6 @@ function DocumentsTab({ project }) {
 
 function MessagesTab({ project }) {
   const { t } = useTranslation();
-  const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [body, setBody] = useState("");
   const [attachment, setAttachment] = useState(null);
@@ -1005,8 +1004,7 @@ function MessagesTab({ project }) {
 
   async function openFile(url) {
     const res = await api.get(url, { responseType: "blob" });
-    const blobUrl = URL.createObjectURL(res.data);
-    window.open(blobUrl, "_blank");
+    openFileBlob(res.data);
   }
 
   async function onSend(e) {
@@ -1037,7 +1035,7 @@ function MessagesTab({ project }) {
       setEditingId(null);
       setStatusMsg({ key: "clientDetail.messageUpdated", type: "success" });
       load();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "clientDetail.couldNotUpdateMessage",
         type: "error",
@@ -1051,7 +1049,7 @@ function MessagesTab({ project }) {
       await api.delete(`/messages/${messageId}/`);
       setStatusMsg({ key: "clientDetail.messageDeleted", type: "error" });
       load();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "clientDetail.couldNotDeleteMessage",
         type: "error",
@@ -1285,7 +1283,7 @@ function InvoicesTab({ client, project, currency }) {
       setEditingId(null);
       setStatusMsg({ key: "clientDetail.invoiceUpdated", type: "success" });
       load();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "clientDetail.couldNotUpdateInvoice",
         type: "error",
@@ -1299,7 +1297,7 @@ function InvoicesTab({ client, project, currency }) {
       await api.delete(`/invoices/${invoiceId}/`);
       setStatusMsg({ key: "clientDetail.invoiceDeleted", type: "error" });
       load();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "clientDetail.couldNotDeleteInvoice",
         type: "error",

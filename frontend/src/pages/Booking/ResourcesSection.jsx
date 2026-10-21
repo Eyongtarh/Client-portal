@@ -264,7 +264,7 @@ export default function ResourcesSection() {
       await api.delete(`/resources/${resourceId}/`);
       setStatusMsg({ key: "resources.resourceDeleted", type: "error" });
       load();
-    } catch (err) {
+    } catch {
       setStatusMsg({
         key: "resources.couldNotDeleteResource",
         type: "error",

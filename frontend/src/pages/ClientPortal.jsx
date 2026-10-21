@@ -33,6 +33,7 @@ import NotificationBell from "../components/NotificationBell.jsx";
 import ActivityFeed from "../components/ActivityFeed.jsx";
 import MobileNav from "../components/MobileNav.jsx";
 import SkipLink from "../components/SkipLink.jsx";
+import { openFileBlob } from "../lib/openFile";
 import api from "../lib/api";
 
 // Displays a duration in whichever unit it was most likely
@@ -153,14 +154,13 @@ export default function ClientPortal() {
   }
   async function openFile(url) {
     const res = await api.get(url, { responseType: "blob" });
-    const blobUrl = URL.createObjectURL(res.data);
-    window.open(blobUrl, "_blank");
+    openFileBlob(res.data);
   }
   async function payInvoice(invoiceId) {
     setInvoiceError(null);
     try {
       const res = await api.post(`/invoices/${invoiceId}/checkout/`);
-      window.location.href = res.data.url;
+      window.location.assign(res.data.url);
     } catch (err) {
       setInvoiceError(checkoutErrorMessage(err) || t("clientPortal.paymentFailed"));
     }
@@ -765,7 +765,7 @@ function BookingSection() {
   async function payForBooking(bookingId) {
     try {
       const res = await api.post(`/bookings/${bookingId}/checkout/`);
-      window.location.href = res.data.url;
+      window.location.assign(res.data.url);
     } catch (err) {
       setStatusMsg({
         raw: checkoutErrorMessage(err) || t("booking.paymentFailed"),

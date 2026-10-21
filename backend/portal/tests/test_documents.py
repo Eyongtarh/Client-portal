@@ -144,3 +144,43 @@ class PrivateDocumentTests(DocumentTestCase):
             f"/api/documents/{self.public_doc.id}/file/"
         )
         self.assertEqual(res.status_code, 404)
+
+
+class UploadSafetyTests(TestCase):
+    """Uploaded files are untrusted: nothing that can run script is
+    ever served inline, and there is a per file size cap.
+    """
+
+    def test_html_and_svg_are_always_downloads(self):
+        from io import BytesIO
+
+        from portal.views import _safe_file_response
+
+        for name in ("evil.html", "evil.svg", "evil.xml", "noextension"):
+            response = _safe_file_response(BytesIO(b"<script>1</script>"), name)
+            self.assertIn("attachment", response["Content-Disposition"])
+            self.assertEqual(response["Content-Type"], "application/octet-stream")
+            self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+
+    def test_pdf_and_png_may_render_inline(self):
+        from io import BytesIO
+
+        from portal.views import _safe_file_response
+
+        for name, kind in (("a.pdf", "application/pdf"), ("a.png", "image/png")):
+            response = _safe_file_response(BytesIO(b"x"), name)
+            self.assertTrue(response["Content-Disposition"].startswith("inline"))
+            self.assertEqual(response["Content-Type"], kind)
+
+    def test_oversized_upload_is_rejected(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from rest_framework.serializers import ValidationError
+
+        from portal.serializers import MAX_UPLOAD_BYTES, _check_upload_size
+
+        big = SimpleUploadedFile("big.bin", b"x")
+        big.size = MAX_UPLOAD_BYTES + 1
+        with self.assertRaises(ValidationError):
+            _check_upload_size(big)
+        small = SimpleUploadedFile("ok.bin", b"x")
+        self.assertIs(_check_upload_size(small), small)
